@@ -2,6 +2,8 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import {
   DIRECTUS_URL,
+  canManageWebsiteAdmins,
+  directusRoleName,
   displayName,
   getDirectusUser,
   isWebsiteAdmin,
@@ -46,7 +48,12 @@ export async function GET() {
 
   const response = NextResponse.json({
     authenticated: true,
-    user: { email: user.email, name: displayName(user) },
+    user: {
+      email: user.email,
+      name: displayName(user),
+      role: directusRoleName(user),
+      canManageAdmins: canManageWebsiteAdmins(user),
+    },
   });
   if (refreshed?.access_token) {
     response.cookies.set("ibex_directus_access", refreshed.access_token, {

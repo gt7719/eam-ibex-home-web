@@ -38,3 +38,11 @@ export function isWebsiteAdmin(user: DirectusAdminUser | null) {
 export function displayName(user: DirectusAdminUser) {
   return [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email;
 }
+
+export function directusRoleName(user: DirectusAdminUser | null) {
+  return typeof user?.role === "object" ? user.role?.name || "" : "";
+}
+
+export function canManageWebsiteAdmins(user: DirectusAdminUser | null) {
+  return directusRoleName(user).toLowerCase() === "administrator";
+}

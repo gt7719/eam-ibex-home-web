@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-type AdminUser = { email: string; name: string };
+type AdminUser = { email: string; name: string; canManageAdmins?: boolean };
 
 export default function AdminPage() {
   const [user, setUser] = useState<AdminUser | null>(null);
@@ -35,6 +35,7 @@ export default function AdminPage() {
     <main className="admin-workspace">
       <div className="admin-session-bar">
         <span><strong>{user?.name}</strong><small>{user?.email}</small></span>
+        {user?.canManageAdmins ? <a href="/admin/users">Админ хэрэглэгчид</a> : null}
         <a href="/">Нүүр хуудас</a>
         <button type="button" onClick={logout}>Гарах</button>
       </div>
