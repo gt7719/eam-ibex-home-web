@@ -18,6 +18,9 @@ if [[ ! -x "${vinext}" ]]; then
   exit 69
 fi
 
+echo "Checking protected core connector geometry..."
+node --test "${SITES_PROJECT_ROOT}/tests/core-geometry-source.test.mjs"
+
 echo "Running bounded vinext build..."
 timeout \
   --signal=TERM \
