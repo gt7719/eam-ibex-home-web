@@ -162,6 +162,58 @@
     @media(max-width:560px){.detail-scroll{inset:8px 4px 8px 8px;padding-right:4px}.flow-step-inline{padding:16px}}
     .mega-plan{display:block;width:100%;text-align:left;color:inherit}.mega-plan:hover,.mega-plan:focus-visible{outline:0;border-color:rgba(255,209,102,.56);background:linear-gradient(145deg,rgba(255,209,102,.07),rgba(111,45,189,.08))}.detail-plan.selected{border-color:rgba(57,229,140,.72);box-shadow:0 0 0 1px rgba(57,229,140,.12),0 0 38px rgba(57,229,140,.12)}
     .generic-detail{display:grid;gap:18px}.generic-detail-lead{max-width:850px;color:#b8b0be;font-size:12px;line-height:1.7}.generic-detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.generic-detail-card{padding:18px;border:1px solid rgba(168,85,247,.2);border-radius:16px;background:rgba(255,255,255,.025)}.generic-detail-card small{color:var(--green);font-size:8px;font-weight:850;letter-spacing:.13em}.generic-detail-card h4{margin:9px 0 7px;font-size:14px}.generic-detail-card p{margin:0;color:#958d9c;font-size:9px;line-height:1.55}@media(max-width:760px){.generic-detail-grid{grid-template-columns:1fr}}
+
+    /* Version 21: responsive L/XL workspaces for desktop and large displays */
+    @media(min-width:1200px){
+      .admin-overlay{padding:clamp(22px,2vw,40px)}
+      .admin-panel{width:min(92vw,1780px);height:min(92dvh,980px)}
+    }
+    @media(min-width:1600px){
+      .detail-overlay{display:grid;place-items:center;padding:clamp(24px,2vw,42px)}
+      .detail-overlay[hidden]{display:none}
+      .detail-shell{width:min(84vw,1600px);height:min(90dvh,980px);margin:0}
+      .detail-scroll{inset:16px 8px 16px 16px;padding-right:8px}
+      .detail-head{gap:20px;padding:28px 34px 25px}
+      .detail-head-copy{max-width:1180px}
+      .detail-head h2{font-size:clamp(32px,1.8vw,38px)}
+      .detail-head p{max-width:1040px;font-size:12px}
+      .detail-kicker,.detail-breadcrumb{font-size:9px}
+      .detail-body{padding:28px 34px 38px}
+      .detail-grid,.detail-pricing,.generic-detail-grid,.resource-cards{gap:16px}
+      .detail-group,.detail-plan,.generic-detail-card,.resource-card{padding:22px}
+      .detail-group h3,.generic-detail-card h4,.resource-card h3{font-size:15px}
+      .detail-item strong{font-size:11px}
+      .detail-item span,.generic-detail-card p,.resource-card p{font-size:10px}
+      .generic-detail-lead,.resource-copy{max-width:1100px;font-size:13px}
+      .admin-head{gap:24px;padding:27px 32px 20px}
+      .admin-head h2{font-size:30px}
+      .admin-head p{font-size:11px}
+      .admin-badge{font-size:9px}
+      .admin-close{width:40px;height:40px}
+      .admin-tabs{gap:8px;padding:12px 32px 0}
+      .admin-tab{height:38px;padding:0 17px;font-size:10px}
+      .admin-toolbar{gap:10px;padding:14px 32px}
+      .admin-btn{height:38px;padding:0 16px;font-size:10px}
+      .admin-note{font-size:9px}
+      .admin-list{padding:18px 32px 28px}
+      .admin-plan{margin-bottom:15px;padding:18px;border-radius:19px}
+      .admin-plan-top{margin-bottom:15px}
+      .admin-plan-index{width:28px;height:28px;font-size:9px}
+      .admin-plan-name{font-size:14px}
+      .admin-mini{width:32px;height:32px}
+      .admin-fields{grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+      .admin-content-fields{grid-template-columns:repeat(4,minmax(0,1fr))}
+      .admin-field label,.admin-media-controls label{font-size:8.5px}
+      .admin-field input,.admin-repeat-row input,.admin-media-controls input[type="text"]{height:39px;font-size:10.5px}
+      .admin-field textarea{min-height:96px;font-size:10.5px}
+      .admin-check{font-size:10px}
+      .admin-repeaters{gap:14px;margin-top:15px}
+      .admin-repeater{padding:14px}
+      .admin-repeater-head strong,.admin-repeater-head span,.admin-add-row,.admin-storage-note{font-size:9px}
+      .admin-media-field{grid-template-columns:142px 1fr;gap:16px;padding:14px}
+      .admin-media-preview{width:142px;height:106px}
+      .admin-media-preview.person{height:142px}
+    }
   </style>
 </head>
 <body>
