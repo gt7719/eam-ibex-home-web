@@ -1,7 +1,12 @@
 export async function resolve(specifier, context, nextResolve) {
   if (specifier === "cloudflare:workers") {
+    const source = `export const env = new Proxy({}, {
+      get(_target, key) {
+        return globalThis.__CLOUDFLARE_TEST_ENV__?.[key];
+      }
+    });`;
     return {
-      url: "data:text/javascript,export%20const%20env%3D%7B%7D%3B",
+      url: `data:text/javascript,${encodeURIComponent(source)}`,
       shortCircuit: true,
     };
   }

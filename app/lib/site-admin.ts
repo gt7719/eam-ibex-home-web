@@ -3,6 +3,10 @@ import { cookies } from "next/headers";
 
 export const ADMIN_SESSION_COOKIE = "ibex_site_session";
 export const ADMIN_SESSION_MAX_AGE = 60 * 60 * 24 * 7;
+// Keep the work factor within the Cloudflare Worker request CPU budget. The
+// setup and login endpoints are additionally protected by the site access
+// policy and use a unique 128-bit salt for every administrator.
+export const PASSWORD_HASH_ITERATIONS = 100_000;
 
 type AdminRow = {
   id: string;
@@ -42,11 +46,49 @@ export async function hashPassword(password: string, saltHex?: string) {
     ["deriveBits"],
   );
   const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations: 210_000 },
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations: PASSWORD_HASH_ITERATIONS },
     material,
     256,
   );
   return { hash: bytesToHex(new Uint8Array(bits)), salt: bytesToHex(salt) };
+}
+
+export async function createInitialAdminWithSession(input: {
+  userId: string;
+  email: string;
+  name: string;
+  passwordHash: string;
+  passwordSalt: string;
+  now: string;
+}) {
+  const token = bytesToHex(crypto.getRandomValues(new Uint8Array(32)));
+  const tokenHash = await sha256(token);
+  const expiresAt = new Date(Date.now() + ADMIN_SESSION_MAX_AGE * 1000).toISOString();
+
+  // D1 batch operations are atomic. An administrator can no longer be created
+  // without the matching first session (or vice versa).
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM admin_sessions WHERE expires_at <= ?").bind(input.now),
+    env.DB.prepare(
+      `INSERT INTO admin_users
+       (id, email, name, password_hash, password_salt, role, status, last_access, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 'owner', 'active', ?, ?, ?)`,
+    ).bind(
+      input.userId,
+      input.email,
+      input.name,
+      input.passwordHash,
+      input.passwordSalt,
+      input.now,
+      input.now,
+      input.now,
+    ),
+    env.DB.prepare(
+      "INSERT INTO admin_sessions (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)",
+    ).bind(crypto.randomUUID(), input.userId, tokenHash, expiresAt, input.now),
+  ]);
+
+  return token;
 }
 
 export async function verifyPassword(password: string, salt: string, expectedHash: string) {
@@ -146,4 +188,3 @@ export async function findAdminByEmail(email: string) {
 export function isValidEmail(value: string) {
   return /^\S+@\S+\.\S+$/.test(value);
 }
-

@@ -9,24 +9,36 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
   const [needsSetup, setNeedsSetup] = useState(false);
   const [setupEligible, setSetupEligible] = useState(false);
 
   useEffect(() => {
-    fetch("/api/admin/session", { cache: "no-store" }).then(async (response) => {
-      if (response.ok) {
-        window.location.replace("/admin");
-        return;
+    void (async () => {
+      try {
+        const response = await fetch("/api/admin/session", { cache: "no-store" });
+        if (response.ok) {
+          window.location.replace("/admin");
+          return;
+        }
+        const setupResponse = await fetch("/api/admin/setup", { cache: "no-store" });
+        const setup = await setupResponse.json().catch(() => ({}));
+        if (!setupResponse.ok) {
+          setError(setup.error || `Админ тохиргоог шалгаж чадсангүй (HTTP ${setupResponse.status}).`);
+          return;
+        }
+        setNeedsSetup(Boolean(setup.needsSetup));
+        setSetupEligible(Boolean(setup.eligible));
+        if (setup.identity) {
+          setEmail(setup.identity.email || "");
+          setName(setup.identity.name || "");
+        }
+      } catch {
+        setError("Сервертэй холбогдож чадсангүй. Сүлжээгээ шалгаад дахин оролдоно уу.");
+      } finally {
+        setChecking(false);
       }
-      const setupResponse = await fetch("/api/admin/setup", { cache: "no-store" });
-      const setup = await setupResponse.json().catch(() => ({}));
-      setNeedsSetup(Boolean(setup.needsSetup));
-      setSetupEligible(Boolean(setup.eligible));
-      if (setup.identity) {
-        setEmail(setup.identity.email || "");
-        setName(setup.identity.name || "");
-      }
-    });
+    })();
   }, []);
 
   async function submit(event: FormEvent) {
@@ -41,7 +53,12 @@ export default function AdminLoginPage() {
 
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) {
-      setError(payload.error || "Нэвтрэх үед алдаа гарлаа.");
+      setError(
+        payload.error ||
+        (response
+          ? `Сервер хүсэлтийг боловсруулж чадсангүй (HTTP ${response.status}).`
+          : "Сервертэй холбогдож чадсангүй. Сүлжээгээ шалгаад дахин оролдоно уу."),
+      );
       setLoading(false);
       return;
     }
@@ -92,8 +109,8 @@ export default function AdminLoginPage() {
           </label>
           {error ? <div className="admin-auth-error" role="alert">{error}</div> : null}
           {needsSetup && !setupEligible ? <div className="admin-auth-error" role="alert">Үндсэн админыг сайтын баталгаажсан эзэмшигчийн нэвтрэлтээр үүсгэнэ.</div> : null}
-          <button type="submit" disabled={loading || (needsSetup && !setupEligible)}>
-            {loading ? "Шалгаж байна…" : needsSetup ? "Үндсэн админ үүсгэх" : "Нэвтрэх"}
+          <button type="submit" disabled={checking || loading || (needsSetup && !setupEligible)}>
+            {checking ? "Админ эрх шалгаж байна…" : loading ? "Шалгаж байна…" : needsSetup ? "Үндсэн админ үүсгэх" : "Нэвтрэх"}
           </button>
         </form>
         <div className="admin-auth-links">
