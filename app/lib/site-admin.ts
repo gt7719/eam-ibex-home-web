@@ -3,6 +3,18 @@ import { cookies } from "next/headers";
 
 export const ADMIN_SESSION_COOKIE = "ibex_site_session";
 export const ADMIN_SESSION_MAX_AGE = 60 * 60 * 24 * 7;
+export const ADMIN_PERMISSIONS = [
+  "pricing.manage",
+  "partners.manage",
+  "people.manage",
+  "media.upload",
+] as const;
+export const ADMIN_CONTENT_PERMISSIONS = [
+  "pricing.manage",
+  "partners.manage",
+  "people.manage",
+] as const;
+export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
 // Keep the work factor within the Cloudflare Worker request CPU budget. The
 // setup and login endpoints are additionally protected by the site access
 // policy and use a unique 128-bit salt for every administrator.
@@ -13,6 +25,7 @@ type AdminRow = {
   email: string;
   name: string;
   role: "owner" | "editor";
+  permissions_json?: string | null;
   status: "active" | "suspended";
   last_access: string | null;
   password_hash?: string;
@@ -102,15 +115,44 @@ export async function verifyPassword(password: string, salt: string, expectedHas
 }
 
 export function safeAdmin(row: AdminRow) {
+  let permissions: AdminPermission[] = [];
+  if (row.role === "owner") {
+    permissions = [...ADMIN_PERMISSIONS];
+  } else if (row.permissions_json == null) {
+    permissions = [...ADMIN_PERMISSIONS];
+  } else {
+    try {
+      permissions = normalizeAdminPermissions(JSON.parse(row.permissions_json));
+    } catch {
+      permissions = [];
+    }
+  }
   return {
     id: row.id,
     email: row.email,
     name: row.name,
     role: row.role,
+    permissions,
     status: row.status,
     lastAccess: row.last_access,
     canManageAdmins: row.role === "owner",
   };
+}
+
+export function isAdminPermission(value: unknown): value is AdminPermission {
+  return typeof value === "string" && (ADMIN_PERMISSIONS as readonly string[]).includes(value);
+}
+
+export function normalizeAdminPermissions(value: unknown): AdminPermission[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter(isAdminPermission))];
+}
+
+export function hasAdminPermission(
+  user: { role: "owner" | "editor"; permissions: AdminPermission[] },
+  permission: AdminPermission,
+) {
+  return user.role === "owner" || user.permissions.includes(permission);
 }
 
 export async function countAdmins() {
@@ -165,7 +207,7 @@ export async function getAdminSession() {
   if (!token) return null;
   const now = new Date().toISOString();
   const row = await env.DB.prepare(
-    `SELECT u.id, u.email, u.name, u.role, u.status, u.last_access
+    `SELECT u.id, u.email, u.name, u.role, u.permissions_json, u.status, u.last_access
      FROM admin_sessions s
      INNER JOIN admin_users u ON u.id = s.user_id
      WHERE s.token_hash = ? AND s.expires_at > ? AND u.status = 'active'
@@ -178,7 +220,7 @@ export async function getAdminSession() {
 
 export async function findAdminByEmail(email: string) {
   return env.DB.prepare(
-    `SELECT id, email, name, role, status, last_access, password_hash, password_salt
+    `SELECT id, email, name, role, permissions_json, status, last_access, password_hash, password_salt
      FROM admin_users WHERE email = ? LIMIT 1`,
   )
     .bind(email.trim().toLowerCase())

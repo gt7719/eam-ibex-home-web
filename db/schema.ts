@@ -9,6 +9,9 @@ export const adminUsers = sqliteTable(
     passwordHash: text("password_hash").notNull(),
     passwordSalt: text("password_salt").notNull(),
     role: text("role").notNull().default("editor"),
+    permissionsJson: text("permissions_json")
+      .notNull()
+      .default('["pricing.manage","partners.manage","people.manage","media.upload"]'),
     status: text("status").notNull().default("active"),
     lastAccess: text("last_access"),
     createdAt: text("created_at").notNull(),

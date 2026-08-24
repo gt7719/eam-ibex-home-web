@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
-import { getAdminSession } from "../../../lib/site-admin";
+import { getAdminSession, hasAdminPermission } from "../../../lib/site-admin";
 
 const allowedTypes = new Set([
   "image/jpeg",
@@ -16,6 +16,9 @@ const allowedTypes = new Set([
 export async function POST(request: Request) {
   const user = await getAdminSession();
   if (!user) return NextResponse.json({ error: "Админ нэвтрэлт шаардлагатай." }, { status: 401 });
+  if (!hasAdminPermission(user, "media.upload")) {
+    return NextResponse.json({ error: "Медиа файл байршуулах эрх олгогдоогүй байна." }, { status: 403 });
+  }
   const form = await request.formData();
   const file = form.get("file");
   if (!(file instanceof File)) {

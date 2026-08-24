@@ -1,0 +1,1 @@
+ALTER TABLE `admin_users` ADD `permissions_json` text DEFAULT '["pricing.manage","partners.manage","people.manage","media.upload"]' NOT NULL;

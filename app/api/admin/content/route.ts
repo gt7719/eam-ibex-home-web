@@ -1,8 +1,13 @@
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
-import { getAdminSession } from "../../../lib/site-admin";
+import { getAdminSession, hasAdminPermission, type AdminPermission } from "../../../lib/site-admin";
 
 const allowedKeys = ["pricing", "partners", "people"] as const;
+const permissionByKey: Record<(typeof allowedKeys)[number], AdminPermission> = {
+  pricing: "pricing.manage",
+  partners: "partners.manage",
+  people: "people.manage",
+};
 
 export async function PUT(request: Request) {
   const user = await getAdminSession();
@@ -16,6 +21,13 @@ export async function PUT(request: Request) {
   const entries = allowedKeys.filter((key) => key in body);
   if (!entries.length || entries.some((key) => !Array.isArray(body[key]))) {
     return NextResponse.json({ error: "Хадгалах контентын бүтэц буруу байна." }, { status: 400 });
+  }
+  const deniedKey = entries.find((key) => !hasAdminPermission(user, permissionByKey[key]));
+  if (deniedKey) {
+    return NextResponse.json(
+      { error: "Энэ хэсгийн мэдээллийг өөрчлөх эрх олгогдоогүй байна.", deniedKey },
+      { status: 403 },
+    );
   }
   const now = new Date().toISOString();
   const statements = entries.map((key) =>

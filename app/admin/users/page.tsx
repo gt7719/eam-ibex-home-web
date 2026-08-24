@@ -2,11 +2,23 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
+type AdminPermission = "pricing.manage" | "partners.manage" | "people.manage" | "media.upload";
+
+const permissionOptions: Array<{ id: AdminPermission; label: string; detail: string }> = [
+  { id: "pricing.manage", label: "Үнэ ба багц", detail: "Багц, үнэ, хэрэглэгч болон хөрөнгийн хязгаар" },
+  { id: "partners.manage", label: "Хамтрагч байгууллага", detail: "Байгууллагын мэдээлэл, лого, холбоос" },
+  { id: "people.manage", label: "Төслийн баг", detail: "Багийн гишүүн, албан тушаал, танилцуулга" },
+  { id: "media.upload", label: "Медиа файл", detail: "Зураг, видео болон PDF файл байршуулах" },
+];
+
+const defaultPermissions = permissionOptions.map((permission) => permission.id);
+
 type SessionUser = {
   email: string;
   name: string;
   role: string;
   canManageAdmins: boolean;
+  permissions: AdminPermission[];
 };
 
 type ManagedAdmin = {
@@ -14,6 +26,7 @@ type ManagedAdmin = {
   email: string;
   name: string;
   role: string;
+  permissions: AdminPermission[];
   status: string;
   lastAccess: string | null;
 };
@@ -24,6 +37,8 @@ export default function AdminUsersPage() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [invitePermissions, setInvitePermissions] = useState<AdminPermission[]>(defaultPermissions);
+  const [permissionDrafts, setPermissionDrafts] = useState<Record<string, AdminPermission[]>>({});
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [inviteEnabled, setInviteEnabled] = useState(false);
@@ -40,7 +55,9 @@ export default function AdminUsersPage() {
       setLoading(false);
       return;
     }
-    setUsers(payload.users || []);
+    const nextUsers = (payload.users || []) as ManagedAdmin[];
+    setUsers(nextUsers);
+    setPermissionDrafts(Object.fromEntries(nextUsers.map((user) => [user.id, user.permissions || []])));
     setInviteEnabled(Boolean(payload.inviteEnabled));
     setLoading(false);
   }, []);
@@ -71,7 +88,7 @@ export default function AdminUsersPage() {
     const response = await fetch("/api/admin/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, name, password }),
+      body: JSON.stringify({ email, name, password, permissions: invitePermissions }),
     }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) {
@@ -82,7 +99,49 @@ export default function AdminUsersPage() {
     setEmail("");
     setName("");
     setPassword("");
+    setInvitePermissions(defaultPermissions);
     setMessage("Контент админы бүртгэлийг үүсгэлээ. Түр нууц үгийг хэрэглэгчид аюулгүй сувгаар дамжуулна уу.");
+    await loadUsers();
+    setWorking(false);
+  }
+
+  function toggleInvitePermission(permission: AdminPermission) {
+    setInvitePermissions((current) =>
+      current.includes(permission)
+        ? current.filter((item) => item !== permission)
+        : [...current, permission],
+    );
+  }
+
+  function toggleManagedPermission(userId: string, permission: AdminPermission) {
+    setPermissionDrafts((current) => {
+      const permissions = current[userId] || [];
+      return {
+        ...current,
+        [userId]: permissions.includes(permission)
+          ? permissions.filter((item) => item !== permission)
+          : [...permissions, permission],
+      };
+    });
+  }
+
+  async function savePermissions(user: ManagedAdmin) {
+    const permissions = permissionDrafts[user.id] || [];
+    setWorking(true);
+    setError("");
+    setMessage("");
+    const response = await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: user.id, permissions }),
+    }).catch(() => null);
+    const payload = response ? await response.json().catch(() => ({})) : {};
+    if (!response?.ok) {
+      setError(payload.error || "Админы эрхийн хүрээг хадгалж чадсангүй.");
+      setWorking(false);
+      return;
+    }
+    setMessage(`${user.name} админы эрхийн хүрээг шинэчиллээ.`);
     await loadUsers();
     setWorking(false);
   }
@@ -124,16 +183,37 @@ export default function AdminUsersPage() {
         <div>
           <span className="admin-step">01</span>
           <h2 id="invite-title">Шинэ контент админ нэмэх</h2>
-          <p>Нэмэгдсэн хэрэглэгч үнэ, зураг болон сайтын агуулгыг засах эрхтэй байна.</p>
+          <p>Нэвтрэх мэдээллийг бүртгээд тухайн админ яг ямар хэсэгт өөрчлөлт хийхийг сонгоно.</p>
         </div>
         <form onSubmit={invite}>
           <label htmlFor="invite-email">Админы мэдээлэл</label>
-          <div>
+          <div className="admin-invite-fields">
             <input type="text" value={name} onChange={(event) => setName(event.target.value)} placeholder="Нэр" required />
             <input id="invite-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@company.mn" required />
             <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Түр нууц үг • 10+ тэмдэгт" minLength={10} required />
-            <button type="submit" disabled={working || !inviteEnabled}>{working ? "Түр хүлээнэ үү…" : "Админ нэмэх"}</button>
           </div>
+          <fieldset className="admin-permission-fieldset">
+            <legend>Өөрчлөлт хийх эрх</legend>
+            <div className="admin-permission-grid">
+              {permissionOptions.map((permission) => (
+                <label className="admin-permission-option" key={permission.id}>
+                  <input
+                    type="checkbox"
+                    checked={invitePermissions.includes(permission.id)}
+                    onChange={() => toggleInvitePermission(permission.id)}
+                  />
+                  <span><strong>{permission.label}</strong><small>{permission.detail}</small></span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <button
+            type="submit"
+            className="admin-invite-submit"
+            disabled={working || !inviteEnabled || !invitePermissions.some((permission) => permission !== "media.upload")}
+          >
+            {working ? "Түр хүлээнэ үү…" : "Админ нэмэх"}
+          </button>
           <small>Нууц үгийг и-мэйлээр автоматаар илгээхгүй. Хэрэглэгчид аюулгүй сувгаар дамжуулна уу.</small>
         </form>
       </section>
@@ -160,7 +240,42 @@ export default function AdminUsersPage() {
                   <p>{user.email}</p>
                   <div><span className={`admin-status ${user.status}`}>{active ? "Идэвхтэй" : "Идэвхгүй"}</span><span>{isOwner ? "Үндсэн админ" : "Контент админ"}</span></div>
                 </div>
-                {!isOwner ? <button type="button" onClick={() => changeStatus(user)} disabled={working}>{active ? "Түр идэвхгүй болгох" : "Идэвхжүүлэх"}</button> : <span className="admin-protected">Хамгаалагдсан</span>}
+                {isOwner ? (
+                  <div className="admin-protected-rights">
+                    <span className="admin-protected">Бүх эрхтэй · Хамгаалагдсан</span>
+                  </div>
+                ) : (
+                  <>
+                    <fieldset className="admin-managed-permissions" disabled={working || !active}>
+                      <legend>Эрхийн хүрээ</legend>
+                      <div>
+                        {permissionOptions.map((permission) => (
+                          <label key={permission.id}>
+                            <input
+                              type="checkbox"
+                              checked={(permissionDrafts[user.id] || []).includes(permission.id)}
+                              onChange={() => toggleManagedPermission(user.id, permission.id)}
+                            />
+                            <span>{permission.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
+                    <div className="admin-user-actions">
+                      <button
+                        type="button"
+                        className="permission-save"
+                        onClick={() => savePermissions(user)}
+                        disabled={working || !active}
+                      >
+                        Эрх хадгалах
+                      </button>
+                      <button type="button" onClick={() => changeStatus(user)} disabled={working}>
+                        {active ? "Түр идэвхгүй болгох" : "Идэвхжүүлэх"}
+                      </button>
+                    </div>
+                  </>
+                )}
               </article>
             );
           })}
