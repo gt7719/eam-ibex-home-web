@@ -22,6 +22,8 @@ export default function AdminUsersPage() {
   const [session, setSession] = useState<SessionUser | null>(null);
   const [users, setUsers] = useState<ManagedAdmin[]>([]);
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [inviteEnabled, setInviteEnabled] = useState(false);
@@ -69,7 +71,7 @@ export default function AdminUsersPage() {
     const response = await fetch("/api/admin/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, name, password }),
     }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) {
@@ -78,7 +80,9 @@ export default function AdminUsersPage() {
       return;
     }
     setEmail("");
-    setMessage("Админ нэвтрэх урилгыг и-мэйлээр илгээлээ.");
+    setName("");
+    setPassword("");
+    setMessage("Контент админы бүртгэлийг үүсгэлээ. Түр нууц үгийг хэрэглэгчид аюулгүй сувгаар дамжуулна уу.");
     await loadUsers();
     setWorking(false);
   }
@@ -119,16 +123,18 @@ export default function AdminUsersPage() {
       <section className="admin-invite-card" aria-labelledby="invite-title">
         <div>
           <span className="admin-step">01</span>
-          <h2 id="invite-title">Шинэ админ урих</h2>
-          <p>Уригдсан хэрэглэгч Website Content Editor эрхээр үнэ, зураг болон сайтын агуулгыг засна.</p>
+          <h2 id="invite-title">Шинэ контент админ нэмэх</h2>
+          <p>Нэмэгдсэн хэрэглэгч үнэ, зураг болон сайтын агуулгыг засах эрхтэй байна.</p>
         </div>
         <form onSubmit={invite}>
-          <label htmlFor="invite-email">И-мэйл хаяг</label>
+          <label htmlFor="invite-email">Админы мэдээлэл</label>
           <div>
+            <input type="text" value={name} onChange={(event) => setName(event.target.value)} placeholder="Нэр" required />
             <input id="invite-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@company.mn" required />
-            <button type="submit" disabled={working || !inviteEnabled}>{working ? "Түр хүлээнэ үү…" : "Урилга илгээх"}</button>
+            <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Түр нууц үг • 10+ тэмдэгт" minLength={10} required />
+            <button type="submit" disabled={working || !inviteEnabled}>{working ? "Түр хүлээнэ үү…" : "Админ нэмэх"}</button>
           </div>
-          {!inviteEnabled ? <small>Directus дээр Website Content Editor эрх үүссэний дараа урилга идэвхжинэ.</small> : null}
+          <small>Нууц үгийг и-мэйлээр автоматаар илгээхгүй. Хэрэглэгчид аюулгүй сувгаар дамжуулна уу.</small>
         </form>
       </section>
 
@@ -144,7 +150,7 @@ export default function AdminUsersPage() {
         {!loading && !users.length ? <p className="admin-users-empty">Одоогоор харуулах админ хэрэглэгч алга.</p> : null}
         <div className="admin-user-grid">
           {users.map((user) => {
-            const isOwner = user.role.toLowerCase() === "administrator";
+            const isOwner = user.role.toLowerCase() === "owner";
             const active = user.status === "active";
             return (
               <article className="admin-user-card" key={user.id}>
@@ -152,9 +158,9 @@ export default function AdminUsersPage() {
                 <div className="admin-user-copy">
                   <h3>{user.name}</h3>
                   <p>{user.email}</p>
-                  <div><span className={`admin-status ${user.status}`}>{user.status === "invited" ? "Урилга хүлээгдэж байна" : active ? "Идэвхтэй" : "Идэвхгүй"}</span><span>{isOwner ? "Үндсэн админ" : "Контент админ"}</span></div>
+                  <div><span className={`admin-status ${user.status}`}>{active ? "Идэвхтэй" : "Идэвхгүй"}</span><span>{isOwner ? "Үндсэн админ" : "Контент админ"}</span></div>
                 </div>
-                {!isOwner ? <button type="button" onClick={() => changeStatus(user)} disabled={working || user.status === "invited"}>{active ? "Түр идэвхгүй болгох" : user.status === "invited" ? "Урилга илгээсэн" : "Идэвхжүүлэх"}</button> : <span className="admin-protected">Хамгаалагдсан</span>}
+                {!isOwner ? <button type="button" onClick={() => changeStatus(user)} disabled={working}>{active ? "Түр идэвхгүй болгох" : "Идэвхжүүлэх"}</button> : <span className="admin-protected">Хамгаалагдсан</span>}
               </article>
             );
           })}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 type AdminUser = { email: string; name: string; canManageAdmins?: boolean };
 
@@ -35,8 +36,8 @@ export default function AdminPage() {
     <main className="admin-workspace">
       <div className="admin-session-bar">
         <span><strong>{user?.name}</strong><small>{user?.email}</small></span>
-        {user?.canManageAdmins ? <a href="/admin/users">Админ хэрэглэгчид</a> : null}
-        <a href="/">Нүүр хуудас</a>
+        {user?.canManageAdmins ? <Link href="/admin/users">Админ хэрэглэгчид</Link> : null}
+        <Link href="/">Нүүр хуудас</Link>
         <button type="button" onClick={logout}>Гарах</button>
       </div>
       <iframe

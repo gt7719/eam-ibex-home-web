@@ -1,143 +1,75 @@
-import { cookies } from "next/headers";
+import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
-import {
-  DIRECTUS_URL,
-  canManageWebsiteAdmins,
-  getDirectusUser,
-} from "../../../lib/directus";
+import { getAdminSession, hashPassword, isValidEmail } from "../../../lib/site-admin";
 
-type DirectusRole = { id: string; name: string };
-type ManagedUser = {
+type UserRow = {
   id: string;
   email: string;
-  first_name?: string | null;
-  last_name?: string | null;
-  status?: string | null;
-  last_access?: string | null;
-  role?: DirectusRole | string | null;
+  name: string;
+  role: string;
+  status: string;
+  last_access: string | null;
 };
 
-async function administratorContext() {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get("ibex_directus_access")?.value;
-  if (!accessToken) return null;
-  const user = await getDirectusUser(accessToken);
-  return canManageWebsiteAdmins(user) ? { accessToken, user } : null;
-}
-
-async function contentEditorRole(accessToken: string) {
-  const url = new URL(`${DIRECTUS_URL}/roles`);
-  url.searchParams.set("filter[name][_eq]", "Website Content Editor");
-  url.searchParams.set("fields", "id,name");
-  url.searchParams.set("limit", "1");
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-    cache: "no-store",
-  });
-  if (!response.ok) return null;
-  const payload = (await response.json()) as { data?: DirectusRole[] };
-  return payload.data?.[0] || null;
-}
-
-function roleName(user: ManagedUser) {
-  return typeof user.role === "object" ? user.role?.name || "" : "";
-}
-
-function safeUser(user: ManagedUser) {
-  return {
-    id: user.id,
-    email: user.email,
-    name: [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email,
-    status: user.status || "invited",
-    lastAccess: user.last_access || null,
-    role: roleName(user),
-  };
+async function ownerSession() {
+  const user = await getAdminSession();
+  return user?.canManageAdmins ? user : null;
 }
 
 export async function GET() {
-  const context = await administratorContext();
-  if (!context) {
-    return NextResponse.json({ error: "Админ хэрэглэгч удирдах эрхгүй байна." }, { status: 403 });
-  }
-
-  const url = new URL(`${DIRECTUS_URL}/users`);
-  url.searchParams.set(
-    "fields",
-    "id,email,first_name,last_name,status,last_access,role.id,role.name",
-  );
-  url.searchParams.set("limit", "-1");
-  url.searchParams.set("sort", "email");
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${context.accessToken}` },
-    cache: "no-store",
-  }).catch(() => null);
-
-  if (!response?.ok) {
-    return NextResponse.json(
-      { error: "Directus хэрэглэгчдийн жагсаалтыг уншиж чадсангүй." },
-      { status: 502 },
-    );
-  }
-
-  const payload = (await response.json()) as { data?: ManagedUser[] };
-  const users = (payload.data || [])
-    .filter((user) => ["administrator", "website content editor"].includes(roleName(user).toLowerCase()))
-    .map(safeUser);
-  const inviteRole = await contentEditorRole(context.accessToken);
-
-  return NextResponse.json({ users, inviteEnabled: Boolean(inviteRole) });
+  const owner = await ownerSession();
+  if (!owner) return NextResponse.json({ error: "Админ хэрэглэгч удирдах эрхгүй байна." }, { status: 403 });
+  const rows = await env.DB.prepare(
+    "SELECT id, email, name, role, status, last_access FROM admin_users ORDER BY role DESC, email ASC",
+  ).all<UserRow>();
+  const users = (rows.results || []).map((user) => ({
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    status: user.status,
+    lastAccess: user.last_access,
+  }));
+  return NextResponse.json({ users, inviteEnabled: true });
 }
 
 export async function POST(request: Request) {
-  const context = await administratorContext();
-  if (!context) {
-    return NextResponse.json({ error: "Админ нэмэх эрхгүй байна." }, { status: 403 });
-  }
-
-  let body: { email?: string };
+  const owner = await ownerSession();
+  if (!owner) return NextResponse.json({ error: "Админ нэмэх эрхгүй байна." }, { status: 403 });
+  let body: { email?: string; name?: string; password?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Хүсэлтийн формат буруу байна." }, { status: 400 });
   }
-  const email = body.email?.trim().toLowerCase();
-  if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-    return NextResponse.json({ error: "Зөв и-мэйл хаяг оруулна уу." }, { status: 400 });
-  }
-
-  const role = await contentEditorRole(context.accessToken);
-  if (!role) {
+  const email = body.email?.trim().toLowerCase() || "";
+  const name = body.name?.trim() || "";
+  const password = body.password || "";
+  if (!isValidEmail(email) || name.length < 2 || password.length < 10) {
     return NextResponse.json(
-      { error: "Directus дээр Website Content Editor эрх эхлээд үүсгэх шаардлагатай." },
-      { status: 409 },
+      { error: "Нэр, зөв и-мэйл болон 10-аас дээш тэмдэгттэй түр нууц үг оруулна уу." },
+      { status: 400 },
     );
   }
-
-  const response = await fetch(`${DIRECTUS_URL}/users/invite`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${context.accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ email, role: role.id }),
-    cache: "no-store",
-  }).catch(() => null);
-
-  if (!response?.ok) {
-    return NextResponse.json(
-      { error: "Урилга илгээж чадсангүй. И-мэйл давхардсан эсвэл Directus-ийн mail тохиргоог шалгана уу." },
-      { status: response?.status || 502 },
-    );
+  const now = new Date().toISOString();
+  const credential = await hashPassword(password);
+  try {
+    await env.DB.prepare(
+      `INSERT INTO admin_users
+       (id, email, name, password_hash, password_salt, role, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 'editor', 'active', ?, ?)`,
+    )
+      .bind(crypto.randomUUID(), email, name, credential.hash, credential.salt, now, now)
+      .run();
+  } catch {
+    return NextResponse.json({ error: "Энэ и-мэйлтэй админ бүртгэлтэй байна." }, { status: 409 });
   }
-  return NextResponse.json({ invited: true });
+  return NextResponse.json({ created: true });
 }
 
 export async function PATCH(request: Request) {
-  const context = await administratorContext();
-  if (!context) {
-    return NextResponse.json({ error: "Админы төлөв өөрчлөх эрхгүй байна." }, { status: 403 });
-  }
-
+  const owner = await ownerSession();
+  if (!owner) return NextResponse.json({ error: "Админы төлөв өөрчлөх эрхгүй байна." }, { status: 403 });
   let body: { id?: string; status?: "active" | "suspended" };
   try {
     body = await request.json();
@@ -147,34 +79,18 @@ export async function PATCH(request: Request) {
   if (!body.id || !["active", "suspended"].includes(body.status || "")) {
     return NextResponse.json({ error: "Хэрэглэгч эсвэл төлөв буруу байна." }, { status: 400 });
   }
-
-  const targetResponse = await fetch(
-    `${DIRECTUS_URL}/users/${encodeURIComponent(body.id)}?fields=id,email,status,role.id,role.name`,
-    { headers: { Authorization: `Bearer ${context.accessToken}` }, cache: "no-store" },
-  ).catch(() => null);
-  if (!targetResponse?.ok) {
-    return NextResponse.json({ error: "Хэрэглэгч олдсонгүй." }, { status: 404 });
+  const target = await env.DB.prepare("SELECT role FROM admin_users WHERE id = ? LIMIT 1")
+    .bind(body.id)
+    .first<{ role: string }>();
+  if (!target) return NextResponse.json({ error: "Хэрэглэгч олдсонгүй." }, { status: 404 });
+  if (target.role === "owner") {
+    return NextResponse.json({ error: "Үндсэн админы эрхийг эндээс хаах боломжгүй." }, { status: 403 });
   }
-  const targetPayload = (await targetResponse.json()) as { data?: ManagedUser };
-  const target = targetPayload.data;
-  if (!target || roleName(target).toLowerCase() !== "website content editor") {
-    return NextResponse.json(
-      { error: "Зөвхөн Website Content Editor эрхтэй хэрэглэгчийн төлөвийг өөрчилж болно." },
-      { status: 403 },
-    );
-  }
-
-  const response = await fetch(`${DIRECTUS_URL}/users/${encodeURIComponent(body.id)}`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${context.accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ status: body.status }),
-    cache: "no-store",
-  }).catch(() => null);
-  if (!response?.ok) {
-    return NextResponse.json({ error: "Хэрэглэгчийн төлөвийг өөрчилж чадсангүй." }, { status: 502 });
+  await env.DB.prepare("UPDATE admin_users SET status = ?, updated_at = ? WHERE id = ?")
+    .bind(body.status, new Date().toISOString(), body.id)
+    .run();
+  if (body.status === "suspended") {
+    await env.DB.prepare("DELETE FROM admin_sessions WHERE user_id = ?").bind(body.id).run();
   }
   return NextResponse.json({ updated: true });
 }
