@@ -96,16 +96,16 @@ test("denies pricing writes when the editor lacks pricing permission", { concurr
 });
 
 test("allows only the content section assigned to the editor", { concurrency: false }, async () => {
-  const database = createDatabase({ permissions: ["pricing.manage"] });
+  const database = createDatabase({ permissions: ["partners.manage"] });
   const response = await dispatch(
     database,
-    adminRequest("/api/admin/content", "PUT", { pricing: [{ id: "free" }] }),
+    adminRequest("/api/admin/content", "PUT", { partners: [{ id: "partner" }] }),
   );
 
   assert.equal(response.status, 200);
   assert.equal(database.batches.length, 1);
   assert.equal(database.batches[0].length, 1);
-  assert.equal(database.batches[0][0].values[0], "pricing");
+  assert.equal(database.batches[0][0].values[0], "partners");
 });
 
 test("lets the owner update an editor permission set", { concurrency: false }, async () => {

@@ -378,7 +378,7 @@ const defaultPricingPlans=[
 ];
 function normalizePricingPlan(plan={}){const descriptions=Array.isArray(plan.descriptions)?plan.descriptions:(plan.noteMn||plan.noteEn?[{mn:plan.noteMn||'',en:plan.noteEn||''}]:[]),scopes=Array.isArray(plan.scopes)?plan.scopes:(plan.accessMn||plan.accessEn?[{mn:plan.accessMn||'',en:plan.accessEn||''}]:[]);return{...plan,descriptions:descriptions.map(row=>({mn:String(row?.mn||''),en:String(row?.en||'')})),scopes:scopes.map(row=>({mn:String(row?.mn||''),en:String(row?.en||'')}))}}
 function clonePlans(plans){return JSON.parse(JSON.stringify(plans.map(normalizePricingPlan)))}
-let pricingPlans=clonePlans(defaultPricingPlans),adminDraft=[];
+let pricingPlans=[],adminDraft=[];
 const headerMenus={
  product:{k:'БҮТЭЭГДЭХҮҮН • ASSET CORE + 14 МОДУЛЬ',t:'Хөрөнгөд суурилсан засвар үйлчилгээний удирдлага',i:'Asset Core нь ажил, засварын стратеги, нөөц, зардал, эрсдэл болон шийдвэрийн мэдээллийг хөрөнгө бүрийн түүхэд нэгтгэнэ.',foot:'Asset Core нь суурь бүтэц бөгөөд 14 модулийн тоонд орохгүй.',groups:[
   {t:'Asset Core',items:[['Хөрөнгийн нэгдсэн бүртгэл','Parent–Child бүтэц, байршил ба засварын түүх']]},
@@ -555,7 +555,7 @@ function renderEcosystem(){
 async function loadSiteContent(){
   try{
     const response=await fetch('/api/content',{cache:'no-store'});
-    if(!response.ok)return;
+    if(!response.ok)throw new Error('Content unavailable');
     const payload=await response.json(),content=payload.content||{};
     if(Array.isArray(content.pricing)&&content.pricing.length)pricingPlans=clonePlans(content.pricing);
     if(Array.isArray(content.partners))partnerOrganizations=JSON.parse(JSON.stringify(content.partners));
@@ -563,7 +563,7 @@ async function loadSiteContent(){
     renderEcosystem();
     if(activeHeaderMenu==='pricing')renderHeaderMenu('pricing');
     if(currentDetailMenu==='pricing')renderDetailContent('pricing');
-  }catch(error){console.warn('iBeX site content fallback is active',error)}
+  }catch(error){pricingPlans=[];if(activeHeaderMenu==='pricing')renderHeaderMenu('pricing');if(currentDetailMenu==='pricing')renderDetailContent('pricing');console.warn('iBeX site content fallback is active',error)}
 }
 function adminField(label,field,value,wide=false){return`<div class="admin-field ${wide?'wide':''}"><label>${label}</label><input data-field="${field}" value="${esc(value)}"></div>`}
 function adminTextarea(label,field,value){return`<div class="admin-field wide"><label>${label}</label><textarea data-field="${field}">${esc(value)}</textarea></div>`}

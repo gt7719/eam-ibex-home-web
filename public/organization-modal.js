@@ -1,4 +1,9 @@
 'use strict';
+const packageHeaderRenderer=renderHeaderMenu,packageDetailRenderer=renderDetailContent;
+const priceUnavailable=()=>`<p>${currentLang==='en'?'Package settings have not loaded. Please retry.':'Багцын тохиргоо ачаалагдаагүй. Дахин оролдоно уу.'}</p><button type="button" class="retry-packages">${currentLang==='en'?'Retry':'Дахин ачаалах'}</button>`;
+renderHeaderMenu=function(key){packageHeaderRenderer(key);if(key==='pricing'&&!pricingPlans.length)megaGrid.innerHTML=priceUnavailable();};
+renderDetailContent=function(...args){packageDetailRenderer(...args);if(args[0]==='pricing'&&!pricingPlans.length)document.getElementById('detailContent').innerHTML=priceUnavailable();};
+document.addEventListener('click',e=>{if(e.target.closest('.retry-packages'))loadSiteContent();});
 const organizationDialog=document.createElement('dialog');
 organizationDialog.className='organization-dialog';
 organizationDialog.setAttribute('aria-labelledby','organizationDialogTitle');
