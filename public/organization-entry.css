@@ -1,0 +1,9 @@
+.organization-link{display:inline-flex;align-items:center;padding:10px 13px;border-radius:12px;color:#d5d0da;text-decoration:none;font-size:13px;line-height:1.4;font-family:Manrope,Inter,ui-sans-serif,system-ui,sans-serif}
+.organization-link:hover,.organization-link:focus-visible{color:#fff;background:rgba(168,85,247,.12)}
+.organization-link .en{display:none}
+html:lang(en) .organization-link .mn{display:none}
+html:lang(en) .organization-link .en{display:inline}
+body.theme-day .organization-link{color:#4c4052}
+body.theme-day .organization-link:hover{background:rgba(111,45,189,.09)}
+@media(min-width:921px) and (max-width:1300px){.navitem>button,.login,.organization-link{padding-left:6px;padding-right:6px;font-size:10px}.nav{gap:0}.organization-link{max-width:132px}}
+@media(max-width:920px){.organization-link{width:100%;min-height:44px;padding:11px 13px;font-size:13px}}
