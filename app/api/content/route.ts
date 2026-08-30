@@ -1,5 +1,7 @@
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
+import { readPackageState } from "../../lib/packages";
+import { pricingRows } from "../../../public/package-model.mjs";
 
 type ContentRow = { key: string; value_json: string; updated_at: string };
 
@@ -17,8 +19,10 @@ export async function GET() {
       // Ignore a malformed record and let the embedded defaults render.
     }
   }
+  const {state} = await readPackageState();
+  content.pricing = pricingRows(state.published);
   return NextResponse.json(
     { content, updatedAt },
-    { headers: { "Cache-Control": "public, max-age=30, stale-while-revalidate=120" } },
+    { headers: { "Cache-Control": "no-store" } },
   );
 }

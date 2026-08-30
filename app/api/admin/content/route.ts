@@ -30,6 +30,9 @@ export async function PUT(request: Request) {
     );
   }
   const now = new Date().toISOString();
+  if (entries.includes('pricing')) {
+    return NextResponse.json({error:'Үнийг багцын шаталсан тохиргооноос ноорог үүсгэн нийтэлнэ үү.'},{status:409});
+  }
   const statements = entries.map((key) =>
     env.DB.prepare(
       `INSERT INTO site_content (key, value_json, updated_by, updated_at)
