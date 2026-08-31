@@ -7,7 +7,7 @@ document.addEventListener('click',e=>{if(e.target.closest('.retry-packages'))loa
 const organizationDialog=document.createElement('dialog');
 organizationDialog.className='organization-dialog';
 organizationDialog.setAttribute('aria-labelledby','organizationDialogTitle');
-organizationDialog.innerHTML='<header class="organization-dialog-head"><strong id="organizationDialogTitle"></strong><button type="button" aria-label="Хаах / Close">×</button></header><iframe title="iBeX — Танай байгууллагын орчин"></iframe>';
+organizationDialog.innerHTML='<header class="organization-dialog-head"><strong id="organizationDialogTitle"></strong><button type="button" aria-label="Хаах / Close">×</button></header><iframe title="iBeX орчин / iBeX environment"></iframe>';
 document.body.append(organizationDialog);
 const organizationFrame=organizationDialog.querySelector('iframe'),organizationTrigger=document.querySelector('.organization-link');
 organizationTrigger.setAttribute('aria-haspopup','dialog');
@@ -23,7 +23,7 @@ const legacyRenderAdmin=renderAdmin;
 renderPricingAdmin=function(){setAdminChrome('pricing');document.getElementById('adminTitle').textContent=currentLang==='en'?'Package configuration':'Багцын шаталсан тохиргоо';document.getElementById('adminSub').textContent='Free → Go → Plus → Pro → Custom';if(!packageAdminFrame.hasAttribute('src')&&canAdminSection('pricing'))packageAdminFrame.src='/package-admin.html';};
 renderAdmin=function(){legacyRenderAdmin();const packages=adminSection==='pricing';packageAdminFrame.hidden=!packages;adminList.hidden=packages;document.querySelector('.admin-toolbar').hidden=packages;};
 packageAdminFrame.addEventListener('load',()=>sendAppearance(packageAdminFrame));
-function syncAppearance(){document.getElementById('organizationDialogTitle').textContent=currentLang==='en'?'Your organization environment':'Танай байгууллагын орчин';sendAppearance(organizationFrame);sendAppearance(packageAdminFrame);}
+function syncAppearance(){document.getElementById('organizationDialogTitle').textContent=currentLang==='en'?'iBeX environment':'iBeX орчин';sendAppearance(organizationFrame);sendAppearance(packageAdminFrame);}
 new MutationObserver(syncAppearance).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
 new MutationObserver(syncAppearance).observe(document.body,{attributes:true,attributeFilter:['class']});
 window.addEventListener('message',e=>{

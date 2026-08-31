@@ -3,11 +3,13 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 const read=name=>fs.readFileSync(new URL('../'+name,import.meta.url),'utf8');
-test('organization entry follows pricing without changing existing menu triggers',()=>{
+test('iBeX environment precedes pricing without changing existing menu triggers',()=>{
   const html=read('public/concept.html');
   const nav=html.slice(html.indexOf('<nav class="nav"'),html.indexOf('</nav>'));
-  assert.ok(nav.indexOf('data-menu="pricing"')<nav.indexOf('href="/organization"'));
-  assert.ok(nav.indexOf('href="/organization"')<nav.indexOf('data-menu="intro"'));
+  assert.ok(nav.indexOf('data-menu="ai"')<nav.indexOf('href="/organization"'));
+  assert.ok(nav.indexOf('href="/organization"')<nav.indexOf('data-menu="pricing"'));
+  assert.ok(nav.indexOf('data-menu="pricing"')<nav.indexOf('data-menu="intro"'));
+  assert.match(nav,/<span class="mn">iBeX орчин<\/span><span class="en">iBeX environment<\/span>/);
   assert.equal((nav.match(/class="menu-trigger"/g)||[]).length,6);
   assert.match(nav,/class="organization-link" href="\/organization" target="_top"/);
   assert.match(read('app/organization/page.tsx'),/src="\/organization-preview.html"/);
@@ -20,6 +22,14 @@ test('integrated configurator has all local assets, home exit and explicit previ
   for(const name of ['organization-preview.js','organization-enhancements.js','organization-localization.js','organization-site-integration.js']){
     assert.doesNotMatch(read('public/'+name),/\bfetch\s*\(|XMLHttpRequest|sendBeacon/);
   }
+});
+test('iBeX environment name is consistent across modal, standalone and translations',()=>{
+  for(const file of ['public/concept.html','public/organization-modal.js','public/organization-preview.html','public/organization-enhancements.js','app/organization/page.tsx']) {
+    const source=read(file);
+    assert.doesNotMatch(source,/Танай байгууллагын орчин|ТАНАЙ БАЙГУУЛЛАГЫН ОРЧИН|Your organization environment|YOUR ORGANIZATION ENVIRONMENT/);
+    assert.match(source,/iBeX орчин/);
+  }
+  assert.match(read('public/organization-enhancements.js'),/'iBeX орчин':'iBeX environment'/);
 });
 test('global preferences roundtrip, local preview preferences remain isolated',()=>{
   const values=new Map([['ibex-lang','en'],['ibex-theme','day']]);

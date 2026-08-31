@@ -4,7 +4,7 @@ export default function OrganizationPage() {
       <iframe
         className="concept-frame"
         src="/organization-preview.html"
-        title="iBeX — Танай байгууллагын орчин"
+        title="iBeX орчин / iBeX environment"
       />
     </main>
   );
