@@ -1,0 +1,24 @@
+.compact-organization .site-head{display:none}
+.compact-organization main{max-width:none;padding:12px 20px 16px}
+.compact-organization .intro{display:block;position:relative;margin-bottom:12px;padding-right:135px}
+.compact-organization .intro h1{font-size:clamp(22px,1.7vw,30px);margin:5px 0 0}
+.compact-organization .intro .eyebrow{font-size:10px;margin:0}
+.compact-home{position:absolute;right:0;top:0;display:inline-flex;align-items:center;min-height:38px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;color:inherit;text-decoration:none;font-size:12px}
+.embedded-organization .compact-home{display:none}.embedded-organization .intro{padding-right:0}
+.compact-organization .preview-heading{justify-content:flex-end}.compact-organization .preview-label{margin:0 0 8px;font-size:11px}
+.compact-organization .preview-note{margin:8px 0 0}.compact-organization footer{padding:10px 20px;min-height:70px}
+@media(min-width:801px){
+ .compact-organization main{height:calc(100dvh - var(--org-footer-height,85px));min-height:280px}
+ .compact-organization .config-layout{grid-template-columns:minmax(0,2.4fr) minmax(340px,1fr);gap:20px}
+ .compact-organization .preview-heading{display:none}
+ .compact-organization #workspace{height:auto;min-height:0;flex:1}
+}
+@media(min-width:801px) and (max-width:1100px){.compact-organization .config-layout{grid-template-columns:minmax(0,1.4fr) minmax(310px,1fr);gap:14px}.compact-organization main{padding-left:12px;padding-right:12px}}
+@media(max-width:800px){
+ .compact-organization main{padding:12px 12px calc(var(--org-footer-height,85px) + var(--org-actions-height,65px) + 20px)}
+ .compact-organization .intro{padding-top:44px;padding-right:0;margin-bottom:12px}.embedded-organization .intro{padding-top:0}
+ .compact-organization .intro h1{font-size:22px}.compact-organization .preview-heading{margin-bottom:6px}
+ .compact-organization #workspace{height:clamp(320px,55dvh,560px)}
+ .compact-organization footer{bottom:var(--org-actions-height,65px);padding:8px 12px;min-height:60px}
+ .compact-organization .config-side{margin-bottom:0}
+}
