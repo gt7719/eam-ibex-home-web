@@ -7,6 +7,7 @@
 .embedded-organization .compact-home{display:none}.embedded-organization .intro{padding-right:0}
 .compact-organization .preview-heading{justify-content:flex-end}.compact-organization .preview-label{margin:0 0 8px;font-size:11px}
 .compact-organization .preview-note{margin:8px 0 0}.compact-organization footer{padding:10px 20px;min-height:70px}
+.compact-organization .intro .preview-label{margin:8px 0 0}
 @media(min-width:801px){
  .compact-organization main{height:calc(100dvh - var(--org-footer-height,85px));min-height:280px}
  .compact-organization .config-layout{grid-template-columns:minmax(0,2.4fr) minmax(340px,1fr);gap:20px}

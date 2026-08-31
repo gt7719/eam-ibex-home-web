@@ -9,38 +9,23 @@ function continuousArticleMarkup(key,groupIndex,itemIndex,en){
     for(let i=0;i<4;i++){const step=flowStepData(i,en);html+=`<section><h4>${esc(step.t)}</h4><p>${esc(step.p)}</p><div class="flow-step-media">${step.media.map(([file,caption])=>`<figure><img src="/ibex-screens/${esc(file)}" alt="${esc(caption)}" loading="lazy"><figcaption>${esc(caption)}</figcaption></figure>`).join('')}</div></section>`;}
     html+='</section>';
   }
-  return html+'</article>';
+  return html+detailSupplementMarkup(key,groupIndex,itemIndex,en)+'</article>';
 }
-const detailTopicLabel=document.createElement('label');
-detailTopicLabel.className='detail-topic-switch';detailTopicLabel.hidden=true;
-detailTopicLabel.innerHTML='<span></span><select aria-label="Сэдэв сонгох / Choose topic"></select>';
-document.querySelector('.detail-head-copy').append(detailTopicLabel);
-const detailTopicSelect=detailTopicLabel.querySelector('select');
-function fillDetailTopicSwitch(key,groupIndex,itemIndex){
-  const en=currentLang==='en',menu=(en?headerMenusEN:headerMenus)[key];
-  detailTopicLabel.hidden=!menu?.groups;if(detailTopicLabel.hidden)return;
-  detailTopicLabel.querySelector('span').textContent=en?'Choose topic':'Сэдэв сонгох';
-  detailTopicSelect.setAttribute('aria-label',en?'Choose topic':'Сэдэв сонгох');
-  detailTopicSelect.innerHTML=menu.groups.map((group,g)=>`<optgroup label="${esc(group.t)}">${group.items.map((item,i)=>`<option value="${g}:${i}">${esc(item[0])}</option>`).join('')}</optgroup>`).join('');
-  detailTopicSelect.value=`${groupIndex}:${itemIndex}`;
-}
-detailTopicSelect.addEventListener('change',()=>{const [g,i]=detailTopicSelect.value.split(':').map(Number);renderSelectedDetail(currentDetailMenu,g,i);});
-function renderContinuousDetail(key,groupIndex,itemIndex){
+function renderContinuousDetail(key,groupIndex,itemIndex,scroll=true){
   const en=currentLang==='en',menu=(en?headerMenusEN:headerMenus)[key],item=menu?.groups?.[groupIndex]?.items?.[itemIndex];
   const inline=document.getElementById('resourceInline');if(!inline||!item)return;
-  currentDetailView='resource';currentDetailFocus=groupIndex;currentResourceSelection={groupIndex,itemIndex};currentFlowStep=null;
+  currentDetailView='index';currentDetailFocus=groupIndex;currentResourceSelection={groupIndex,itemIndex};currentFlowStep=null;
   syncDetailNavigation();
-  document.getElementById('detailTitle').textContent=item[0];
-  document.getElementById('detailIntro').textContent=item[1];
+  document.getElementById('detailTitle').textContent=menu.t;
+  document.getElementById('detailIntro').textContent=menu.i;
   document.getElementById('detailContent').classList.add('reading-detail');
   document.querySelectorAll('#detailContent .detail-item').forEach(button=>button.classList.toggle('active',Number(button.dataset.group)===groupIndex&&Number(button.dataset.item)===itemIndex));
-  inline.innerHTML=continuousArticleMarkup(key,groupIndex,itemIndex,en);inline.classList.add('open');
-  fillDetailTopicSwitch(key,groupIndex,itemIndex);
-  document.getElementById('detailScroll').scrollTo({top:0,behavior:'auto'});
+  inline.innerHTML=`<h3 class="inline-topic-title">${esc(item[0])}</h3>`+continuousArticleMarkup(key,groupIndex,itemIndex,en);inline.classList.add('open');
+  if(scroll){const pane=document.getElementById('detailScroll'),head=document.querySelector('.detail-head');const top=pane.scrollTop+inline.getBoundingClientRect().top-pane.getBoundingClientRect().top-head.getBoundingClientRect().height-16;pane.scrollTo({top:Math.max(0,top),behavior:reduceMotion?'auto':'smooth'});}
 }
 const continuousBaseRenderer=renderDetailContent;
 renderDetailContent=function(key,...args){
-  document.getElementById('detailContent').classList.remove('reading-detail');detailTopicLabel.hidden=true;
+  document.getElementById('detailContent').classList.remove('reading-detail');
   continuousBaseRenderer(key,...args);
   if(key==='pricing'){
     const en=currentLang==='en';
@@ -57,6 +42,6 @@ renderDetailContent=function(key,...args){
   }
 };
 const continuousBack=closeResourceDetail;
-closeResourceDetail=function(){continuousBack();document.getElementById('detailContent').classList.remove('reading-detail');detailTopicLabel.hidden=true;const d=(currentLang==='en'?headerMenusEN:headerMenus)[currentDetailMenu];if(d){document.getElementById('detailTitle').textContent=d.t;document.getElementById('detailIntro').textContent=d.i;}};
+closeResourceDetail=function(){continuousBack();document.getElementById('detailContent').classList.remove('reading-detail');const d=(currentLang==='en'?headerMenusEN:headerMenus)[currentDetailMenu];if(d){document.getElementById('detailTitle').textContent=d.t;document.getElementById('detailIntro').textContent=d.i;}};
 const continuousLanguage=applyLanguage;
-applyLanguage=function(){const key=currentDetailMenu,selection=currentResourceSelection;continuousLanguage();if(key&&selection&&!menuDetail.hidden)renderContinuousDetail(key,selection.groupIndex,selection.itemIndex);};
+applyLanguage=function(){const key=currentDetailMenu,selection=currentResourceSelection;continuousLanguage();if(key&&selection&&!menuDetail.hidden)renderContinuousDetail(key,selection.groupIndex,selection.itemIndex,false);};

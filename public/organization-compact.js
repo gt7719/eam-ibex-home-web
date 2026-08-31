@@ -5,6 +5,8 @@ compactHome.classList.add('compact-home');
 document.querySelector('.intro').append(compactHome);
 document.querySelectorAll('.intro>p:not(.eyebrow),.intro>small,.preview-heading>strong').forEach(el=>el.remove());
 document.body.classList.add('compact-organization');
+document.querySelector('.preview-note')?.remove();
+document.querySelector('.intro').append(document.querySelector('.preview-label'));
 if(embeddedOrganization)document.body.classList.add('embedded-organization');
 function measureOrganizationChrome(){
   document.documentElement.style.setProperty('--org-footer-height',`${Math.ceil(document.querySelector('footer').getBoundingClientRect().height)}px`);

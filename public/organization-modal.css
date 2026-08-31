@@ -6,3 +6,6 @@
 body.theme-day .organization-dialog{color:#25192b;background:#faf8ff}
 @media(max-width:680px){.organization-dialog{width:100vw;height:100dvh;margin:0;border-radius:0}.organization-dialog-head{padding:8px 12px}}
 @media(max-width:400px){.organization-dialog-head{gap:8px;padding:6px 8px}.organization-dialog-head strong{font-size:12px}.organization-dialog-head .organization-home{font-size:11px;padding:0 8px}}
+.organization-dialog,.organization-dialog *{cursor:auto!important}
+.organization-dialog .organization-dialog-head button{cursor:pointer!important}
+.organization-dialog .organization-dialog-head button:focus-visible{outline:2px solid #8955e9;outline-offset:3px}
