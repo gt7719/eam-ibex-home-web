@@ -38,9 +38,15 @@ test('pricing and social content controls are permission-gated admin surfaces',(
 });
 
 test('all five content areas share one internal permission-aware tab row',()=>{
-  const hub=read('public/post-v31-admin-hub.js'),concept=read('public/concept.html');
-  assert.match(hub,/\['partners','people','pricing','knowledge','social'\]/);
-  assert.match(hub,/admin-embedded-frame/);
+  const admin=read('app/admin/page.tsx'),hub=read('public/post-v31-admin-hub.js'),concept=read('public/concept.html'),style=read('app/globals.css');
+  for(const section of ['partners','people','pricing','knowledge','social'])assert.match(admin,new RegExp(`id:\"${section}\"`));
+  assert.match(admin,/admin-hub-tabs/);
+  assert.match(admin,/permissions\.has\(section\.permission\)/);
+  assert.match(admin,/\/admin\/pricing\?embedded=1/);
+  assert.doesNotMatch(admin,/concept\.html\?admin=content[^\"]+hubSection=pricing/);
+  assert.match(hub,/embeddedHub/);
+  assert.match(style,/overscroll-behavior:contain/);
+  assert.match(style,/html\.admin-hub-open[^}]+overflow:hidden/);
   assert.match(concept,/post-v31-admin-hub\.js/);
 });
 

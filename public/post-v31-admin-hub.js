@@ -69,12 +69,19 @@ openSiteAdmin=function(preferredSection){
   renderAdmin();pricingAdmin.hidden=false;document.getElementById('adminTitle').focus?.();
 };
 
-if(new URLSearchParams(location.search).get('admin')==='content'){
+const v31HubParams=new URLSearchParams(location.search);
+if(v31HubParams.get('embeddedHub')==='1'){
+  document.body.classList.add('embedded-admin-hub');
+  pricingAdmin.querySelector('.admin-head').hidden=true;
+  adminTabs.hidden=true;
+}
+if(v31HubParams.get('admin')==='content'){
   fetch('/api/admin/session',{cache:'no-store'}).then(async response=>{
     if(!response.ok){window.parent.location.replace('/admin/login');return;}
     const payload=await response.json();
     adminPermissions=new Set(payload.user?.permissions||[]);
     adminPreview=['partners','people','pricing','knowledge','social'].some(canAdminSection);
-    if(adminPreview)openSiteAdmin();else window.parent.location.replace('/admin');
+    const preferred=v31HubParams.get('hubSection');
+    if(adminPreview)openSiteAdmin(preferred);else window.parent.location.replace('/admin');
   }).catch(()=>window.parent.location.replace('/admin/login'));
 }

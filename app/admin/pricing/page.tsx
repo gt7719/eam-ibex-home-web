@@ -21,6 +21,7 @@ const methodNames: Record<PaymentMethod["id"], string> = {
 };
 
 export default function PricingAdminPage() {
+  const [embedded, setEmbedded] = useState(false);
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -28,6 +29,7 @@ export default function PricingAdminPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const embeddedTimer = window.setTimeout(() => setEmbedded(new URLSearchParams(window.location.search).get("embedded") === "1"), 0);
     fetch("/api/admin/payment-settings", { cache: "no-store" })
       .then(async (response) => {
         if (response.status === 401) { window.location.replace("/admin/login"); return; }
@@ -38,6 +40,7 @@ export default function PricingAdminPage() {
         setLoading(false);
       })
       .catch((reason) => { setError(reason instanceof Error ? reason.message : "Төлбөрийн тохиргоог уншиж чадсангүй."); setLoading(false); });
+    return () => window.clearTimeout(embeddedTimer);
   }, []);
 
   function update(id: PaymentMethod["id"], key: keyof PaymentMethod, value: string | boolean) {
@@ -59,7 +62,7 @@ export default function PricingAdminPage() {
   }
 
   return (
-    <main className="pricing-admin-page">
+    <main className={`pricing-admin-page${embedded ? " embedded-admin-page" : ""}`}>
       <header className="pricing-admin-header">
         <a href="/admin" className="admin-users-back">← Сайтын админ</a>
         <div><span className="admin-auth-kicker">PRICING &amp; CHECKOUT</span><h1>Үнэ ба төлбөр</h1><p>Багцын MNT үнэ, жилийн хөнгөлөлт болон төлбөрийн аргыг зөвхөн эрхтэй админ удирдана.</p></div>

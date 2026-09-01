@@ -16,6 +16,7 @@ const emptyEntry = (): KnowledgeEntry => ({
 });
 
 export default function AssistantKnowledgePage() {
+  const [embedded, setEmbedded] = useState(false);
   const [entries, setEntries] = useState<KnowledgeEntry[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [filter, setFilter] = useState("");
@@ -37,8 +38,9 @@ export default function AssistantKnowledgePage() {
     setEntries(next); setSelectedId((current) => current || next[0]?.id || ""); setLoading(false);
   }, []);
   useEffect(() => {
+    const embeddedTimer = window.setTimeout(() => setEmbedded(new URLSearchParams(window.location.search).get("embedded") === "1"), 0);
     const timer = window.setTimeout(() => void load(), 0);
-    return () => window.clearTimeout(timer);
+    return () => { window.clearTimeout(timer); window.clearTimeout(embeddedTimer); };
   }, [load]);
 
   const selectedIndex = entries.findIndex((entry) => entry.id === selectedId);
@@ -97,7 +99,7 @@ export default function AssistantKnowledgePage() {
   }
 
   return (
-    <main className="knowledge-page">
+    <main className={`knowledge-page${embedded ? " embedded-admin-page" : ""}`}>
       <header className="knowledge-header">
         <a href="/admin" className="admin-users-back">← Сайтын админ</a>
         <div><span className="admin-auth-kicker">iBeX WEBSITE ASSISTANT</span><h1>AI мэдлэгийн сан</h1><p>Нийтийн сайтын туслах зөвхөн Approved + Public эх сурвалжаас хариулна.</p></div>
