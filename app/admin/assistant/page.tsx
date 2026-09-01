@@ -36,7 +36,10 @@ export default function AssistantKnowledgePage() {
     const next = (payload.entries || []) as KnowledgeEntry[];
     setEntries(next); setSelectedId((current) => current || next[0]?.id || ""); setLoading(false);
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   const selectedIndex = entries.findIndex((entry) => entry.id === selectedId);
   const selected = selectedIndex >= 0 ? entries[selectedIndex] : null;

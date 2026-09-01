@@ -1,0 +1,23 @@
+/* Post-v30: public pricing checkout, safe navigation and non-overlapping actions. */
+.detail-pricing{align-items:stretch}
+.detail-plan{display:flex;min-height:0;max-height:560px;flex-direction:column}
+.detail-plan>.plan-scope{flex:1;min-height:96px;overflow:auto;padding-right:5px;scrollbar-width:thin;scrollbar-color:rgba(168,85,247,.5) transparent}
+.detail-plan>.plan-select{flex:0 0 auto;margin-top:15px}
+.plan-select{min-height:42px;border-color:rgba(57,229,140,.55);background:linear-gradient(135deg,rgba(57,229,140,.12),rgba(111,45,189,.16));color:#effff6;letter-spacing:.07em}
+.plan-select:hover,.plan-select:focus-visible{border-color:rgba(255,209,102,.75);background:linear-gradient(135deg,rgba(57,229,140,.2),rgba(111,45,189,.25))}
+.payment-panel{max-width:1100px;margin:24px auto 0}
+.payment-methods{grid-template-columns:repeat(5,minmax(0,1fr))}
+.payment-method{display:flex;min-height:88px;flex-direction:column;justify-content:center}
+.payment-method:disabled{opacity:.48;cursor:not-allowed}
+.payment-method .payment-ready{margin-top:8px;color:var(--green);font-size:7px;font-style:normal}
+.payment-method .payment-pending{margin-top:8px;color:var(--gold);font-size:7px;font-style:normal}
+.payment-confirm{display:inline-flex;min-height:42px;align-items:center;justify-content:center;text-decoration:none}
+.payment-confirm.ready{border:1px solid rgba(57,229,140,.5);background:linear-gradient(135deg,rgba(111,45,189,.8),rgba(73,31,126,.94));color:#fff;cursor:pointer}
+.payment-confirm.ready:hover{filter:brightness(1.12)}
+.detail-top{right:48px;bottom:32px}
+.detail-top.avoid-actions{bottom:92px}
+body.theme-day .plan-select{color:#24513a;background:rgba(57,229,140,.1)}
+body.theme-day .payment-method{color:#302638;background:#fff}
+@media(max-width:1120px){.payment-methods{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:920px){.detail-plan{max-height:520px}.detail-top{right:34px;bottom:24px}.detail-top.avoid-actions{bottom:82px}}
+@media(max-width:680px){.detail-plan{max-height:none}.detail-plan>.plan-scope{max-height:220px}.payment-methods{grid-template-columns:1fr}.detail-top{right:26px}.detail-top.avoid-actions{bottom:78px}}

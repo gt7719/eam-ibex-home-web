@@ -1,0 +1,81 @@
+'use strict';
+
+let paymentMethods=[
+  {id:'card',labelMn:'Банкны карт',labelEn:'Bank card',detailMn:'Дотоод болон олон улсын карт',detailEn:'Domestic or international card',checkoutUrl:'',enabled:true},
+  {id:'qr',labelMn:'Банкны QR',labelEn:'Bank QR',detailMn:'Дэмжигдсэн банкны апп-аар төлнө',detailEn:'Pay with a supported banking app',checkoutUrl:'',enabled:true},
+  {id:'bank_app',labelMn:'Банкны апп',labelEn:'Bank app',detailMn:'Банкны апп руу аюулгүй шилжинэ',detailEn:'Continue securely in the banking app',checkoutUrl:'',enabled:true},
+  {id:'transfer',labelMn:'Дансаар шилжүүлэх',labelEn:'Bank transfer',detailMn:'Нэхэмжлэл, гүйлгээний утгаар төлнө',detailEn:'Pay with invoice and payment reference',checkoutUrl:'',enabled:true},
+  {id:'other',labelMn:'Бусад',labelEn:'Other',detailMn:'Админаас идэвхжүүлсэн бусад хэлбэр',detailEn:'Another administrator-enabled method',checkoutUrl:'',enabled:false}
+];
+
+const postV30HeaderRenderer=renderHeaderMenu;
+renderHeaderMenu=function(key){postV30HeaderRenderer(key);megaAdmin.hidden=true;};
+megaAdmin.hidden=true;
+
+function paymentMethodMarkup(en){
+  return paymentMethods.filter(method=>method.enabled).map(method=>{
+    const label=en?method.labelEn:method.labelMn,detail=en?method.detailEn:method.detailMn,ready=!!method.checkoutUrl;
+    return `<button type="button" class="payment-method ${selectedPaymentMethod===method.id?'active':''}" data-payment="${esc(method.id)}" data-checkout="${esc(method.checkoutUrl)}"><strong>${esc(label)}</strong><small>${esc(detail)}</small><em class="${ready?'payment-ready':'payment-pending'}">${ready?(en?'READY':'ХОЛБОГДСОН'):(en?'AWAITING BANK LINK':'БАНКНЫ ХОЛБООС ХҮЛЭЭЖ БАЙНА')}</em></button>`;
+  }).join('');
+}
+
+const postV30DetailRenderer=renderDetailContent;
+renderDetailContent=function(key,focusGroup=-1){
+  if(key!=='pricing'){postV30DetailRenderer(key,focusGroup);updateDetailTopSafety();return;}
+  currentDetailView='index';currentDetailFocus=focusGroup;currentResourceSelection=null;currentFlowStep=null;
+  const d=(currentLang==='en'?headerMenusEN:headerMenus)[key],en=currentLang==='en',plans=pricingPlans.filter(plan=>plan.enabled);
+  syncDetailNavigation();
+  document.getElementById('detailKicker').textContent=d.k;
+  document.getElementById('detailTitle').textContent=d.t;
+  document.getElementById('detailIntro').textContent=d.i;
+  document.getElementById('detailContent').classList.remove('reading-detail');
+  document.getElementById('detailContent').innerHTML=`<div class="billing-switch" role="group" aria-label="${en?'Billing period':'Төлбөрийн хугацаа'}"><button type="button" data-billing="monthly" class="${billingPeriod==='monthly'?'active':''}">${en?'Monthly':'Сараар'}</button><button type="button" data-billing="annual" class="${billingPeriod==='annual'?'active':''}">${en?'Annually':'Жилээр'}</button></div><div class="detail-pricing">${plans.map((p,planIndex)=>{const price=planPrice(p,en),descriptions=planRows(p.descriptions,en),scopes=planRows(p.scopes,en),canChoose=p.id==='custom'||p.monthlyMnt!==null,label=p.id==='custom'?(en?'REQUEST A QUOTE':'ҮНИЙН САНАЛ АВАХ'):p.id==='free'?(en?'START FREE':'ҮНЭГҮЙ ЭХЛҮҮЛЭХ'):(en?'BUY':'BUY · ХУДАЛДАН АВАХ');return `<article class="detail-plan ${p.featured?'featured':''}" data-detail-plan="${planIndex}"><h3>${esc(p.name)}${p.featured?`<span class="plan-badge">${en?'RECOMMENDED':'САНАЛ БОЛГОХ'}</span>`:''}</h3><div class="plan-price">${esc(price)}${p.id!=='custom'&&p.monthlyMnt!==null?`<small> / ${billingPeriod==='annual'?(en?'year':'жил'):(en?'month':'сар')}</small>`:''}</div>${billingPeriod==='annual'&&p.annualDiscountPercent?`<div class="plan-summary">${en?'Annual discount':'Жилийн хямдрал'}: ${p.annualDiscountPercent}%</div>`:''}${descriptions.length?`<div class="plan-section"><span class="plan-section-title">${en?'Description':'Тайлбар'}</span>${planList(descriptions)}</div>`:''}${planMeta(p,en)}${scopes.length?`<div class="plan-section plan-scope"><span class="plan-section-title">${en?'Scope':'Хамрах хүрээ'}</span>${planList(scopes)}</div>`:''}<button type="button" class="plan-select" data-choose-plan="${planIndex}" ${canChoose?'':'disabled'}>${label}</button></article>`}).join('')}</div><section class="payment-panel" id="paymentPanel" ${selectedPaymentPlan===null?'hidden':''}><h3>${en?'Choose a payment method':'Төлбөрийн хэлбэрээ сонгоно уу'}</h3><p id="paymentSummary"></p><div class="payment-methods">${paymentMethodMarkup(en)}</div><p class="payment-status" id="paymentStatus">${en?'Select Card, QR, bank app, transfer or another enabled method.':'Card, QR, банкны апп, дансны шилжүүлэг эсвэл идэвхтэй бусад хэлбэрээс сонгоно.'}</p><a class="payment-confirm" id="paymentConfirm" aria-disabled="true">${en?'Choose a payment method':'Төлбөрийн хэлбэр сонгоно уу'}</a></section><article class="continuous-article pricing-guide"><h3>${en?'Choose your plan':'Багцаа сонгох'}</h3><p>${en?'Prices are shown in MNT. Choose monthly or annual billing, then review the final amount before continuing.':'Үнийг MNT-ээр харуулна. Сар эсвэл жилийн төлөлтөө сонгож, үргэлжлүүлэхийн өмнө эцсийн дүнгээ хянана.'}</p></article>`;
+  if(selectedPaymentPlan!==null){updatePaymentSummary();updatePaymentAction();}
+  updateDetailTopSafety();
+};
+
+function updatePaymentAction(){
+  const method=paymentMethods.find(row=>row.id===selectedPaymentMethod),confirm=document.getElementById('paymentConfirm'),status=document.getElementById('paymentStatus'),en=currentLang==='en';
+  if(!confirm||!status)return;
+  confirm.removeAttribute('href');confirm.removeAttribute('target');confirm.removeAttribute('rel');confirm.classList.remove('ready');confirm.setAttribute('aria-disabled','true');
+  if(!method){confirm.textContent=en?'Choose a payment method':'Төлбөрийн хэлбэр сонгоно уу';return;}
+  if(!method.checkoutUrl){status.textContent=en?'This method is visible, but its bank checkout link has not been configured. No charge will be made.':'Энэ төлбөрийн хэлбэр харагдаж байгаа боловч банкны checkout холбоос тохируулагдаагүй байна. Төлбөр татагдахгүй.';confirm.textContent=en?'BANK LINK NOT CONFIGURED':'БАНКНЫ ХОЛБООС ТОХИРУУЛААГҮЙ';return;}
+  status.textContent=en?'You will continue to the configured bank or payment gateway.':'Тохируулсан банк эсвэл төлбөрийн gateway руу аюулгүй шилжинэ.';
+  confirm.textContent=en?'CONTINUE TO PAYMENT':'ТӨЛБӨРТ ШИЛЖИХ';confirm.href=method.checkoutUrl;confirm.target='_blank';confirm.rel='noopener noreferrer';confirm.classList.add('ready');confirm.setAttribute('aria-disabled','false');
+}
+
+document.getElementById('detailContent').addEventListener('click',event=>{
+  const method=event.target.closest('[data-payment]');if(!method)return;
+  requestAnimationFrame(updatePaymentAction);
+});
+
+function updateDetailTopSafety(){
+  const top=document.getElementById('detailTop'),shell=document.getElementById('detailShell');if(!top||!shell)return;
+  const actions=document.querySelector('#detailContent .detail-footer-action, #detailContent .payment-panel:not([hidden])');
+  if(!actions){top.classList.remove('avoid-actions');return;}
+  const actionRect=actions.getBoundingClientRect(),shellRect=shell.getBoundingClientRect();
+  top.classList.toggle('avoid-actions',actionRect.top<shellRect.bottom-18&&actionRect.bottom>shellRect.top+18);
+}
+detailScroll.addEventListener('scroll',updateDetailTopSafety,{passive:true});
+window.addEventListener('resize',updateDetailTopSafety);
+
+fetch('/api/content',{cache:'no-store'}).then(response=>response.ok?response.json():null).then(payload=>{
+  const rows=payload?.content?.paymentSettings;
+  if(Array.isArray(rows)&&rows.length)paymentMethods=rows;
+  if(currentDetailMenu==='pricing')renderDetailContent('pricing');
+}).catch(()=>{});
+
+if(new URLSearchParams(location.search).get('admin')==='content'){
+  let attempts=0;
+  const openContentAdmin=()=>{
+    attempts++;
+    if(adminPermissions.size){
+      adminPermissions.delete('pricing.manage');
+      adminPreview=['partners','people'].some(section=>canAdminSection(section));
+      if(adminPreview)openSiteAdmin();
+      return;
+    }
+    if(attempts<30)setTimeout(openContentAdmin,100);
+  };
+  setTimeout(openContentAdmin,100);
+}
