@@ -11,7 +11,7 @@ export const adminUsers = sqliteTable(
     role: text("role").notNull().default("editor"),
     permissionsJson: text("permissions_json")
       .notNull()
-      .default('["pricing.manage","partners.manage","people.manage","media.upload"]'),
+      .default('["pricing.manage","partners.manage","people.manage","knowledge.manage","media.upload"]'),
     status: text("status").notNull().default("active"),
     lastAccess: text("last_access"),
     createdAt: text("created_at").notNull(),

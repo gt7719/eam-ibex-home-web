@@ -2,12 +2,13 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
-type AdminPermission = "pricing.manage" | "partners.manage" | "people.manage" | "media.upload";
+type AdminPermission = "pricing.manage" | "partners.manage" | "people.manage" | "knowledge.manage" | "media.upload";
 
 const permissionOptions: Array<{ id: AdminPermission; label: string; detail: string }> = [
   { id: "pricing.manage", label: "Үнэ ба багц", detail: "Багц, үнэ, хэрэглэгч болон хөрөнгийн хязгаар" },
   { id: "partners.manage", label: "Хамтрагч байгууллага", detail: "Байгууллагын мэдээлэл, лого, холбоос" },
   { id: "people.manage", label: "Төслийн баг", detail: "Багийн гишүүн, албан тушаал, танилцуулга" },
+  { id: "knowledge.manage", label: "AI мэдлэгийн сан", detail: "Сайтын туслахын баталгаажсан эх сурвалж, төлөв ба хувилбар" },
   { id: "media.upload", label: "Медиа файл", detail: "Зураг, видео болон PDF файл байршуулах" },
 ];
 
