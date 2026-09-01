@@ -9,6 +9,10 @@ function continuousArticleMarkup(key,groupIndex,itemIndex,en){
     for(let i=0;i<4;i++){const step=flowStepData(i,en);html+=`<section><h4>${esc(step.t)}</h4><p>${esc(step.p)}</p><div class="flow-step-media">${step.media.map(([file,caption])=>`<figure><img src="/ibex-screens/${esc(file)}" alt="${esc(caption)}" loading="lazy"><figcaption>${esc(caption)}</figcaption></figure>`).join('')}</div></section>`;}
     html+='</section>';
   }
+  if(key==='intro'&&groupIndex===3&&itemIndex===0){
+    const posts=typeof socialPosts!=='undefined'&&Array.isArray(socialPosts)?socialPosts:[];
+    html+=`<section class="continuous-evidence"><h3>${en?'iBeX Project Mongolia content':'iBeX Project Mongolia контент'}</h3>${posts.length?`<div class="resource-cards">${posts.map(post=>`<article class="resource-card">${post.imageUrl?`<img src="${esc(post.imageUrl)}" alt="" loading="lazy" style="width:100%;height:auto;border-radius:10px;margin-bottom:12px">`:''}<small>${esc(String(post.type||'post').toUpperCase())}</small><h3>${esc(post.title||post.sourceUrl)}</h3><p>${esc(post.text||'')}</p><a href="${esc(post.sourceUrl)}" target="_blank" rel="noopener noreferrer">${en?'View original ↗':'Эх контентыг харах ↗'}</a></article>`).join('')}</div>`:`<p>${en?'Published Facebook posts and Reels will appear here after administrator review.':'Админ хянаж нийтэлсэн Facebook пост болон Reel энд харагдана.'}</p>`}</section>`;
+  }
   return html+detailSupplementMarkup(key,groupIndex,itemIndex,en)+'</article>';
 }
 function renderContinuousDetail(key,groupIndex,itemIndex,scroll=true){
@@ -30,15 +34,13 @@ renderDetailContent=function(key,...args){
   if(key==='pricing'){
     const en=currentLang==='en';
     const paragraphs=en?[
-      'Packages combine included menus, total users and total assets. Total users means Active plus Inactive. Every Parent and Child asset counts individually.',
-      'Free, Go, Plus and Pro have cumulative menu scope; Custom covers individually agreed needs. Published administrator settings determine the displayed scope, limits and monthly price, rather than a separate fixed description.',
-      'When capacity exceeds the menu-based tier, the published policy either recommends a sufficient tier or requires a quote for additional capacity. Needs beyond Pro limits require Custom. Unapproved extra-capacity charges are not invented.'
+      'Choose monthly or annual billing, compare the included scope, then select the plan that fits your organization.',
+      'Total users include Active and Inactive accounts. Every Parent and Child asset is counted.'
     ]:[
-      'Багцын хүрээ нь сонгосон цэс, нийт хэрэглэгч болон нийт хөрөнгийн тооноос бүрдэнэ. Нийт хэрэглэгчид Active ба Inactive хамт тооцогдоно. Parent болон Child хөрөнгө тус бүрийг нэгжээр тоолно.',
-      'Free, Go, Plus, Pro багцын цэс шатлан өвлөгдөнө. Custom нь тусгай тохиролцооны хэрэгцээнд хамаарна. Харагдах цэс, тоон хязгаар болон сарын үнийг админаас нийтэлсэн тохиргооноос авна; тусдаа тогтмол тайлбараар давхар тогтоохгүй.',
-      'Цэсээр тогтоосон суурь багцын багтаамж хэтэрвэл нийтэлсэн бодлогын дагуу багц ахиулах эсвэл нэмэлт багтаамжийн үнийн санал шаардана. Pro-ийн хязгаараас давсан хэрэгцээ Custom болно. Батлагдаагүй нэмэлт үнийг зохиож тооцохгүй.'
+      'Сар эсвэл жилийн төлөлтөө сонгож, багцын хамрах хүрээг харьцуулсны дараа байгууллагадаа тохирох багцыг сонгоно.',
+      'Нийт хэрэглэгчид Active болон Inactive бүртгэл хамт орно. Parent болон Child хөрөнгө тус бүр тоологдоно.'
     ];
-    document.getElementById('detailContent').insertAdjacentHTML('beforeend',`<article class="continuous-article pricing-guide"><h3>${en?'How package scope is determined':'Багцын хүрээ хэрхэн тодорхойлогдох вэ?'}</h3>${paragraphs.map(p=>`<p>${esc(p)}</p>`).join('')}</article>`);
+    document.getElementById('detailContent').insertAdjacentHTML('beforeend',`<article class="continuous-article pricing-guide"><h3>${en?'Choose your plan':'Багцаа сонгох'}</h3>${paragraphs.map(p=>`<p>${esc(p)}</p>`).join('')}</article>`);
   }
 };
 const continuousBack=closeResourceDetail;

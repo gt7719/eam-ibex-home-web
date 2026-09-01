@@ -2,7 +2,7 @@ import {env} from 'cloudflare:workers';
 import {NextResponse} from 'next/server';
 import {getAdminSession,hasAdminPermission} from '../../../lib/site-admin';
 import {PACKAGE_KEY,readPackageState} from '../../../lib/packages';
-import {validateConfig} from '../../../../public/package-model.mjs';
+import {normalizeConfig,validateConfig} from '../../../../public/package-model.mjs';
 const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{'Cache-Control':'no-store'}});
 async function authorized(){const user=await getAdminSession();return {user,error:!user?reply({error:'Админ нэвтрэлт шаардлагатай.'},401):!hasAdminPermission(user,'pricing.manage')?reply({error:'Багц удирдах эрхгүй.'},403):null};}
 export async function GET(){
@@ -25,9 +25,10 @@ export async function PUT(request:Request){
     if(body.action==='restore'){
       if(typeof body.historyKey!=='string'||!/^packages\.history\.[a-zA-Z0-9-]+$/.test(body.historyKey))return reply({error:'Түүхийн дугаар буруу.'},400);
       const history=await env.DB.prepare('SELECT value_json FROM site_content WHERE key = ?').bind(body.historyKey).first<{value_json:string}>();
-      if(!history)return reply({error:'Түүх олдсонгүй.'},404);config=JSON.parse(history.value_json);
+      if(!history)return reply({error:'Түүх олдсонгүй.'},404);config=normalizeConfig(JSON.parse(history.value_json));
     }
     const issues=validateConfig(config);if(issues.length)return reply({error:issues.join('\n')},400);
+    config=normalizeConfig(config);
     const checked=Array.isArray(body.checked)?[...new Set(body.checked.filter((n:unknown)=>Number.isInteger(n)&&Number(n)>=0&&Number(n)<5))]:[];
     if(body.action==='publish'&&checked.length!==5)return reply({error:'Таван багцыг бүгдийг хянаж батална уу.'},400);
     const now=new Date().toISOString(),token=crypto.randomUUID();

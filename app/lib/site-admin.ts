@@ -8,6 +8,7 @@ export const ADMIN_PERMISSIONS = [
   "partners.manage",
   "people.manage",
   "knowledge.manage",
+  "social.manage",
   "media.upload",
 ] as const;
 export const ADMIN_CONTENT_PERMISSIONS = [
@@ -15,6 +16,7 @@ export const ADMIN_CONTENT_PERMISSIONS = [
   "partners.manage",
   "people.manage",
   "knowledge.manage",
+  "social.manage",
 ] as const;
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
 // Keep the work factor within the Cloudflare Worker request CPU budget. The

@@ -8,11 +8,11 @@ function packageSummary(){
   if(!publishedPackages||!packageModel)return {title:t('Багцын тохиргоо','Package configuration'),detail:packageFailure?t('Тохиргоог уншиж чадсангүй. Дахин нээж шалгана уу.','Could not load settings. Reopen to retry.'):t('Тохиргоог ачаалж байна…','Loading settings…')};
   const r=packageModel.recommend(publishedPackages,{menus:[...state.selected],dashboards:[...state.dash],users:Number(state.users),assets:Number(state.assets)}),p=publishedPackages.tiers[r.rank],base=publishedPackages.tiers[r.baseRank];
   if(r.invalid)return {title:t('Тоон мэдээллээ шалгана уу','Check your counts'),detail:t('Хэрэглэгч, хөрөнгийн тоо эерэг бүхэл тоо байна.','Users and assets must be positive whole numbers.')};
-  const price=state.lang==='en'?p.priceEn:p.priceMn;
+  const price=p.id==='custom'?t('Үнийн санал','Request a quote'):packageModel.formatMnt(p.monthlyMnt,state.lang);
   const reasons=r.drivers.map(id=>packageModel.features.find(f=>f.id===id)).filter(Boolean).map(f=>state.lang==='en'?f.en:f.mn);
   const scope=t('Цэсний суурь багц: ','Menu base tier: ')+base.name;
   if(r.rank===4)return {title:'Custom',detail:t('Тусгай үнийн санал авах. ','Request a custom quote. ')+(reasons.length?reasons.join(', ')+'. ':'')+t('Сонгосон боломж эсвэл тоон хэрэгцээ стандарт багцаас давсан.','Selected features or counts exceed standard packages.')};
-  if(r.needsReview)return {title:base.name+' · '+t('Нэмэлт багтаамж','Extra capacity'),detail:scope+'. '+t('Суурь сарын үнэ: ','Base monthly price: ')+(state.lang==='en'?base.priceEn:base.priceMn)+'. '+t('Хэрэглэгч эсвэл хөрөнгийн хязгаар давсан. Нэмэлт үнэ батлагдаагүй; нийт үнийн санал шаардлагатай.','User or asset capacity exceeded. Extra pricing is not approved; the total requires a quote.')};
+  if(r.needsReview)return {title:base.name+' · '+t('Нэмэлт багтаамж','Extra capacity'),detail:scope+'. '+t('Суурь сарын үнэ: ','Base monthly price: ')+packageModel.formatMnt(base.monthlyMnt,state.lang)+'. '+t('Хэрэглэгч эсвэл хөрөнгийн хязгаар давсан. Нэмэлт үнэ батлагдаагүй; нийт үнийн санал шаардлагатай.','User or asset capacity exceeded. Extra pricing is not approved; the total requires a quote.')};
   return {title:p.name+' · '+price+' / '+t('сар','month'),detail:scope+'. '+(r.rank>r.baseRank?t('Тоон хэрэгцээнээс шалтгаалан багц ахисан. ','Tier increased to fit your counts. '):'')+`${t('Нийт хэрэглэгч','Total users')}: ${state.users}/${p.users} · ${t('Нийт хөрөнгө','Total assets')}: ${state.assets}/${p.assets}`};
 }
 const packageFooter=updateFooter;
@@ -41,5 +41,9 @@ window.addEventListener('message',e=>{
     if(packageFailure)loadPublishedPackages();
   }
   if(e.data?.type==='ibex-packages-refresh')loadPublishedPackages();
+  if(e.data?.type==='ibex-reset-organization'){
+    move(0);
+    document.getElementById('steps')?.scrollTo({top:0,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+  }
 });
 renderSteps();renderWorkspace();loadPublishedPackages();

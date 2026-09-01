@@ -15,16 +15,16 @@ function database(permission=true){
 async function dispatch(db,path,body){const {default:worker}=await import('../dist/server/index.js');const env={DB:db,ASSETS:{fetch:async()=>new Response('',{status:404})}};globalThis.__CLOUDFLARE_TEST_ENV__=env;try{return await worker.fetch(new Request('http://localhost'+path,{method:body?'PUT':'GET',headers:{cookie:'ibex_site_session=test',accept:'application/json',...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})}),env,{waitUntil(){},passThroughOnException(){}});}finally{delete globalThis.__CLOUDFLARE_TEST_ENV__;}}
 test('unauthorized package reads and writes are denied',{concurrency:false},async()=>{const db=database(false);assert.equal((await dispatch(db,'/api/admin/packages')).status,403);assert.equal((await dispatch(db,'/api/admin/packages',{action:'draft',revision:0,config:initialConfig()})).status,403);assert.equal(db.rows.size,0);});
 test('draft isolation, atomic publication, history and restoration',{concurrency:false},async()=>{
- const db=database();const c=initialConfig();c.tiers[1].priceMn='₮999';
+ const db=database();const c=initialConfig();c.tiers[1].monthlyMnt=999000;
  let r=await dispatch(db,'/api/admin/packages',{action:'draft',revision:0,config:c,checked:[0,1]});assert.equal(r.status,200);
- let pub=await (await dispatch(db,'/api/packages')).json();assert.equal(pub.config.tiers[1].priceMn,'$5');
+ let pub=await (await dispatch(db,'/api/packages')).json();assert.equal(pub.config.tiers[1].monthlyMnt,null);
  r=await dispatch(db,'/api/admin/packages',{action:'publish',revision:1,config:c,checked:[0,1]});assert.equal(r.status,400);
  r=await dispatch(db,'/api/admin/packages',{action:'publish',revision:1,config:c,checked:[0,1,2,3,4]});assert.equal(r.status,200);
- pub=await (await dispatch(db,'/api/packages')).json();assert.equal(pub.config.tiers[1].priceMn,'₮999');
+ pub=await (await dispatch(db,'/api/packages')).json();assert.equal(pub.config.tiers[1].monthlyMnt,999000);
  const snapshot=await (await dispatch(db,'/api/admin/packages')).json();assert.equal(snapshot.history.length,2);
  const old=snapshot.history.find(x=>x.key.endsWith('-baseline'));
  r=await dispatch(db,'/api/admin/packages',{action:'restore',revision:2,historyKey:old.key});assert.equal(r.status,200);
- const restored=await (await dispatch(db,'/api/admin/packages')).json();assert.equal(restored.draft.tiers[1].priceMn,'$5');assert.equal(restored.published.tiers[1].priceMn,'₮999');assert.deepEqual(restored.checked,[]);
+ const restored=await (await dispatch(db,'/api/admin/packages')).json();assert.equal(restored.draft.tiers[1].monthlyMnt,null);assert.equal(restored.published.tiers[1].monthlyMnt,999000);assert.deepEqual(restored.checked,[]);
 });
 test('stale revision, CAS conflicts and invalid assignments cannot publish',{concurrency:false},async()=>{
  const db=database(),c=initialConfig();let r=await dispatch(db,'/api/admin/packages',{action:'publish',revision:9,config:c,checked:[0,1,2,3,4]});assert.equal(r.status,409);

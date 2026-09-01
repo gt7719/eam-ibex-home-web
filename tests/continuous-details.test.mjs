@@ -28,7 +28,7 @@ test('every detail is a continuous article without branching controls or dead me
  for(const id of ids){const [key,g,i]=id.split('-');for(const en of [false,true]){
  const html=vm.runInContext(`continuousArticleMarkup(${JSON.stringify(key)},${g},${i},${en})`,context);
  assert.match(html,/<article class="continuous-article">/);
- assert.doesNotMatch(html,/<button|<select|data-flow-step|resource-card|generic-detail-card/);
+ assert.doesNotMatch(html,/<button|<select|data-flow-step|generic-detail-card/);
  for(const [,file] of html.matchAll(/src="\/ibex-screens\/([^"]+)"/g))assert.ok(fs.existsSync(new URL('../public/ibex-screens/'+file,import.meta.url)));
  }}
  assert.equal((vm.runInContext("continuousArticleMarkup('intro',1,1,false)",context).match(/<img /g)||[]).length,8);
@@ -49,7 +49,7 @@ test('compact environment removes only duplicate chrome and retains functional p
  assert.match(js,/\.intro>p:not\(\.eyebrow\),\.intro>small,\.preview-heading>strong/);
  assert.doesNotMatch(js,/state\.(users|assets|selected|locations)\s*=/);
  assert.match(js,/append\(compactHome\)/);
- assert.match(modal,/querySelector\('\.organization-home'\)\.onclick=closeOrganization/);
+ assert.match(modal,/querySelector\('\.organization-home'\)\.onclick=.*ibex-reset-organization/);
  assert.match(modal,/querySelector\('\.organization-close'\)\.onclick=closeOrganization/);
  assert.match(css,/height:calc\(100dvh - var\(--org-footer-height,85px\)\)/);
  assert.match(read('organization-localization.js'),/function setPreviewLanguage/);

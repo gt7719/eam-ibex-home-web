@@ -32,7 +32,7 @@ export const defaultKnowledge: KnowledgeEntry[] = [
     contentEn:
       "iBeX is an asset-based maintenance management system. Asset Core connects Parent–Child assets, locations, requests, work orders, PM, PdM, inspections, inventory, cost and maintenance history around each asset.",
     keywords: ["ibex", "asset", "core", "хөрөнгө", "засвар", "parent", "child", "систем"],
-    sourceLabel: "Master iBeX Handbook · Asset Core",
+    sourceLabel: "iBeX Website · Approved project knowledge",
     sourceUrl: "",
     version: "1.0",
     status: "approved",
@@ -50,7 +50,7 @@ export const defaultKnowledge: KnowledgeEntry[] = [
     contentEn:
       "After a user submits a request, an authorized person approves it and a WO Request is created. The planner defines scope, team, materials, checklist and timing. Closeout records duration, status and failure analysis, preserving the result in the asset history.",
     keywords: ["хүсэлт", "request", "work", "order", "wo", "ажлын", "захиалга", "хаалт", "гүйцэтгэл"],
-    sourceLabel: "Master iBeX Handbook · Work Management",
+    sourceLabel: "iBeX Website · Approved project knowledge",
     sourceUrl: "",
     version: "1.0",
     status: "approved",
@@ -68,7 +68,7 @@ export const defaultKnowledge: KnowledgeEntry[] = [
     contentEn:
       "PM creates work per asset from Schedule and Assets using Direct or Completed types. After approval and Start, the engine runs and generated WOs receive Approved status. PdM uses With Count and Without Count rules for meters and condition thresholds.",
     keywords: ["pm", "pdm", "schedule", "direct", "completed", "engine", "урьдчилан", "сэргийлэх", "таамаглах", "тоолуур"],
-    sourceLabel: "Master iBeX Handbook · PM/PdM",
+    sourceLabel: "iBeX Website · Approved project knowledge",
     sourceUrl: "",
     version: "1.0",
     status: "approved",
@@ -104,7 +104,7 @@ export const defaultKnowledge: KnowledgeEntry[] = [
     contentEn:
       "The implemented scope includes Datahub integration and rule-based PdM. Predictive, Generative and Agentic AI are staged development directions governed by evidence, data readiness, tenant isolation, authorization and engineering approval.",
     keywords: ["ai", "хиймэл", "оюун", "predictive", "generative", "agentic", "datahub", "tenant", "roadmap"],
-    sourceLabel: "Master iBeX Handbook · AI Roadmap",
+    sourceLabel: "iBeX Website · Approved project knowledge",
     sourceUrl: "",
     version: "1.0",
     status: "approved",
@@ -170,4 +170,3 @@ export async function readKnowledge() {
     return { entries: defaultKnowledge, updatedAt: null };
   }
 }
-

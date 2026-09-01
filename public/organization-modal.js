@@ -15,7 +15,7 @@ function sendAppearance(frame){frame.contentWindow?.postMessage({type:'ibex-appe
 function closeOrganization(){organizationDialog.close();document.body.classList.remove('organization-open');organizationTrigger.focus();}
 organizationTrigger.addEventListener('click',e=>{e.preventDefault();closeHeaderMenu();closeMobileNav();closeLoginMenu();closeMenuDetail();if(!organizationFrame.hasAttribute('src'))organizationFrame.src='/organization-preview.html?embedded=1';organizationDialog.showModal();document.body.classList.add('organization-open');sendAppearance(organizationFrame);});
 organizationDialog.querySelector('.organization-close').onclick=closeOrganization;
-organizationDialog.querySelector('.organization-home').onclick=closeOrganization;
+organizationDialog.querySelector('.organization-home').onclick=()=>organizationFrame.contentWindow?.postMessage({type:'ibex-reset-organization'},location.origin);
 organizationDialog.addEventListener('cancel',e=>{e.preventDefault();closeOrganization();});
 organizationDialog.addEventListener('click',e=>{if(e.target===organizationDialog)closeOrganization();});
 organizationFrame.addEventListener('load',()=>sendAppearance(organizationFrame));

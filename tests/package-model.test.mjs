@@ -8,8 +8,8 @@ test('approved defaults and inherited menu assignments',()=>{
  assert.equal(c.assignments.pm,1);assert.equal(c.assignments.warehouse,2);assert.equal(c.assignments.pdm,3);assert.equal(c.assignments.hse,4);
  const rows=pricingRows(c);assert.ok(rows[3].scopes.some(x=>x.en==='PM'));assert.ok(!rows[3].scopes.some(x=>x.en==='HSE'));assert.ok(rows[4].scopes.some(x=>x.en==='HSE'));
 });
-test('keeps existing stored prices instead of inventing replacements',()=>{
- const c=initialConfig([{id:'go',priceMn:'₮123',priceEn:'MNT 123'}]);assert.equal(c.tiers[1].priceMn,'₮123');assert.equal(pricingRows(c)[1].priceEn,'MNT 123');
+test('migrates explicit MNT values and never converts legacy USD',()=>{
+ const c=initialConfig([{id:'go',priceMn:'₮123'},{id:'plus',priceMn:'$20'}]);assert.equal(c.tiers[1].monthlyMnt,123);assert.equal(pricingRows(c)[1].monthlyMnt,123);assert.equal(c.tiers[2].monthlyMnt,null);
 });
 test('independent menu, total user and parent-child asset needs',()=>{
  const c=initialConfig();assert.equal(recommend(c,pick()).rank,0);assert.equal(recommend(c,pick(['pm'],5,20)).rank,1);assert.equal(recommend(c,pick(['warehouse'],15,35)).rank,2);

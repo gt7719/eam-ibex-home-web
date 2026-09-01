@@ -18,7 +18,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="mn">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased"><script dangerouslySetInnerHTML={{__html:`(()=>{try{const apply=()=>{document.documentElement.dataset.ibexTheme=localStorage.getItem('ibex-theme')==='day'?'day':'night';document.documentElement.lang=localStorage.getItem('ibex-lang')==='en'?'en':'mn'};apply();addEventListener('storage',apply)}catch{}})()`}} />{children}</body>
     </html>
   );
 }

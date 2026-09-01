@@ -7,7 +7,7 @@ type ContentRow = { key: string; value_json: string; updated_at: string };
 
 export async function GET() {
   const rows = await env.DB.prepare(
-    "SELECT key, value_json, updated_at FROM site_content WHERE key IN ('pricing', 'partners', 'people')",
+    "SELECT key, value_json, updated_at FROM site_content WHERE key IN ('pricing', 'partners', 'people', 'socialContent')",
   ).all<ContentRow>();
   const content: Record<string, unknown> = {};
   let updatedAt: string | null = null;

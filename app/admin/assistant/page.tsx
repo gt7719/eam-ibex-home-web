@@ -11,7 +11,7 @@ type KnowledgeEntry = {
 
 const emptyEntry = (): KnowledgeEntry => ({
   id: `kb-${Date.now()}`, topic: "general", titleMn: "", titleEn: "", contentMn: "", contentEn: "",
-  keywords: [], sourceLabel: "Master iBeX Handbook", sourceUrl: "", version: "1.0", status: "draft",
+  keywords: [], sourceLabel: "iBeX Website · Imported source", sourceUrl: "", version: "1.0", status: "draft",
   visibility: "internal", stage: "general", enabled: true,
 });
 
@@ -60,6 +60,22 @@ export default function AssistantKnowledgePage() {
     const next = entries.filter((entry) => entry.id !== selected.id);
     setEntries(next); setSelectedId(next[Math.max(0, selectedIndex - 1)]?.id || "");
   }
+  async function importKnowledge(file: File | null) {
+    if (!file) return;
+    setError(""); setMessage("");
+    if (!/\.(txt|md|json)$/i.test(file.name)) { setError("Одоогоор TXT, Markdown, JSON файлыг шууд импортлоно. PDF/DOCX-ийг текст эсвэл Markdown болгон экспортлоод оруулна уу."); return; }
+    if (file.size > 500_000) { setError("Файлын хэмжээ 500 KB-аас их байна."); return; }
+    try {
+      const text = await file.text();
+      if (/\.json$/i.test(file.name)) {
+        const parsed = JSON.parse(text); const rows = Array.isArray(parsed) ? parsed : parsed.entries;
+        if (!Array.isArray(rows)) throw new Error("JSON entries жагсаалт шаардлагатай.");
+        const imported = rows.slice(0, 50).map((row: Partial<KnowledgeEntry>, index: number) => ({...emptyEntry(), ...row, id: `kb-import-${Date.now()}-${index}`, titleMn: row.titleMn || `${file.name} · ${index + 1}`, titleEn: row.titleEn || row.titleMn || `${file.name} · ${index + 1}`, contentMn: row.contentMn || "", contentEn: row.contentEn || row.contentMn || "", sourceLabel: row.sourceLabel || file.name, status: "draft" as const, visibility: "internal" as const})).filter((row: KnowledgeEntry) => row.contentMn);
+        if (!imported.length) throw new Error("Импортлох агуулга олдсонгүй."); setEntries(current => [...current, ...imported]); setSelectedId(imported[0].id);
+      } else { const entry = {...emptyEntry(), id:`kb-import-${Date.now()}`, titleMn:file.name.replace(/\.[^.]+$/,""), titleEn:file.name.replace(/\.[^.]+$/,""), contentMn:text.trim(), contentEn:text.trim(), sourceLabel:file.name}; if (!entry.contentMn) throw new Error("Файл хоосон байна."); setEntries(current=>[...current,entry]); setSelectedId(entry.id); }
+      setMessage("Файлыг Draft + Internal төлөвөөр импортлолоо. Хянаж байж Approved + Public болгоно уу.");
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Файлыг импортлож чадсангүй."); }
+  }
   async function save(event: FormEvent) {
     event.preventDefault(); setSaving(true); setError(""); setMessage("");
     const response = await fetch("/api/admin/assistant-knowledge", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entries }) }).catch(() => null);
@@ -89,6 +105,7 @@ export default function AssistantKnowledgePage() {
       <form className="knowledge-workspace" onSubmit={save}>
         <aside className="knowledge-sidebar">
           <div className="knowledge-sidebar-head"><div><strong>Эх сурвалж</strong><small>{entries.length} материал</small></div><button type="button" onClick={addEntry}>＋</button></div>
+          <label className="knowledge-reset">TXT / MD / JSON импорт<input type="file" accept=".txt,.md,.json,text/plain,text/markdown,application/json" hidden onChange={(event) => void importKnowledge(event.target.files?.[0] || null)} /></label>
           <input className="knowledge-search" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Гарчиг, сэдвээр хайх…" />
           <div className="knowledge-list">
             {loading ? <p>Уншиж байна…</p> : null}
@@ -117,7 +134,7 @@ export default function AssistantKnowledgePage() {
             <div className="knowledge-governance"><strong>Нийтлэх нөхцөл</strong><span>Туслахад ашиглуулахын тулд төлөвийг Approved, нууцлалыг Public, идэвхийг асаалттай болгоно.</span></div>
           </>}
         </section>
-        <footer className="knowledge-actions"><span>Master Handbook нь үндсэн эх сурвалж хэвээр байна.</span><button type="submit" disabled={saving || !entries.length}>{saving ? "Хадгалж байна…" : "Өөрчлөлт хадгалах"}</button></footer>
+        <footer className="knowledge-actions"><span>Зөвхөн бодитоор оруулж, хянасан эх сурвалжийг Approved + Public болгоно.</span><button type="submit" disabled={saving || !entries.length}>{saving ? "Хадгалж байна…" : "Өөрчлөлт хадгалах"}</button></footer>
       </form>
     </main>
   );
