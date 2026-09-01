@@ -23,6 +23,15 @@ test("assistant UI is bilingual, cites sources and is wired into the public site
   assert.match(widget, /iBeX Website Assistant/);
   assert.match(widget, /assistant-sources/);
   assert.match(widget, /\/api\/assistant\/chat/);
+  assert.match(widget, /get\('admin'\)===\s*'1'\)return/);
+});
+
+test("admin chrome reserves its own row instead of covering the workspace", () => {
+  const css = read("app/globals.css");
+  assert.match(css, /\.admin-workspace\s*\{[^}]*display:\s*grid;[^}]*grid-template-rows:/s);
+  const sessionBar = css.match(/\.admin-session-bar\s*\{([^}]*)\}/s)?.[1] ?? "";
+  assert.match(sessionBar, /position:\s*relative/);
+  assert.doesNotMatch(sessionBar, /position:\s*fixed|(?:^|[;\s])bottom\s*:/m);
 });
 
 test("knowledge administration has independent permission and governance controls", () => {

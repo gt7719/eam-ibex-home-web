@@ -40,7 +40,6 @@ el('tabs').addEventListener('click',e=>{const b=e.target.closest('[data-step]');
 el('previous').onclick=()=>{step=Math.max(0,step-1);render();window.scrollTo(0,0);};
 el('save').onclick=()=>save('draft');
 el('next').onclick=()=>{if(step===5){save('publish');return;}const issues=validateConfig(config);if(issues.length){message(issues.join('\n'));return;}checked.add(step);step++;dirty=true;message('');render();window.scrollTo(0,0);};
-el('language').onclick=()=>{lang=lang==='mn'?'en':'mn';render();};el('theme').onclick=()=>document.body.classList.toggle('day');
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();parent.postMessage({type:'ibex-close-admin'},location.origin);}});
 window.addEventListener('message',e=>{if(e.origin!==location.origin||e.source!==parent||e.data?.type!=='ibex-appearance')return;if(['mn','en'].includes(e.data.lang))lang=e.data.lang;if(typeof e.data.day==='boolean')document.body.classList.toggle('day',e.data.day);render();});

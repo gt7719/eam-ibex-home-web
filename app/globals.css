@@ -150,7 +150,8 @@ body {
 }
 
 .admin-workspace {
-  position: relative;
+  display: grid;
+  grid-template-rows: 54px minmax(0, 1fr);
   width: 100vw;
   height: 100vh;
   overflow: hidden;
@@ -158,21 +159,23 @@ body {
 }
 
 .admin-session-bar {
-  position: fixed;
+  position: relative;
   z-index: 100;
-  right: 20px;
-  bottom: 18px;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
-  padding: 8px 9px 8px 13px;
-  border: 1px solid rgba(168, 85, 247, 0.3);
-  border-radius: 14px;
+  min-width: 0;
+  padding: 8px 14px;
+  overflow-x: auto;
+  border-bottom: 1px solid rgba(168, 85, 247, 0.3);
   color: #e8e1ec;
-  background: rgba(10, 7, 13, 0.9);
+  background: rgba(10, 7, 13, 0.96);
   backdrop-filter: blur(18px);
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.38);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.28);
 }
+
+.admin-workspace > .concept-frame { min-height: 0; }
 
 .admin-session-bar span { display: flex; flex-direction: column; min-width: 120px; }
 .admin-session-bar strong { font-size: 10px; }
@@ -205,8 +208,10 @@ body {
   .admin-auth-card { padding: 26px 20px; }
   .admin-auth-card h1 { font-size: 29px; }
   .admin-auth-links { flex-direction: column; }
-  .admin-session-bar { left: 10px; right: 10px; bottom: 10px; justify-content: flex-end; }
-  .admin-session-bar span { margin-right: auto; min-width: 0; }
+  .admin-workspace { grid-template-rows: 52px minmax(0, 1fr); }
+  .admin-session-bar { justify-content: flex-start; padding: 7px 10px; }
+  .admin-session-bar span { flex: 0 0 auto; min-width: 105px; }
+  .admin-session-bar a, .admin-session-bar button { flex: 0 0 auto; }
   .admin-users-page { padding: 26px 14px 70px; }.admin-users-header { grid-template-columns: 1fr; gap: 15px; }.admin-owner-chip { width: 100%; }.admin-invite-card { grid-template-columns: 1fr; gap: 22px; padding: 19px; }.admin-invite-fields { flex-direction: column; }.admin-permission-grid { grid-template-columns: 1fr; }.admin-invite-submit { width: 100%; }.admin-users-list { padding: 17px; }.admin-user-card { grid-template-columns: 40px minmax(0, 1fr); }.admin-user-avatar { width: 40px; height: 40px; }.admin-managed-permissions, .admin-user-actions, .admin-protected-rights { grid-column: 2; width: 100%; }.admin-user-actions { grid-template-columns: 1fr; }.admin-user-actions button { width: 100%; }.admin-protected { width: max-content; }
 }
 
