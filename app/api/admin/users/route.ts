@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 import {
+  ADMIN_PERMISSIONS,
   ADMIN_CONTENT_PERMISSIONS,
   getAdminSession,
   hashPassword,
@@ -37,7 +38,7 @@ export async function GET() {
     name: user.name,
     role: user.role,
     permissions: user.role === "owner"
-      ? ["pricing.manage", "partners.manage", "people.manage", "media.upload"]
+      ? [...ADMIN_PERMISSIONS]
       : normalizeStoredPermissions(user.permissions_json),
     status: user.status,
     lastAccess: user.last_access,
@@ -46,7 +47,7 @@ export async function GET() {
 }
 
 function normalizeStoredPermissions(value: string | null) {
-  if (value == null) return ["pricing.manage", "partners.manage", "people.manage", "media.upload"] as AdminPermission[];
+  if (value == null) return [...ADMIN_PERMISSIONS] as AdminPermission[];
   try {
     return normalizeAdminPermissions(JSON.parse(value));
   } catch {

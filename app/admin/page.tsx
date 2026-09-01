@@ -36,9 +36,6 @@ export default function AdminPage() {
     <main className="admin-workspace">
       <div className="admin-session-bar">
         <span><strong>{user?.name}</strong><small>{user?.email}</small></span>
-        {user?.permissions?.includes("pricing.manage") ? <Link href="/admin/pricing">Үнэ ба багц</Link> : null}
-        {user?.permissions?.includes("knowledge.manage") ? <Link href="/admin/assistant">AI мэдлэгийн сан</Link> : null}
-        {user?.permissions?.includes("social.manage") ? <Link href="/admin/social">Мэдээ ба контент</Link> : null}
         {user?.canManageAdmins ? <Link href="/admin/users">Админ хэрэглэгчид</Link> : null}
         <Link href="/">Нүүр хуудас</Link>
         <button type="button" onClick={logout}>Гарах</button>

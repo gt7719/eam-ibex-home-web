@@ -19,14 +19,29 @@ test('checkout offers card QR bank app transfer and other methods without invent
   for(const id of ['card','qr','bank_app','transfer','other'])assert.match(script,new RegExp(`id:'${id}'`));
   assert.match(script,/БАНКНЫ ХОЛБООС ТОХИРУУЛААГҮЙ/);
   assert.match(script,/method\.checkoutUrl/);
+  assert.match(script,/id="paymentDetail"/);
+  assert.match(script,/payment-hosted-frame/);
+  assert.match(script,/Картын дугаар болон CVV-г iBeX вебсайт хадгалахгүй/);
+  assert.match(script,/Зөвхөн холбогдсон банк эсвэл gateway-ээс ирсэн бодит QR-г харуулна/);
 });
 
 test('pricing and social content controls are permission-gated admin surfaces',()=>{
-  const admin=read('app/admin/page.tsx'),payments=read('app/api/admin/payment-settings/route.ts'),social=read('app/api/admin/social-content/route.ts');
-  assert.match(admin,/permissions\?\.includes\("pricing\.manage"\).*\/admin\/pricing/);
-  assert.match(admin,/permissions\?\.includes\("social\.manage"\).*\/admin\/social/);
+  const admin=read('app/admin/page.tsx'),hub=read('public/post-v31-admin-hub.js'),concept=read('public/concept.html'),payments=read('app/api/admin/payment-settings/route.ts'),social=read('app/api/admin/social-content/route.ts');
+  assert.doesNotMatch(admin,/href="\/admin\/pricing"/);
+  assert.doesNotMatch(admin,/href="\/admin\/assistant"/);
+  assert.doesNotMatch(admin,/href="\/admin\/social"/);
+  assert.match(concept,/pricing:'pricing\.manage'/);
+  assert.match(hub,/knowledge:'knowledge\.manage'/);
+  assert.match(hub,/social:'social\.manage'/);
   assert.match(payments,/hasAdminPermission\(user, "pricing\.manage"\)/);
   assert.match(social,/hasAdminPermission\(user,'social\.manage'\)/);
+});
+
+test('all five content areas share one internal permission-aware tab row',()=>{
+  const hub=read('public/post-v31-admin-hub.js'),concept=read('public/concept.html');
+  assert.match(hub,/\['partners','people','pricing','knowledge','social'\]/);
+  assert.match(hub,/admin-embedded-frame/);
+  assert.match(concept,/post-v31-admin-hub\.js/);
 });
 
 test('public pricing admin affordance stays hidden and scroll-to-top avoids actions',()=>{
