@@ -70,6 +70,7 @@ function setPageLanguage(lang){state.lang=lang;state.previewLang=lang;document.d
 function setPreviewLanguage(lang){state.previewLang=lang;renderWorkspace();}
 function setPageTheme(day){document.body.classList.toggle('day',day);state.previewDay=day;renderWorkspace();}
 function setPreviewTheme(day){state.previewDay=day;renderWorkspace();}
+Object.assign(globalThis,{setPageLanguage,setPreviewLanguage,setPageTheme,setPreviewTheme});
 const scopedWorkspace=renderWorkspace;
 renderWorkspace=function(){scopedWorkspace();const workspace=document.getElementById('workspace');workspace.lang=state.previewLang;workspace.classList.toggle('preview-night',!state.previewDay);const controls=document.querySelector('.always-controls');controls.innerHTML=`<button data-language aria-label="${ui('Хэл солих',state.previewLang)}">${state.previewLang==='mn'?'MN / EN':'EN / MN'}</button><button data-appearance aria-label="${ui('Өдөр / Шөнийн горим',state.previewLang)}" aria-pressed="${state.previewDay}">${state.previewDay?'☀':'☾'}</button>`;translate();};
 const scopedBody=body;

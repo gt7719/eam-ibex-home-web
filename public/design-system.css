@@ -1,0 +1,153 @@
+/* iBeX shared design system: typography, appearance, accessibility and scroll ownership. */
+:root {
+  --ibex-font-body: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  --ibex-font-display: Manrope, Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  --ibex-day-page: #f4f2f7;
+  --ibex-day-surface: #ffffff;
+  --ibex-day-surface-soft: #f3edf8;
+  --ibex-day-text: #2d2434;
+  --ibex-day-muted: #675d70;
+  --ibex-day-border: #d8cfe0;
+  --ibex-day-action: #176b46;
+  --ibex-day-action-soft: #e7f6ee;
+  --ibex-day-secondary: #4f3d5b;
+  --ibex-day-disabled: #5f5665;
+  --ibex-day-disabled-bg: #e8e3ec;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body, button, input, select, textarea { font-family: var(--ibex-font-body); }
+h1, h2, h3, h4, .ibex-word, .core-slogan, .node strong, .navitem > button,
+.login, .mega-kicker, .eco-kicker, .admin-tabs { font-family: var(--ibex-font-display); }
+button, a, input, select, textarea, summary { -webkit-tap-highlight-color: transparent; }
+button, a, summary { cursor: pointer; }
+input, select, textarea {
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+input::placeholder, textarea::placeholder { color: currentColor; font-weight: 400; opacity: .58; }
+
+/* Public navigation, descriptions and pricing. */
+.navitem > button, .login, .organization-link { font-size: 14px; }
+.mega-head p, .detail-head p, .detail-body p, .continuous-article p { font-size: 14px; line-height: 1.65; }
+.mega-item strong, .detail-item strong { font-size: 14px; }
+.mega-item small, .detail-item small, .login-dropdown small { font-size: 12px; line-height: 1.5; }
+.mega-group h3, .detail-plan h3 { font-size: 15px; }
+.plan-section-title, .eco-type, .mega-kicker, .detail-kicker { font-size: 11px; }
+.plan-list, .plan-meta, .plan-summary { font-size: 12px; }
+.billing-switch button, .plan-select, .payment-confirm { font-size: 13px; }
+.payment-panel > p, .payment-status { font-size: 12px !important; line-height: 1.5; }
+.cursor-label, .eco-kicker, .eco-type, .person-org, .eco-note,
+.mega-feature small, .mega-feature-stat, .plan-badge { font-size: 11px; }
+.eco-column-head, .eco-link, .person-meta, .mega-feature p, .mega-foot { font-size: 12px; }
+.eco-copy p { font-size: 13px; }
+.login-dropdown strong { font-size: 13px; }
+.login-dropdown small, .knowledge-boundary small { font-size: 12px; line-height: 1.5; }
+.mega-link, .mega-admin { font-size: 13px; }
+
+/* Classic content administration. */
+.admin-head p, .admin-note, .admin-check, .admin-storage-note, .admin-upload { font-size: 12px; }
+.admin-badge, .admin-repeater-head strong, .admin-repeater-head span,
+.admin-repeat-empty { font-size: 11px; }
+.admin-btn, .admin-tab, .admin-mini, .admin-add-row { font-size: 13px; }
+.admin-plan-name { font-size: 16px; }
+.admin-field label, .admin-media-controls label { font-size: 12px; font-weight: 650; }
+.admin-field input, .admin-field textarea, .admin-repeat-row input,
+.admin-media-controls input[type="text"] { font-size: 14px !important; font-weight: 400 !important; }
+.admin-close { cursor: pointer; }
+
+/* Website assistant uses the same readable type scale as the rest of the site. */
+.assistant-launch-copy strong, .assistant-head-copy strong { font-size: 13px; }
+.assistant-launch-copy small, .assistant-head-copy small, .assistant-safe { font-size: 11px; }
+.assistant-message { font-size: 13px; }
+.assistant-sources > span, .assistant-source strong, .assistant-suggestions button { font-size: 12px; }
+.assistant-source small, .assistant-footnote { font-size: 11px; }
+.assistant-form textarea { font-size: 14px !important; }
+
+/* Organization configurator keeps one readable system while its iBeX preview stays isolated. */
+.site-head > span, .eyebrow, .preview-label, .preview-note { font-size: 12px; }
+.field, .hint, .step-summary, .review, #progress { font-size: 13px; }
+.choice strong, .group-head label { font-size: 14px; }
+.choice small, .multi legend, .step-title small { font-size: 12px; }
+.choice em, footer small, #priceNote { font-size: 11px; }
+.step-title strong { font-size: 17px; }
+.side-nav summary, .side-nav button, .tabs button, .workspace-actions button,
+.workspace-search, table, th, .demo-note, .stat small { font-size: 11px; }
+
+/* Shared day-mode contrast. */
+body.theme-day, body.day {
+  color: var(--ibex-day-text);
+  background-color: var(--ibex-day-page);
+}
+body.theme-day :is(.admin-panel, .admin-plan, .admin-repeater, .admin-media-field),
+body.day :is(.config-side, .step-actions, .choice) {
+  border-color: var(--ibex-day-border);
+}
+body.theme-day :is(.admin-head p, .admin-note, .admin-field label, .admin-media-controls label,
+  .admin-storage-note),
+body.day :is(.hint, .step-summary, .preview-note, .choice small) { color: var(--ibex-day-muted); }
+body.theme-day :is(.admin-btn, .admin-mini, .admin-add-row, .admin-tab) {
+  color: var(--ibex-day-secondary);
+  border-color: var(--ibex-day-border);
+  background: var(--ibex-day-surface-soft);
+}
+body.theme-day .admin-tab.active {
+  color: var(--ibex-day-action);
+  border-color: #84c5a6;
+  background: var(--ibex-day-action-soft);
+}
+body.theme-day :is(.admin-btn.primary, .admin-upload) {
+  color: var(--ibex-day-action);
+  border-color: #84c5a6;
+  background: var(--ibex-day-action-soft);
+}
+body.theme-day button:disabled, body.day button:disabled {
+  color: var(--ibex-day-disabled) !important;
+  border-color: #d3cad8 !important;
+  background: var(--ibex-day-disabled-bg) !important;
+  opacity: 1 !important;
+}
+body.theme-day input::placeholder, body.theme-day textarea::placeholder,
+body.day input::placeholder, body.day textarea::placeholder { color: #6f6575; opacity: 1; }
+
+/* Assistant day mode. */
+body.theme-day .assistant-launch, body.theme-day .assistant-panel {
+  color: var(--ibex-day-text);
+  border-color: var(--ibex-day-border);
+  background: linear-gradient(145deg, #fff, #f3eff7);
+}
+body.theme-day .assistant-head { border-color: var(--ibex-day-border); }
+body.theme-day .assistant-launch-copy small, body.theme-day .assistant-head-copy small,
+body.theme-day .assistant-sources > span, body.theme-day .assistant-source small,
+body.theme-day .assistant-footnote { color: var(--ibex-day-muted); }
+body.theme-day .assistant-message.bot, body.theme-day .assistant-source,
+body.theme-day .assistant-suggestions button {
+  color: var(--ibex-day-secondary);
+  border-color: var(--ibex-day-border);
+  background: var(--ibex-day-surface-soft);
+}
+body.theme-day .assistant-message.user { color: #174c32; background: var(--ibex-day-action-soft); }
+body.theme-day .assistant-form { border-color: var(--ibex-day-border); background: #f8f5fa; }
+body.theme-day .assistant-form textarea { color: var(--ibex-day-text); background: #fff; }
+
+/* Exactly one scroll owner per classic admin surface. */
+.embedded-admin-hub { overscroll-behavior: none; }
+.embedded-admin-hub .admin-panel { min-height: 0; }
+.embedded-admin-hub .admin-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.embedded-admin-hub .admin-list.admin-list-embedded { overflow: hidden; }
+.admin-embedded-frame { min-height: 0; }
+
+@media (max-width: 680px) {
+  input, select, textarea, .assistant-form textarea { font-size: 16px !important; }
+  .navitem > button, .login, .mega-head p, .detail-head p,
+  .detail-body p, .continuous-article p { font-size: 14px; }
+  .payment-methods { grid-template-columns: 1fr; }
+  .admin-tabs { scrollbar-width: thin; }
+}
+
+@media (min-width: 421px) and (max-width: 680px) {
+  .payment-methods { grid-template-columns: 1fr 1fr; }
+}

@@ -2,8 +2,11 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import { useSiteLanguage } from "../../lib/use-site-language";
 
 export default function AdminLoginPage() {
+  const { t } = useSiteLanguage();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -24,7 +27,7 @@ export default function AdminLoginPage() {
         const setupResponse = await fetch("/api/admin/setup", { cache: "no-store" });
         const setup = await setupResponse.json().catch(() => ({}));
         if (!setupResponse.ok) {
-          setError(setup.error || `Админ тохиргоог шалгаж чадсангүй (HTTP ${setupResponse.status}).`);
+          setError(setup.error || `Админ тохиргоог шалгаж чадсангүй / Could not check administrator setup (HTTP ${setupResponse.status}).`);
           return;
         }
         setNeedsSetup(Boolean(setup.needsSetup));
@@ -34,7 +37,7 @@ export default function AdminLoginPage() {
           setName(setup.identity.name || "");
         }
       } catch {
-        setError("Сервертэй холбогдож чадсангүй. Сүлжээгээ шалгаад дахин оролдоно уу.");
+        setError("Сервертэй холбогдож чадсангүй. / Could not connect to the server.");
       } finally {
         setChecking(false);
       }
@@ -56,8 +59,8 @@ export default function AdminLoginPage() {
       setError(
         payload.error ||
         (response
-          ? `Сервер хүсэлтийг боловсруулж чадсангүй (HTTP ${response.status}).`
-          : "Сервертэй холбогдож чадсангүй. Сүлжээгээ шалгаад дахин оролдоно уу."),
+          ? t(`Сервер хүсэлтийг боловсруулж чадсангүй (HTTP ${response.status}).`, `The server could not process the request (HTTP ${response.status}).`)
+          : t("Сервертэй холбогдож чадсангүй. Сүлжээгээ шалгаад дахин оролдоно уу.", "Could not connect to the server. Check your network and try again.")),
       );
       setLoading(false);
       return;
@@ -67,17 +70,17 @@ export default function AdminLoginPage() {
 
   return (
     <main className="admin-auth-page">
-      <Link className="admin-auth-brand" href="/" aria-label="iBeX нүүр">
-        <img src="/ibex-main-logo.jpg" alt="iBeX" />
+      <Link className="admin-auth-brand" href="/" aria-label={t("iBeX нүүр", "iBeX home")}>
+        <Image src="/ibex-main-logo.jpg" alt="iBeX" width={40} height={40} priority />
         <span>iBeX</span>
       </Link>
       <section className="admin-auth-card" aria-labelledby="admin-login-title">
         <span className="admin-auth-kicker">WEBSITE CONTENT ADMIN</span>
-        <h1 id="admin-login-title">{needsSetup ? "Үндсэн админ үүсгэх" : "Админ нэвтрэлт"}</h1>
-        <p>{needsSetup ? "Сайтын эзэмшигч үндсэн админы нууц үгээ нэг удаа тохируулна." : "Үнэ, медиа, хамтрагч байгууллага болон төслийн багийн мэдээллийг удирдана."}</p>
+        <h1 id="admin-login-title">{needsSetup ? t("Үндсэн админ үүсгэх", "Create owner administrator") : t("Админ нэвтрэлт", "Administrator sign in")}</h1>
+        <p>{needsSetup ? t("Сайтын эзэмшигч үндсэн админы нууц үгээ нэг удаа тохируулна.", "The site owner sets the owner administrator password once.") : t("Үнэ, медиа, хамтрагч байгууллага болон төслийн багийн мэдээллийг удирдана.", "Manage pricing, media, partner organizations and project team information.")}</p>
         <form onSubmit={submit}>
           {needsSetup ? <label>
-            Нэр
+            {t("Нэр", "Name")}
             <input
               type="text"
               autoComplete="name"
@@ -87,7 +90,7 @@ export default function AdminLoginPage() {
             />
           </label> : null}
           <label>
-            И-мэйл
+            {t("И-мэйл", "Email")}
             <input
               type="email"
               autoComplete="username"
@@ -98,7 +101,7 @@ export default function AdminLoginPage() {
             />
           </label>
           <label>
-            Нууц үг
+            {t("Нууц үг", "Password")}
             <input
               type="password"
               autoComplete="current-password"
@@ -108,14 +111,14 @@ export default function AdminLoginPage() {
             />
           </label>
           {error ? <div className="admin-auth-error" role="alert">{error}</div> : null}
-          {needsSetup && !setupEligible ? <div className="admin-auth-error" role="alert">Үндсэн админыг сайтын баталгаажсан эзэмшигчийн нэвтрэлтээр үүсгэнэ.</div> : null}
+          {needsSetup && !setupEligible ? <div className="admin-auth-error" role="alert">{t("Үндсэн админыг сайтын баталгаажсан эзэмшигчийн нэвтрэлтээр үүсгэнэ.", "The owner administrator must be created through the verified site owner session.")}</div> : null}
           <button type="submit" disabled={checking || loading || (needsSetup && !setupEligible)}>
-            {checking ? "Админ эрх шалгаж байна…" : loading ? "Шалгаж байна…" : needsSetup ? "Үндсэн админ үүсгэх" : "Нэвтрэх"}
+            {checking ? t("Админ эрх шалгаж байна…", "Checking administrator access…") : loading ? t("Шалгаж байна…", "Checking…") : needsSetup ? t("Үндсэн админ үүсгэх", "Create owner administrator") : t("Нэвтрэх", "Sign in")}
           </button>
         </form>
         <div className="admin-auth-links">
-          <a href="https://demo.ibex.mn">iBeX системд нэвтрэх ↗</a>
-          <Link href="/">Нүүр хуудас руу буцах</Link>
+          <a href="https://demo.ibex.mn">{t("iBeX системд нэвтрэх", "Sign in to iBeX System")} ↗</a>
+          <Link href="/">{t("Нүүр хуудас руу буцах", "Return home")}</Link>
         </div>
       </section>
     </main>

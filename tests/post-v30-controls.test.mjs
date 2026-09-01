@@ -40,9 +40,8 @@ test("pricing and social content controls are permission-gated admin surfaces", 
     concept = read("public/concept.html"),
     payments = read("app/api/admin/payment-settings/route.ts"),
     social = read("app/api/admin/social-content/route.ts");
-  assert.doesNotMatch(admin, /href="\/admin\/pricing"/);
-  assert.doesNotMatch(admin, /href="\/admin\/assistant"/);
-  assert.doesNotMatch(admin, /href="\/admin\/social"/);
+  assert.match(admin, /concept\.html\?admin=content&embeddedHub=1/);
+  assert.doesNotMatch(admin, /admin-hub-tabs/);
   assert.match(concept, /pricing:'pricing\.manage'/);
   assert.match(hub, /knowledge:'knowledge\.manage'/);
   assert.match(hub, /social:'social\.manage'/);
@@ -50,30 +49,20 @@ test("pricing and social content controls are permission-gated admin surfaces", 
   assert.match(social, /hasAdminPermission\(user,'social\.manage'\)/);
 });
 
-test("all five content areas share one internal permission-aware tab row", () => {
+test("all five content areas share exactly one internal permission-aware tab row", () => {
   const admin = read("app/admin/page.tsx"),
     hub = read("public/post-v31-admin-hub.js"),
     concept = read("public/concept.html"),
-    style = read("app/globals.css");
-  for (const section of [
-    "partners",
-    "people",
-    "pricing",
-    "knowledge",
-    "social",
-  ])
-    assert.match(admin, new RegExp(`id:\\s*["']${section}["']`));
-  assert.match(admin, /admin-hub-tabs/);
-  assert.match(admin, /permissions\.has\(section\.permission\)/);
-  assert.match(admin, /\/admin\/pricing\?embedded=1/);
-  assert.doesNotMatch(
-    admin,
-    /concept\.html\?admin=content[^\"]+hubSection=pricing/,
-  );
+    style = read("public/admin-hub.css");
+  assert.equal((concept.match(/class="admin-tabs"/g) || []).length, 1);
+  assert.doesNotMatch(admin, /admin-hub-tabs|hubSection=/);
+  assert.match(admin, /concept\.html\?admin=content&embeddedHub=1/);
+  assert.match(hub, /\['partners','people','pricing','knowledge','social'\]/);
   assert.match(hub, /embeddedHub/);
-  assert.match(style, /overscroll-behavior:contain/);
-  assert.match(style, /html\.admin-hub-open[^}]+overflow:hidden/);
-  assert.match(concept, /post-v31-admin-hub\.js/);
+  assert.doesNotMatch(hub, /querySelector\('\.admin-head'\)\.hidden=true|adminTabs\.hidden=true/);
+  assert.match(style, /overscroll-behavior:\s*contain/);
+  assert.match(read("app/globals.css"), /html\.admin-hub-open[^}]+overflow:hidden/);
+  assert.match(concept, /admin-hub\.css/);
 });
 
 test("public pricing admin affordance stays hidden and scroll-to-top avoids actions", () => {
@@ -84,17 +73,17 @@ test("public pricing admin affordance stays hidden and scroll-to-top avoids acti
   assert.match(style, /\.detail-top\.avoid-actions\{bottom:/);
 });
 
-test("version 34 unifies appearance typography compact checkout and mobile billing behavior", () => {
+test("version 35 centralizes appearance typography compact checkout and mobile billing behavior", () => {
   const script = read("public/post-v30-controls.js");
   const paymentStyle = read("public/post-v30.css");
-  const standard = read("public/post-v34.css");
+  const standard = read("public/design-system.css");
   const globals = read("app/globals.css");
   for (const page of [
     "public/concept.html",
     "public/organization-preview.html",
     "public/package-admin.html",
   ]) {
-    assert.match(read(page), /post-v34\.css/);
+    assert.match(read(page), /design-system\.css/);
   }
   assert.match(script, /preventScroll:\s*true/);
   assert.match(script, /detailScroll\.scrollTop\s*=\s*top/);
@@ -108,4 +97,28 @@ test("version 34 unifies appearance typography compact checkout and mobile billi
     standard,
     /@media\s*\(max-width:\s*680px\)[\s\S]*font-size:\s*16px/,
   );
+});
+
+test("version 35 prevents hidden chrome regressions and stale pricing sources", () => {
+  const concept = read("public/concept.html"),
+    standard = read("public/design-system.css"),
+    assistant = read("public/assistant-widget.css"),
+    layout = read("app/layout.tsx"),
+    packages = read("public/package-admin.mjs");
+  assert.match(standard, /\[hidden\]\s*\{\s*display:\s*none\s*!important/);
+  assert.ok(concept.indexOf("assistant-widget.css") < concept.indexOf("design-system.css"));
+  assert.doesNotMatch(concept, /\$0|\$5|\$20|\$100/);
+  assert.doesNotMatch(assistant, /font-size:\s*(?:6\.5|7|7\.5|8|9|10)px/);
+  assert.match(layout, /ibex-global-appearance/);
+  assert.match(packages, /addEventListener\('storage',syncStoredAppearance\)/);
+});
+
+test("day-mode semantic colors and knowledge scroll use the audited contract", () => {
+  const standard = read("public/design-system.css"),
+    globals = read("app/globals.css"),
+    combined = `${standard}\n${globals}`.toLowerCase();
+  for (const color of ["#176b46", "#4f3d5b", "#5f5665", "#e7f6ee", "#6f6575"])
+    assert.match(combined, new RegExp(color));
+  assert.match(globals, /button:disabled[\s\S]*opacity:\s*1\s*!important/);
+  assert.match(globals, /embedded-admin-page\.knowledge-page[\s\S]*overflow:\s*hidden\s*!important/);
 });

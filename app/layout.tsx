@@ -19,7 +19,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="mn">
-      <body className="antialiased"><script dangerouslySetInnerHTML={{__html:`(()=>{try{const apply=()=>{document.documentElement.dataset.ibexTheme=localStorage.getItem('ibex-theme')==='day'?'day':'night';document.documentElement.lang=localStorage.getItem('ibex-lang')==='en'?'en':'mn'};apply();addEventListener('storage',apply)}catch{}})()`}} />{children}</body>
+      <body className="antialiased"><script dangerouslySetInnerHTML={{__html:`(()=>{const apply=(detail)=>{try{const lang=detail?.lang==='en'||detail?.lang==='mn'?detail.lang:(localStorage.getItem('ibex-lang')==='en'?'en':'mn');const day=typeof detail?.day==='boolean'?detail.day:localStorage.getItem('ibex-theme')==='day';document.documentElement.dataset.ibexTheme=day?'day':'night';document.documentElement.lang=lang;if(detail){localStorage.setItem('ibex-lang',lang);localStorage.setItem('ibex-theme',day?'day':'night')}}catch{}};apply();addEventListener('storage',()=>apply());addEventListener('message',event=>{if(event.origin===location.origin&&event.data?.type==='ibex-global-appearance')apply(event.data)})})()`}} />{children}</body>
     </html>
   );
 }

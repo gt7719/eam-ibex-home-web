@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useSiteLanguage } from "../../lib/use-site-language";
 
 type KnowledgeEntry = {
   id: string; topic: string; titleMn: string; titleEn: string; contentMn: string; contentEn: string;
@@ -16,6 +17,7 @@ const emptyEntry = (): KnowledgeEntry => ({
 });
 
 export default function AssistantKnowledgePage() {
+  const { t } = useSiteLanguage();
   const [embedded, setEmbedded] = useState(false);
   const [entries, setEntries] = useState<KnowledgeEntry[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -85,61 +87,61 @@ export default function AssistantKnowledgePage() {
     event.preventDefault(); setSaving(true); setError(""); setMessage("");
     const response = await fetch("/api/admin/assistant-knowledge", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entries }) }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
-    if (!response?.ok) setError(payload.error || "Өөрчлөлтийг хадгалж чадсангүй.");
-    else { setEntries(payload.entries || entries); setMessage("Мэдлэгийн сангийн шинэ хувилбарыг хадгаллаа."); }
+    if (!response?.ok) setError(payload.error || t("Өөрчлөлтийг хадгалж чадсангүй.", "Could not save changes."));
+    else { setEntries(payload.entries || entries); setMessage(t("Мэдлэгийн сангийн шинэ хувилбарыг хадгаллаа.", "A new knowledge-base version was saved.")); }
     setSaving(false);
   }
   async function resetDefaults() {
     setSaving(true); setError(""); setMessage("");
     const response = await fetch("/api/admin/assistant-knowledge", { method: "DELETE" }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
-    if (!response?.ok) setError(payload.error || "Анхны санг сэргээж чадсангүй.");
-    else { setEntries(payload.entries || []); setSelectedId(payload.entries?.[0]?.id || ""); setMessage("Баталгаажсан анхны мэдлэгийн санг сэргээв."); }
+    if (!response?.ok) setError(payload.error || t("Анхны санг сэргээж чадсангүй.", "Could not restore the approved default library."));
+    else { setEntries(payload.entries || []); setSelectedId(payload.entries?.[0]?.id || ""); setMessage(t("Баталгаажсан анхны мэдлэгийн санг сэргээв.", "The approved default knowledge base was restored.")); }
     setSaving(false);
   }
 
   return (
     <main className={`knowledge-page${embedded ? " embedded-admin-page" : ""}`}>
       <header className="knowledge-header">
-        <a href="/admin" className="admin-users-back">← Сайтын админ</a>
-        <div><span className="admin-auth-kicker">iBeX WEBSITE ASSISTANT</span><h1>AI мэдлэгийн сан</h1><p>Нийтийн сайтын туслах зөвхөн Approved + Public эх сурвалжаас хариулна.</p></div>
-        <div className="knowledge-boundary"><strong>Тусгаарлагдсан</strong><small>iBeX System AI болон tenant өгөгдөлд хандахгүй</small></div>
+        <a href="/admin" className="admin-users-back">← {t("Сайтын админ", "Site administration")}</a>
+        <div><span className="admin-auth-kicker">iBeX WEBSITE ASSISTANT</span><h1>{t("AI мэдлэгийн сан", "AI knowledge base")}</h1><p>{t("Нийтийн сайтын туслах зөвхөн Approved + Public эх сурвалжаас хариулна.", "The public website assistant answers only from Approved + Public sources.")}</p></div>
+        <div className="knowledge-boundary"><strong>{t("Тусгаарлагдсан", "Isolated")}</strong><small>{t("iBeX System AI болон tenant өгөгдөлд хандахгүй", "No access to iBeX System AI or tenant data")}</small></div>
       </header>
       {error ? <div className="knowledge-alert error" role="alert">{error}</div> : null}
       {message ? <div className="knowledge-alert success" role="status">{message}</div> : null}
       <form className="knowledge-workspace" onSubmit={save}>
         <aside className="knowledge-sidebar">
-          <div className="knowledge-sidebar-head"><div><strong>Эх сурвалж</strong><small>{entries.length} материал</small></div><button type="button" onClick={addEntry}>＋</button></div>
-          <label className="knowledge-reset">TXT / MD / JSON импорт<input type="file" accept=".txt,.md,.json,text/plain,text/markdown,application/json" hidden onChange={(event) => void importKnowledge(event.target.files?.[0] || null)} /></label>
-          <input className="knowledge-search" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Гарчиг, сэдвээр хайх…" />
+          <div className="knowledge-sidebar-head"><div><strong>{t("Эх сурвалж", "Sources")}</strong><small>{entries.length} {t("материал", "items")}</small></div><button type="button" onClick={addEntry} aria-label={t("Эх сурвалж нэмэх", "Add source")}>＋</button></div>
+          <label className="knowledge-reset">{t("TXT / MD / JSON импорт", "Import TXT / MD / JSON")}<input type="file" accept=".txt,.md,.json,text/plain,text/markdown,application/json" hidden onChange={(event) => void importKnowledge(event.target.files?.[0] || null)} /></label>
+          <input className="knowledge-search" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder={t("Гарчиг, сэдвээр хайх…", "Search by title or topic…")} />
           <div className="knowledge-list">
-            {loading ? <p>Уншиж байна…</p> : null}
-            {visibleEntries.map((entry) => <button type="button" key={entry.id} className={entry.id === selectedId ? "active" : ""} onClick={() => setSelectedId(entry.id)}><span>{entry.titleMn || "Нэргүй материал"}</span><small><i className={`kb-dot ${entry.status}`} />{entry.status} · {entry.visibility}</small></button>)}
+            {loading ? <p>{t("Уншиж байна…", "Loading…")}</p> : null}
+            {visibleEntries.map((entry) => <button type="button" key={entry.id} className={entry.id === selectedId ? "active" : ""} onClick={() => setSelectedId(entry.id)}><span>{(t(entry.titleMn, entry.titleEn)) || t("Нэргүй материал", "Untitled source")}</span><small><i className={`kb-dot ${entry.status}`} />{entry.status} · {entry.visibility}</small></button>)}
           </div>
-          <button type="button" className="knowledge-reset" onClick={resetDefaults} disabled={saving}>Анхны баталгаажсан сан сэргээх</button>
+          <button type="button" className="knowledge-reset" onClick={resetDefaults} disabled={saving}>{t("Анхны баталгаажсан сан сэргээх", "Restore approved defaults")}</button>
         </aside>
         <section className="knowledge-editor">
-          {!selected ? <div className="knowledge-empty">Засах эх сурвалжаа сонгоно уу.</div> : <>
-            <div className="knowledge-editor-head"><div><span>МАТЕРИАЛЫН ТОХИРГОО</span><h2>{selected.titleMn || "Шинэ эх сурвалж"}</h2></div><div><button type="button" onClick={duplicateEntry}>Хуулах</button><button type="button" className="danger" onClick={removeEntry} disabled={entries.length <= 1}>Устгах</button></div></div>
+          {!selected ? <div className="knowledge-empty">{t("Засах эх сурвалжаа сонгоно уу.", "Select a source to edit.")}</div> : <>
+            <div className="knowledge-editor-head"><div><span>{t("МАТЕРИАЛЫН ТОХИРГОО", "SOURCE SETTINGS")}</span><h2>{t(selected.titleMn, selected.titleEn) || t("Шинэ эх сурвалж", "New source")}</h2></div><div><button type="button" onClick={duplicateEntry}>{t("Хуулах", "Duplicate")}</button><button type="button" className="danger" onClick={removeEntry} disabled={entries.length <= 1}>{t("Устгах", "Delete")}</button></div></div>
             <div className="knowledge-grid">
-              <label>Сэдэв<input value={selected.topic} onChange={(e) => update("topic", e.target.value)} required /></label>
-              <label>Хувилбар<input value={selected.version} onChange={(e) => update("version", e.target.value)} required /></label>
-              <label>Төлөв<select value={selected.status} onChange={(e) => update("status", e.target.value as KnowledgeEntry["status"])}><option value="draft">Draft</option><option value="approved">Approved</option><option value="archived">Archived</option></select></label>
-              <label>Нууцлал<select value={selected.visibility} onChange={(e) => update("visibility", e.target.value as KnowledgeEntry["visibility"])}><option value="public">Public</option><option value="internal">Internal</option><option value="restricted">Restricted</option></select></label>
-              <label>Хөгжүүлэлтийн төлөв<select value={selected.stage} onChange={(e) => update("stage", e.target.value as KnowledgeEntry["stage"])}><option value="general">General</option><option value="implemented">Implemented</option><option value="pilot">Pilot</option><option value="rnd">R&amp;D</option><option value="future">Future</option></select></label>
-              <label className="knowledge-switch"><input type="checkbox" checked={selected.enabled} onChange={(e) => update("enabled", e.target.checked)} /><span>Идэвхтэй</span></label>
-              <label className="wide">Гарчиг · MN<input value={selected.titleMn} onChange={(e) => update("titleMn", e.target.value)} required /></label>
+              <label>{t("Сэдэв", "Topic")}<input value={selected.topic} onChange={(e) => update("topic", e.target.value)} required /></label>
+              <label>{t("Хувилбар", "Version")}<input value={selected.version} onChange={(e) => update("version", e.target.value)} required /></label>
+              <label>{t("Төлөв", "Status")}<select value={selected.status} onChange={(e) => update("status", e.target.value as KnowledgeEntry["status"])}><option value="draft">Draft</option><option value="approved">Approved</option><option value="archived">Archived</option></select></label>
+              <label>{t("Нууцлал", "Visibility")}<select value={selected.visibility} onChange={(e) => update("visibility", e.target.value as KnowledgeEntry["visibility"])}><option value="public">Public</option><option value="internal">Internal</option><option value="restricted">Restricted</option></select></label>
+              <label>{t("Хөгжүүлэлтийн төлөв", "Development stage")}<select value={selected.stage} onChange={(e) => update("stage", e.target.value as KnowledgeEntry["stage"])}><option value="general">General</option><option value="implemented">Implemented</option><option value="pilot">Pilot</option><option value="rnd">R&amp;D</option><option value="future">Future</option></select></label>
+              <label className="knowledge-switch"><input type="checkbox" checked={selected.enabled} onChange={(e) => update("enabled", e.target.checked)} /><span>{t("Идэвхтэй", "Enabled")}</span></label>
+              <label className="wide">{t("Гарчиг", "Title")} · MN<input value={selected.titleMn} onChange={(e) => update("titleMn", e.target.value)} required /></label>
               <label className="wide">Title · EN<input value={selected.titleEn} onChange={(e) => update("titleEn", e.target.value)} required /></label>
-              <label className="wide">Тайлбар · MN<textarea value={selected.contentMn} onChange={(e) => update("contentMn", e.target.value)} required /></label>
+              <label className="wide">{t("Тайлбар", "Description")} · MN<textarea value={selected.contentMn} onChange={(e) => update("contentMn", e.target.value)} required /></label>
               <label className="wide">Description · EN<textarea value={selected.contentEn} onChange={(e) => update("contentEn", e.target.value)} required /></label>
-              <label className="wide">Түлхүүр үг<input value={selected.keywords.join(", ")} onChange={(e) => update("keywords", e.target.value.split(",").map((x) => x.trim()).filter(Boolean))} placeholder="asset, хөрөнгө, PM…" /></label>
-              <label className="wide">Эх сурвалжийн нэр<input value={selected.sourceLabel} onChange={(e) => update("sourceLabel", e.target.value)} required /></label>
-              <label className="wide">Эх сурвалжийн холбоос<input type="url" value={selected.sourceUrl} onChange={(e) => update("sourceUrl", e.target.value)} placeholder="https://… (заавал биш)" /></label>
+              <label className="wide">{t("Түлхүүр үг", "Keywords")}<input value={selected.keywords.join(", ")} onChange={(e) => update("keywords", e.target.value.split(",").map((x) => x.trim()).filter(Boolean))} placeholder="asset, хөрөнгө, PM…" /></label>
+              <label className="wide">{t("Эх сурвалжийн нэр", "Source name")}<input value={selected.sourceLabel} onChange={(e) => update("sourceLabel", e.target.value)} required /></label>
+              <label className="wide">{t("Эх сурвалжийн холбоос", "Source URL")}<input type="url" value={selected.sourceUrl} onChange={(e) => update("sourceUrl", e.target.value)} placeholder={t("https://… (заавал биш)", "https://… (optional)")} /></label>
             </div>
-            <div className="knowledge-governance"><strong>Нийтлэх нөхцөл</strong><span>Туслахад ашиглуулахын тулд төлөвийг Approved, нууцлалыг Public, идэвхийг асаалттай болгоно.</span></div>
+            <div className="knowledge-governance"><strong>{t("Нийтлэх нөхцөл", "Publishing rule")}</strong><span>{t("Туслахад ашиглуулахын тулд төлөвийг Approved, нууцлалыг Public, идэвхийг асаалттай болгоно.", "To make a source available to the assistant, set it to Approved, Public and Enabled.")}</span></div>
           </>}
         </section>
-        <footer className="knowledge-actions"><span>Зөвхөн бодитоор оруулж, хянасан эх сурвалжийг Approved + Public болгоно.</span><button type="submit" disabled={saving || !entries.length}>{saving ? "Хадгалж байна…" : "Өөрчлөлт хадгалах"}</button></footer>
+        <footer className="knowledge-actions"><span>{t("Зөвхөн бодитоор оруулж, хянасан эх сурвалжийг Approved + Public болгоно.", "Only verified, reviewed sources should be marked Approved + Public.")}</span><button type="submit" disabled={saving || !entries.length}>{saving ? t("Хадгалж байна…", "Saving…") : t("Өөрчлөлт хадгалах", "Save changes")}</button></footer>
       </form>
     </main>
   );

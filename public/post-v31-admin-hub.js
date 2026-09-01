@@ -29,6 +29,10 @@ for(const section of ['knowledge','social']){
   button.className='admin-tab';button.type='button';button.dataset.adminTab=section;
   button.textContent=v31SectionCopy.mn[section].tab;adminTabs.appendChild(button);
 }
+for(const section of ['partners','people','pricing','knowledge','social']){
+  const button=adminTabs.querySelector(`[data-admin-tab="${section}"]`);
+  if(button)adminTabs.appendChild(button);
+}
 
 const v31Toolbar=document.querySelector('.admin-toolbar');
 const v31BaseRenderAdmin=renderAdmin;
@@ -72,8 +76,10 @@ openSiteAdmin=function(preferredSection){
 const v31HubParams=new URLSearchParams(location.search);
 if(v31HubParams.get('embeddedHub')==='1'){
   document.body.classList.add('embedded-admin-hub');
-  pricingAdmin.querySelector('.admin-head').hidden=true;
-  adminTabs.hidden=true;
+  const embeddedClose=document.getElementById('adminClose');
+  embeddedClose.addEventListener('click',event=>{
+    event.preventDefault();event.stopImmediatePropagation();window.parent.location.href='/';
+  },true);
 }
 if(v31HubParams.get('admin')==='content'){
   fetch('/api/admin/session',{cache:'no-store'}).then(async response=>{
@@ -81,7 +87,6 @@ if(v31HubParams.get('admin')==='content'){
     const payload=await response.json();
     adminPermissions=new Set(payload.user?.permissions||[]);
     adminPreview=['partners','people','pricing','knowledge','social'].some(canAdminSection);
-    const preferred=v31HubParams.get('hubSection');
-    if(adminPreview)openSiteAdmin(preferred);else window.parent.location.replace('/admin');
+    if(adminPreview)openSiteAdmin();else window.parent.location.replace('/admin');
   }).catch(()=>window.parent.location.replace('/admin/login'));
 }

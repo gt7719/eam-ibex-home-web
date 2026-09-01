@@ -1,6 +1,7 @@
 import {annualMnt,features,formatMnt,normalizeConfig,tierNames,validateConfig} from './package-model.mjs';
 let lang='mn';try{lang=localStorage.getItem('ibex-lang')==='en'?'en':'mn';document.body.classList.toggle('day',localStorage.getItem('ibex-theme')==='day');}catch{}
 const t=(mn,en)=>lang==='en'?en:mn,el=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function syncStoredAppearance(){try{lang=localStorage.getItem('ibex-lang')==='en'?'en':'mn';document.body.classList.toggle('day',localStorage.getItem('ibex-theme')==='day');render();}catch{}}
 let saved=null,config=null,step=0,checked=new Set(),editing=false,busy=false,dirty=false;
 const label=f=>lang==='en'?f.en:f.mn;
 function message(text){el('status').textContent=text;}
@@ -43,4 +44,5 @@ el('next').onclick=()=>{if(step===5){save('publish');return;}const issues=valida
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();parent.postMessage({type:'ibex-close-admin'},location.origin);}});
 window.addEventListener('message',e=>{if(e.origin!==location.origin||e.source!==parent||e.data?.type!=='ibex-appearance')return;if(['mn','en'].includes(e.data.lang))lang=e.data.lang;if(typeof e.data.day==='boolean')document.body.classList.toggle('day',e.data.day);render();});
+window.addEventListener('storage',syncStoredAppearance);
 render();load();

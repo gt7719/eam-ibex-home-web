@@ -31,3 +31,4 @@ function detailSupplementMarkup(key,g,i,en){
  html+=`<p><strong>${en?'Video to be added':'Видео оруулна'}</strong><span>${esc(title)} — ${en?'short demonstration or topic video.':'богино үзүүлэн эсвэл сэдэвт видео.'}</span></p></section>`;
  return html;
 }
+globalThis.detailSupplementMarkup=detailSupplementMarkup;

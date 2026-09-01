@@ -1,16 +1,17 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { useSiteLanguage } from "../../lib/use-site-language";
 
 type AdminPermission = "pricing.manage" | "partners.manage" | "people.manage" | "knowledge.manage" | "social.manage" | "media.upload";
 
-const permissionOptions: Array<{ id: AdminPermission; label: string; detail: string }> = [
-  { id: "pricing.manage", label: "Үнэ ба багц", detail: "Багц, үнэ, хэрэглэгч болон хөрөнгийн хязгаар" },
-  { id: "partners.manage", label: "Хамтрагч байгууллага", detail: "Байгууллагын мэдээлэл, лого, холбоос" },
-  { id: "people.manage", label: "Төслийн баг", detail: "Багийн гишүүн, албан тушаал, танилцуулга" },
-  { id: "knowledge.manage", label: "AI мэдлэгийн сан", detail: "Сайтын туслахын баталгаажсан эх сурвалж, төлөв ба хувилбар" },
-  { id: "social.manage", label: "Мэдээ ба контент", detail: "Facebook пост, Reel холбоос, зураг болон нийтлэх төлөв" },
-  { id: "media.upload", label: "Медиа файл", detail: "Зураг, видео болон PDF файл байршуулах" },
+const permissionOptions: Array<{ id: AdminPermission; label: string; labelEn: string; detail: string; detailEn: string }> = [
+  { id: "pricing.manage", label: "Үнэ ба багц", labelEn: "Pricing and packages", detail: "Багц, үнэ, хэрэглэгч болон хөрөнгийн хязгаар", detailEn: "Package, price, user and asset limits" },
+  { id: "partners.manage", label: "Хамтрагч байгууллага", labelEn: "Partner organizations", detail: "Байгууллагын мэдээлэл, лого, холбоос", detailEn: "Organization details, logo and links" },
+  { id: "people.manage", label: "Төслийн баг", labelEn: "Project team", detail: "Багийн гишүүн, албан тушаал, танилцуулга", detailEn: "Team members, roles and profiles" },
+  { id: "knowledge.manage", label: "AI мэдлэгийн сан", labelEn: "AI knowledge base", detail: "Сайтын туслахын баталгаажсан эх сурвалж, төлөв ба хувилбар", detailEn: "Approved sources, status and versions for the site assistant" },
+  { id: "social.manage", label: "Мэдээ ба контент", labelEn: "News and content", detail: "Facebook пост, Reel холбоос, зураг болон нийтлэх төлөв", detailEn: "Facebook posts, Reels, images and publication status" },
+  { id: "media.upload", label: "Медиа файл", labelEn: "Media files", detail: "Зураг, видео болон PDF файл байршуулах", detailEn: "Upload images, videos and PDF files" },
 ];
 
 const defaultPermissions = permissionOptions.map((permission) => permission.id);
@@ -34,6 +35,7 @@ type ManagedAdmin = {
 };
 
 export default function AdminUsersPage() {
+  const { t } = useSiteLanguage();
   const [session, setSession] = useState<SessionUser | null>(null);
   const [users, setUsers] = useState<ManagedAdmin[]>([]);
   const [email, setEmail] = useState("");
@@ -53,7 +55,7 @@ export default function AdminUsersPage() {
     const response = await fetch("/api/admin/users", { cache: "no-store" }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) {
-      setError(payload.error || "Админ хэрэглэгчдийн мэдээллийг уншиж чадсангүй.");
+      setError(payload.error || "Админ хэрэглэгчдийн мэдээллийг уншиж чадсангүй. / Could not load administrators.");
       setLoading(false);
       return;
     }
@@ -94,7 +96,7 @@ export default function AdminUsersPage() {
     }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) {
-      setError(payload.error || "Урилга илгээж чадсангүй.");
+      setError(payload.error || t("Урилга илгээж чадсангүй.", "Could not create the administrator."));
       setWorking(false);
       return;
     }
@@ -102,7 +104,7 @@ export default function AdminUsersPage() {
     setName("");
     setPassword("");
     setInvitePermissions(defaultPermissions);
-    setMessage("Контент админы бүртгэлийг үүсгэлээ. Түр нууц үгийг хэрэглэгчид аюулгүй сувгаар дамжуулна уу.");
+    setMessage(t("Контент админы бүртгэлийг үүсгэлээ. Түр нууц үгийг хэрэглэгчид аюулгүй сувгаар дамжуулна уу.", "The content administrator was created. Share the temporary password through a secure channel."));
     await loadUsers();
     setWorking(false);
   }
@@ -139,11 +141,11 @@ export default function AdminUsersPage() {
     }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) {
-      setError(payload.error || "Админы эрхийн хүрээг хадгалж чадсангүй.");
+      setError(payload.error || t("Админы эрхийн хүрээг хадгалж чадсангүй.", "Could not save administrator permissions."));
       setWorking(false);
       return;
     }
-    setMessage(`${user.name} админы эрхийн хүрээг шинэчиллээ.`);
+    setMessage(t(`${user.name} админы эрхийн хүрээг шинэчиллээ.`, `Permissions for ${user.name} were updated.`));
     await loadUsers();
     setWorking(false);
   }
@@ -160,11 +162,11 @@ export default function AdminUsersPage() {
     }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) {
-      setError(payload.error || "Хэрэглэгчийн төлөвийг өөрчилж чадсангүй.");
+      setError(payload.error || t("Хэрэглэгчийн төлөвийг өөрчилж чадсангүй.", "Could not change the administrator status."));
       setWorking(false);
       return;
     }
-    setMessage(status === "active" ? "Админ хэрэглэгчийг идэвхжүүллээ." : "Админ хэрэглэгчийг түр идэвхгүй болголоо.");
+    setMessage(status === "active" ? t("Админ хэрэглэгчийг идэвхжүүллээ.", "The administrator was activated.") : t("Админ хэрэглэгчийг түр идэвхгүй болголоо.", "The administrator was suspended."));
     await loadUsers();
     setWorking(false);
   }
@@ -172,30 +174,30 @@ export default function AdminUsersPage() {
   return (
     <main className="admin-users-page">
       <header className="admin-users-header">
-        <a href="/admin" className="admin-users-back">← Сайтын админ</a>
+        <a href="/admin" className="admin-users-back">← {t("Сайтын админ", "Site administration")}</a>
         <div>
           <span className="admin-auth-kicker">ACCESS MANAGEMENT</span>
-          <h1>Админ хэрэглэгчид</h1>
-          <p>Сайтын агуулга удирдах хүмүүсийг урьж, нэвтрэх эрхийг нь хянаарай.</p>
+          <h1>{t("Админ хэрэглэгчид", "Administrators")}</h1>
+          <p>{t("Сайтын агуулга удирдах хүмүүсийг урьж, нэвтрэх эрхийг нь хянаарай.", "Create site content administrators and control their access.")}</p>
         </div>
-        <span className="admin-owner-chip"><strong>{session?.name}</strong><small>Үндсэн админ</small></span>
+        <span className="admin-owner-chip"><strong>{session?.name}</strong><small>{t("Үндсэн админ", "Owner administrator")}</small></span>
       </header>
 
       <section className="admin-invite-card" aria-labelledby="invite-title">
         <div>
           <span className="admin-step">01</span>
-          <h2 id="invite-title">Шинэ контент админ нэмэх</h2>
-          <p>Нэвтрэх мэдээллийг бүртгээд тухайн админ яг ямар хэсэгт өөрчлөлт хийхийг сонгоно.</p>
+          <h2 id="invite-title">{t("Шинэ контент админ нэмэх", "Add a content administrator")}</h2>
+          <p>{t("Нэвтрэх мэдээллийг бүртгээд тухайн админ яг ямар хэсэгт өөрчлөлт хийхийг сонгоно.", "Enter the sign-in details and select the exact areas this administrator can change.")}</p>
         </div>
         <form onSubmit={invite}>
-          <label htmlFor="invite-email">Админы мэдээлэл</label>
+          <label htmlFor="invite-email">{t("Админы мэдээлэл", "Administrator details")}</label>
           <div className="admin-invite-fields">
-            <input type="text" value={name} onChange={(event) => setName(event.target.value)} placeholder="Нэр" required />
+            <input type="text" value={name} onChange={(event) => setName(event.target.value)} placeholder={t("Нэр", "Name")} required />
             <input id="invite-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@company.mn" required />
-            <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Түр нууц үг • 10+ тэмдэгт" minLength={10} required />
+            <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder={t("Түр нууц үг • 10+ тэмдэгт", "Temporary password • 10+ characters")} minLength={10} required />
           </div>
           <fieldset className="admin-permission-fieldset">
-            <legend>Өөрчлөлт хийх эрх</legend>
+            <legend>{t("Өөрчлөлт хийх эрх", "Edit permissions")}</legend>
             <div className="admin-permission-grid">
               {permissionOptions.map((permission) => (
                 <label className="admin-permission-option" key={permission.id}>
@@ -204,7 +206,7 @@ export default function AdminUsersPage() {
                     checked={invitePermissions.includes(permission.id)}
                     onChange={() => toggleInvitePermission(permission.id)}
                   />
-                  <span><strong>{permission.label}</strong><small>{permission.detail}</small></span>
+                  <span><strong>{t(permission.label, permission.labelEn)}</strong><small>{t(permission.detail, permission.detailEn)}</small></span>
                 </label>
               ))}
             </div>
@@ -214,9 +216,9 @@ export default function AdminUsersPage() {
             className="admin-invite-submit"
             disabled={working || !inviteEnabled || !invitePermissions.some((permission) => permission !== "media.upload")}
           >
-            {working ? "Түр хүлээнэ үү…" : "Админ нэмэх"}
+            {working ? t("Түр хүлээнэ үү…", "Please wait…") : t("Админ нэмэх", "Add administrator")}
           </button>
-          <small>Нууц үгийг и-мэйлээр автоматаар илгээхгүй. Хэрэглэгчид аюулгүй сувгаар дамжуулна уу.</small>
+          <small>{t("Нууц үгийг и-мэйлээр автоматаар илгээхгүй. Хэрэглэгчид аюулгүй сувгаар дамжуулна уу.", "The password is not emailed automatically. Share it with the user through a secure channel.")}</small>
         </form>
       </section>
 
@@ -225,11 +227,11 @@ export default function AdminUsersPage() {
 
       <section className="admin-users-list" aria-labelledby="admin-list-title">
         <div className="admin-users-list-head">
-          <div><span className="admin-step">02</span><h2 id="admin-list-title">Нэвтрэх эрхтэй админы жагсаалт</h2></div>
-          <button type="button" onClick={loadUsers} disabled={loading || working}>Шинэчлэх</button>
+          <div><span className="admin-step">02</span><h2 id="admin-list-title">{t("Нэвтрэх эрхтэй админы жагсаалт", "Administrators with access")}</h2></div>
+          <button type="button" onClick={loadUsers} disabled={loading || working}>{t("Шинэчлэх", "Refresh")}</button>
         </div>
-        {loading ? <p className="admin-users-empty">Хэрэглэгчдийн мэдээллийг ачаалж байна…</p> : null}
-        {!loading && !users.length ? <p className="admin-users-empty">Одоогоор харуулах админ хэрэглэгч алга.</p> : null}
+        {loading ? <p className="admin-users-empty">{t("Хэрэглэгчдийн мэдээллийг ачаалж байна…", "Loading administrators…")}</p> : null}
+        {!loading && !users.length ? <p className="admin-users-empty">{t("Одоогоор харуулах админ хэрэглэгч алга.", "There are no administrators to display.")}</p> : null}
         <div className="admin-user-grid">
           {users.map((user) => {
             const isOwner = user.role.toLowerCase() === "owner";
@@ -240,16 +242,16 @@ export default function AdminUsersPage() {
                 <div className="admin-user-copy">
                   <h3>{user.name}</h3>
                   <p>{user.email}</p>
-                  <div><span className={`admin-status ${user.status}`}>{active ? "Идэвхтэй" : "Идэвхгүй"}</span><span>{isOwner ? "Үндсэн админ" : "Контент админ"}</span></div>
+                  <div><span className={`admin-status ${user.status}`}>{active ? t("Идэвхтэй", "Active") : t("Идэвхгүй", "Inactive")}</span><span>{isOwner ? t("Үндсэн админ", "Owner administrator") : t("Контент админ", "Content administrator")}</span></div>
                 </div>
                 {isOwner ? (
                   <div className="admin-protected-rights">
-                    <span className="admin-protected">Бүх эрхтэй · Хамгаалагдсан</span>
+                    <span className="admin-protected">{t("Бүх эрхтэй · Хамгаалагдсан", "Full access · Protected")}</span>
                   </div>
                 ) : (
                   <>
                     <fieldset className="admin-managed-permissions" disabled={working || !active}>
-                      <legend>Эрхийн хүрээ</legend>
+                      <legend>{t("Эрхийн хүрээ", "Permission scope")}</legend>
                       <div>
                         {permissionOptions.map((permission) => (
                           <label key={permission.id}>
@@ -258,7 +260,7 @@ export default function AdminUsersPage() {
                               checked={(permissionDrafts[user.id] || []).includes(permission.id)}
                               onChange={() => toggleManagedPermission(user.id, permission.id)}
                             />
-                            <span>{permission.label}</span>
+                            <span>{t(permission.label, permission.labelEn)}</span>
                           </label>
                         ))}
                       </div>
@@ -270,10 +272,10 @@ export default function AdminUsersPage() {
                         onClick={() => savePermissions(user)}
                         disabled={working || !active}
                       >
-                        Эрх хадгалах
+                        {t("Эрх хадгалах", "Save permissions")}
                       </button>
                       <button type="button" onClick={() => changeStatus(user)} disabled={working}>
-                        {active ? "Түр идэвхгүй болгох" : "Идэвхжүүлэх"}
+                        {active ? t("Түр идэвхгүй болгох", "Suspend") : t("Идэвхжүүлэх", "Activate")}
                       </button>
                     </div>
                   </>

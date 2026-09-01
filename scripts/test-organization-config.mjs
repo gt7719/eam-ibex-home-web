@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 const nodes=new Map();
-function element(id){if(!nodes.has(id)){const events={},classes=new Set();nodes.set(id,{innerHTML:'',textContent:'',dataset:{},events,classList:{contains:key=>classes.has(key),toggle(key,force){const enabled=force??!classes.has(key);enabled?classes.add(key):classes.delete(key);return enabled;}},addEventListener(type,fn,capture){(events[type]??=[]).push({fn,capture});},append(){},insertAdjacentHTML(){},scrollIntoView(){}});}return nodes.get(id);}
+function element(id){if(!nodes.has(id)){const events={},classes=new Set();nodes.set(id,{innerHTML:'',textContent:'',dataset:{},events,classList:{contains:key=>classes.has(key),toggle(key,force){const enabled=force??!classes.has(key);if(enabled)classes.add(key);else classes.delete(key);return enabled;}},addEventListener(type,fn,capture){(events[type]??=[]).push({fn,capture});},append(){},insertAdjacentHTML(){},scrollIntoView(){}});}return nodes.get(id);}
 const document={getElementById:element,querySelector:element,querySelectorAll:()=>[],createTreeWalker:()=>({nextNode:()=>null}),body:element('body'),documentElement:{}};
 const ctx=vm.createContext({document,console,URL,NodeFilter:{SHOW_TEXT:4}});
 for(const file of ['organization-preview.js','organization-enhancements.js','organization-localization.js'])vm.runInContext(fs.readFileSync(`public/${file}`,'utf8'),ctx);
