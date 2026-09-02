@@ -59,6 +59,8 @@ input::placeholder, textarea::placeholder { color: currentColor; font-weight: 40
 .admin-media-controls input[type="text"] { font-size: 14px !important; font-weight: 400 !important; }
 .admin-copy-partner textarea { min-height: 160px; }
 .admin-copy-person textarea { min-height: 180px; }
+.admin-copy-pair { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.admin-copy-pair .admin-field.wide { grid-column: auto; }
 .admin-close { cursor: pointer; }
 
 /* Website assistant uses the same readable type scale as the rest of the site. */
@@ -148,6 +150,7 @@ body.theme-day .assistant-form textarea { color: var(--ibex-day-text); backgroun
   .detail-body p, .continuous-article p { font-size: 14px; }
   .payment-methods { grid-template-columns: 1fr; }
   .admin-tabs { scrollbar-width: thin; }
+  .admin-copy-pair { grid-template-columns: 1fr; }
 }
 
 @media (min-width: 421px) and (max-width: 680px) {
