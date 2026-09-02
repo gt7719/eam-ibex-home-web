@@ -13,7 +13,10 @@ export async function GET() {
   let updatedAt: string | null = null;
   for (const row of rows.results || []) {
     try {
-      content[row.key] = JSON.parse(row.value_json);
+      const parsed = JSON.parse(row.value_json);
+      content[row.key] = row.key === "socialContent" && Array.isArray(parsed)
+        ? parsed.filter((entry) => entry?.status === "published" && entry?.enabled !== false)
+        : parsed;
       if (!updatedAt || row.updated_at > updatedAt) updatedAt = row.updated_at;
     } catch {
       // Ignore a malformed record and let the embedded defaults render.

@@ -123,3 +123,26 @@ test("lets the owner update an editor permission set", { concurrency: false }, a
   assert.ok(update);
   assert.deepEqual(JSON.parse(update.values[0]), ["partners.manage", "media.upload"]);
 });
+
+test("lets an authorized content editor save a public event without a Facebook URL", { concurrency: false }, async () => {
+  const database = createDatabase({ permissions: ["social.manage"] });
+  const response = await dispatch(
+    database,
+    adminRequest("/api/admin/social-content", "PUT", {
+      entries: [{
+        id: "event-1", type: "event", titleMn: "Арга хэмжээ", titleEn: "Public event",
+        startAt: "2026-09-10T09:00", status: "published", enabled: true,
+        galleryUrls: ["https://example.com/one.jpg"], sortOrder: 3,
+      }],
+    }),
+  );
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.entries[0].type, "event");
+  assert.equal(payload.entries[0].sourceUrl, "");
+  assert.deepEqual(payload.entries[0].galleryUrls, ["https://example.com/one.jpg"]);
+  const saved = database.runs.find((statement) => statement.sql.includes("INSERT INTO site_content"));
+  assert.ok(saved);
+  assert.equal(saved.values[0], "socialContent");
+});

@@ -10,7 +10,7 @@ test("version 36 keeps only the approved knowledge-center choices", () => {
     "Модулийн видео заавар", "Ажлын урсгалын жишээ", "PM ба PdM урсгал",
     "Үзлэгээс ажил үүсэх урсгал", "Сэлбэг ба агуулахын урсгал",
     "Модулийн Detail Flowchart", "Хэрэглэгчийн үүргээр", "Хийх ажлаар",
-    "Модулиар судлах", "Системийн шинэчлэл",
+    "Модулиар судлах", "Системийн шинэчлэл", "Системийн админ тохиргоо",
   ]) assert.doesNotMatch(concept, new RegExp(removed));
   for (const retained of ["Системийн ерөнхий Flowchart", "Засварын ажлын үндсэн урсгал", "Анхлан ашиглах", "Facebook пост ба Reel"])
     assert.match(concept, new RegExp(retained));

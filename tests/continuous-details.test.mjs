@@ -13,13 +13,13 @@ function contentContext(){
  vm.runInContext(read('continuous-details.js').split('function renderContinuousDetail(')[0],context);
  return context;
 }
-test('all 50 approved content topics have distinct complete MN and EN articles',()=>{
+test('all 49 approved content topics have distinct complete MN and EN articles',()=>{
  const context=contentContext();
  const result=vm.runInContext(`Object.entries(headerMenus).flatMap(([key,m])=>(m.groups||[]).flatMap((g,gi)=>g.items.map((item,ii)=>({id:key+'-'+gi+'-'+ii,article:detailArticles[key+'-'+gi+'-'+ii]}))))`,context);
- assert.equal(result.length,50);const seen=new Set();
+ assert.equal(result.length,49);const seen=new Set();
  for(const {id,article} of result){assert.ok(article,id);for(const lang of ['mn','en']){assert.ok(article[lang].length>=2,id);assert.ok(article[lang].join(' ').length>180,id);if(lang==='en')assert.doesNotMatch(article[lang].join(' '),/[А-Яа-яӨөҮү]/);}
  assert.ok(!seen.has(article.mn.join(' ')),id);seen.add(article.mn.join(' '));}
- assert.equal(vm.runInContext('Object.keys(detailArticles).length',context),50);
+ assert.equal(vm.runInContext('Object.keys(detailArticles).length',context),49);
  assert.doesNotMatch(read('detail-articles.js'),/addDetailGroup\('organization'/);
 });
 test('every detail is a continuous article without branching controls or dead media buttons',()=>{
@@ -39,7 +39,7 @@ test('known content boundaries remain explicit and topic changes stay within the
  assert.match(vm.runInContext("detailArticles['product-2-0'].mn.join(' ')",c),/Direct, Completed/);
  assert.match(vm.runInContext("detailArticles['product-2-1'].mn.join(' ')",c),/Predictive AI/);
  assert.match(vm.runInContext("detailArticles['intro-2-1'].mn.join(' ')",c),/туршилтын импорт/);
- assert.match(vm.runInContext("detailArticles['intro-2-2'].mn.join(' ')",c),/өөр зориулалттай/);
+ assert.equal(vm.runInContext("detailArticles['intro-2-2']",c),undefined);
  assert.doesNotMatch(read('continuous-details.js'),/createElement\('select'\)|detailTopicSelect|fillDetailTopicSwitch/);
  assert.match(read('continuous-details.js'),/selection\.groupIndex,selection\.itemIndex/);
  assert.doesNotMatch(read('concept.html'),/function resourceCards|function resourceSteps|function approvedDetailLabels|Хязгааргүй ажиллагаа ба дэмжлэг|Unlimited operation and support/);

@@ -57,6 +57,8 @@ input::placeholder, textarea::placeholder { color: currentColor; font-weight: 40
 .admin-field label, .admin-media-controls label { font-size: 12px; font-weight: 650; }
 .admin-field input, .admin-field textarea, .admin-repeat-row input,
 .admin-media-controls input[type="text"] { font-size: 14px !important; font-weight: 400 !important; }
+.admin-copy-partner textarea { min-height: 160px; }
+.admin-copy-person textarea { min-height: 180px; }
 .admin-close { cursor: pointer; }
 
 /* Website assistant uses the same readable type scale as the rest of the site. */
