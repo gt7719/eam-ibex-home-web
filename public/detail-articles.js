@@ -104,3 +104,16 @@ addDetailGroup('intro',3,[
  ['iBeX Project Mongolia-ийн оролцсон хурал, форум, сургалт болон хамтын ажиллагааны талаар нийтэлнэ. Арга хэмжээний зорилго, болсон огноо, оролцоо болон бодит зураг, эх мэдээллийг ашиглана.\n\nОдоогоор арга хэмжээний бодит нийтлэл нэмэгдээгүй. Оролцоог баталгаажаагүй амжилт, үр дүнгээр нэмэгдүүлж тайлбарлахгүй.','Publish iBeX Project Mongolia participation in conferences, forums, training and collaboration using actual dates, purpose, participation, images and sources.\n\nNo actual event article has been added yet. Participation is not embellished with unverified achievements or outcomes.'],
  ['iBeX Project Mongolia-ийн судалгааны зорилго, пилотын явц, баталгаажсан үр дүн болон цаашдын ажлыг танилцуулна. Хэрэгжсэн, Туршилт, Судалгаа хөгжүүлэлт, Ирээдүйн төлөвийг ялгана.\n\nОдоогоор судалгааны бодит нийтлэл нэмэгдээгүй. Судалгааны таамаг, туршилтын ажиглалт болон батлагдсан үр дүнг тус тусад нь тайлбарлана.','Present iBeX Project Mongolia research objectives, pilot progress, verified results and next steps. Keep Implemented, Pilot, R&D and Future states distinct.\n\nNo actual research article has been added yet. Distinguish hypotheses, pilot observations and validated results.']
 ]);
+
+// Version 36 keeps only the approved Knowledge Center choices while preserving
+// their already-reviewed article copy.
+{
+ const compactGroups={0:[0,3,4],1:[0,1],2:[0,1,5],3:[0,2,3]};
+ const compactArticles={};
+ for(const [group,sourceItems] of Object.entries(compactGroups)){
+  const source=sourceItems.map(item=>detailArticles[`intro-${group}-${item}`]);
+  source.forEach((article,item)=>{compactArticles[`intro-${group}-${item}`]=article;});
+ }
+ for(const id of Object.keys(detailArticles))if(id.startsWith('intro-'))delete detailArticles[id];
+ Object.assign(detailArticles,compactArticles);
+}

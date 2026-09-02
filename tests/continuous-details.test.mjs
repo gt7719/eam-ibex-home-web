@@ -13,13 +13,13 @@ function contentContext(){
  vm.runInContext(read('continuous-details.js').split('function renderContinuousDetail(')[0],context);
  return context;
 }
-test('all 60 approved content topics have distinct complete MN and EN articles',()=>{
+test('all 50 approved content topics have distinct complete MN and EN articles',()=>{
  const context=contentContext();
  const result=vm.runInContext(`Object.entries(headerMenus).flatMap(([key,m])=>(m.groups||[]).flatMap((g,gi)=>g.items.map((item,ii)=>({id:key+'-'+gi+'-'+ii,article:detailArticles[key+'-'+gi+'-'+ii]}))))`,context);
- assert.equal(result.length,60);const seen=new Set();
+ assert.equal(result.length,50);const seen=new Set();
  for(const {id,article} of result){assert.ok(article,id);for(const lang of ['mn','en']){assert.ok(article[lang].length>=2,id);assert.ok(article[lang].join(' ').length>180,id);if(lang==='en')assert.doesNotMatch(article[lang].join(' '),/[А-Яа-яӨөҮү]/);}
  assert.ok(!seen.has(article.mn.join(' ')),id);seen.add(article.mn.join(' '));}
- assert.equal(vm.runInContext('Object.keys(detailArticles).length',context),60);
+ assert.equal(vm.runInContext('Object.keys(detailArticles).length',context),50);
  assert.doesNotMatch(read('detail-articles.js'),/addDetailGroup\('organization'/);
 });
 test('every detail is a continuous article without branching controls or dead media buttons',()=>{
@@ -28,7 +28,8 @@ test('every detail is a continuous article without branching controls or dead me
  for(const id of ids){const [key,g,i]=id.split('-');for(const en of [false,true]){
  const html=vm.runInContext(`continuousArticleMarkup(${JSON.stringify(key)},${g},${i},${en})`,context);
  assert.match(html,/<article class="continuous-article">/);
- assert.doesNotMatch(html,/<button|<select|data-flow-step|generic-detail-card/);
+ assert.doesNotMatch(html,/<select|data-flow-step|generic-detail-card/);
+ assert.equal((html.match(/<button/g)||[]).length,(html.match(/data-article-image/g)||[]).length);
  for(const [,file] of html.matchAll(/src="\/ibex-screens\/([^"]+)"/g))assert.ok(fs.existsSync(new URL('../public/ibex-screens/'+file,import.meta.url)));
  }}
  assert.equal((vm.runInContext("continuousArticleMarkup('intro',1,1,false)",context).match(/<img /g)||[]).length,8);
@@ -38,7 +39,7 @@ test('known content boundaries remain explicit and topic changes stay within the
  assert.match(vm.runInContext("detailArticles['product-2-0'].mn.join(' ')",c),/Direct, Completed/);
  assert.match(vm.runInContext("detailArticles['product-2-1'].mn.join(' ')",c),/Predictive AI/);
  assert.match(vm.runInContext("detailArticles['intro-2-1'].mn.join(' ')",c),/туршилтын импорт/);
- assert.match(vm.runInContext("detailArticles['intro-2-5'].mn.join(' ')",c),/өөр зориулалттай/);
+ assert.match(vm.runInContext("detailArticles['intro-2-2'].mn.join(' ')",c),/өөр зориулалттай/);
  assert.doesNotMatch(read('continuous-details.js'),/createElement\('select'\)|detailTopicSelect|fillDetailTopicSwitch/);
  assert.match(read('continuous-details.js'),/selection\.groupIndex,selection\.itemIndex/);
  assert.doesNotMatch(read('concept.html'),/function resourceCards|function resourceSteps|function approvedDetailLabels|Хязгааргүй ажиллагаа ба дэмжлэг|Unlimited operation and support/);
@@ -62,9 +63,9 @@ test('new classic scripts and inline site script parse without syntax errors',()
 });
 test('selected articles survive language changes, switch topics and return to the index',()=>{
  const c=contentContext(),elements=new Map();
- function element(){return {hidden:false,textContent:'',innerHTML:'',value:'',classList:{add(){},remove(){},toggle(){}},append(){},setAttribute(){},scrollTop:0,getBoundingClientRect(){return {top:200,height:80}},scrollTo(){},querySelector(s){return get(s)},addEventListener(name,fn){this[name]=fn}};}
+ function element(){return {hidden:false,textContent:'',innerHTML:'',value:'',dataset:{},classList:{add(){},remove(){},toggle(){}},append(){},appendChild(){},setAttribute(){},focus(){},showModal(){},close(){},scrollTop:0,getBoundingClientRect(){return {top:200,height:80}},scrollTo(){},querySelector(s){return get(s)},addEventListener(name,fn){this[name]=fn}};}
  function get(id){if(!elements.has(id))elements.set(id,element());return elements.get(id);}
- c.document={createElement:element,getElementById:get,querySelector:get,querySelectorAll:()=>[]};
+ c.document={body:element(),createElement:element,getElementById:get,querySelector:get,querySelectorAll:()=>[]};
  vm.runInContext(`const reduceMotion=true;let currentLang='mn',currentDetailMenu='product',currentDetailView='index',currentDetailFocus=-1,currentResourceSelection=null,currentFlowStep=null;const menuDetail={hidden:false};function syncDetailNavigation(){};function renderDetailContent(){currentResourceSelection=null};function closeResourceDetail(){currentResourceSelection=null;currentDetailView='index'};function applyLanguage(){renderDetailContent(currentDetailMenu)};function renderSelectedDetail(k,g,i){renderContinuousDetail(k,g,i)}`,c);
  vm.runInContext(read('continuous-details.js'),c);
  vm.runInContext("renderContinuousDetail('product',0,0)",c);
@@ -87,7 +88,8 @@ test('inline layout preserves menu cards and supplements have truthful media pla
  const [k,g,i]=id.split('-');
  const out=vm.runInContext(`continuousArticleMarkup('${k}',${g},${i},false)`,c);
  assert.match(out,/Видео оруулна/);
- assert.doesNotMatch(out,/<video|<iframe|<button|<select/);
+ assert.doesNotMatch(out,/<video|<iframe|<select/);
+ assert.equal((out.match(/<button/g)||[]).length,(out.match(/data-article-image/g)||[]).length);
  }
  assert.match(vm.runInContext("continuousArticleMarkup('product',2,0,false)",c),/<table|article-flow/);
  assert.doesNotMatch(read('continuous-details.css'),/reading-detail[^\n]*display:none/);

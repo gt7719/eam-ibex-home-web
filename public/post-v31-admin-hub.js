@@ -87,6 +87,6 @@ if(v31HubParams.get('admin')==='content'){
     const payload=await response.json();
     adminPermissions=new Set(payload.user?.permissions||[]);
     adminPreview=['partners','people','pricing','knowledge','social'].some(canAdminSection);
-    if(adminPreview)openSiteAdmin();else window.parent.location.replace('/admin');
+    if(adminPreview)openSiteAdmin(v31HubParams.get('section'));else window.parent.location.replace('/admin');
   }).catch(()=>window.parent.location.replace('/admin/login'));
 }

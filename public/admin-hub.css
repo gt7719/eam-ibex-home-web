@@ -37,6 +37,8 @@ body.theme-day .admin-list.admin-list-embedded { background: var(--ibex-day-page
   background: #09070c;
 }
 .embedded-admin-hub .admin-head { flex: 0 0 auto; }
+.embedded-admin-hub .admin-head,
+.embedded-admin-hub .admin-tabs { display: none; }
 .embedded-admin-hub .admin-tabs {
   flex: 0 0 auto;
   overflow-x: auto;

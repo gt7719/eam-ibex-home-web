@@ -12,6 +12,14 @@ type AdminUser = {
 
 type Lang = "mn" | "en";
 
+const adminSections = [
+  { id: "partners", permission: "partners.manage", mn: "Хамтрагч байгууллага", en: "Partner organizations", src: "/concept.html?admin=content&embeddedHub=1&section=partners" },
+  { id: "people", permission: "people.manage", mn: "Төслийн баг", en: "Project team", src: "/concept.html?admin=content&embeddedHub=1&section=people" },
+  { id: "pricing", permission: "pricing.manage", mn: "Үнэ ба багц", en: "Pricing", src: "/admin/pricing?embedded=1" },
+  { id: "knowledge", permission: "knowledge.manage", mn: "AI мэдлэгийн сан", en: "AI knowledge", src: "/admin/assistant?embedded=1" },
+  { id: "social", permission: "social.manage", mn: "Мэдээ ба контент", en: "News & content", src: "/admin/social?embedded=1" },
+] as const;
+
 const adminPermissions = new Set([
   "partners.manage",
   "people.manage",
@@ -32,6 +40,7 @@ export default function AdminPage() {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [checking, setChecking] = useState(true);
   const [lang, setLang] = useState<Lang>("mn");
+  const [section, setSection] = useState<string>("partners");
 
   useEffect(() => {
     document.documentElement.classList.add("admin-hub-open");
@@ -76,6 +85,8 @@ export default function AdminPage() {
   const hasWorkspaceAccess = (user?.permissions || []).some((permission) =>
     adminPermissions.has(permission),
   );
+  const allowedSections = adminSections.filter((item) => (user?.permissions || []).includes(item.permission));
+  const activeSection = allowedSections.find((item) => item.id === section) || allowedSections[0];
   const ui = lang === "en"
     ? { users: "Admin users", home: "Home", logout: "Log out", empty: "You do not have permission to manage a content area." }
     : { users: "Админ хэрэглэгчид", home: "Нүүр хуудас", logout: "Гарах", empty: "Танд удирдах хэсгийн эрх олгогдоогүй байна." };
@@ -93,12 +104,14 @@ export default function AdminPage() {
       </div>
       <section className="admin-hub-shell admin-hub-single" aria-label="Сайтын админ удирдлага">
         {hasWorkspaceAccess ? (
-          <div className="admin-hub-content">
-            <iframe
-              src="/concept.html?admin=content&embeddedHub=1"
-              title={lang === "en" ? "iBeX site administration" : "iBeX сайтын админ удирдлага"}
-            />
-          </div>
+          <>
+            <nav className="admin-hub-tabs" aria-label={lang === "en" ? "Administration sections" : "Админ тохиргооны хэсгүүд"}>
+              {allowedSections.map((item) => <button key={item.id} type="button" className={item.id === activeSection?.id ? "active" : ""} onClick={() => setSection(item.id)}>{lang === "en" ? item.en : item.mn}</button>)}
+            </nav>
+            <div className="admin-hub-content">
+              {activeSection ? <iframe key={activeSection.id} src={activeSection.src} title={lang === "en" ? activeSection.en : activeSection.mn} /> : null}
+            </div>
+          </>
         ) : (
           <p className="admin-hub-empty">{ui.empty}</p>
         )}

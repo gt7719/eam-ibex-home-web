@@ -11,9 +11,15 @@ const detailFlows={
 };
 const detailFlowMap={'product-1-0':['request'],'product-1-1':['inspection'],'product-1-2':['work'],'product-1-3':['work'],'product-2-0':['pm'],'product-2-1':['pdm'],'product-3-1':['inventory'],'intro-1-0':['request','work'],'intro-1-1':['request','work'],'intro-1-2':['pm','pdm'],'intro-1-3':['inspection'],'intro-1-4':['inventory'],'intro-2-1':['import']};
 const detailEvidenceMap={'product-1-0':0,'product-1-2':1,'product-1-3':2,'product-4-2':3,'solution-1-0':2,'solution-3-1':3};
+const detailArticleImages={
+ 'product-0-0':{src:'/ibex-screens/unified-asset-register.png',mn:'Хөрөнгийн үндсэн мэдээлэл, байршил, хариуцсан хэрэглэгч болон зураг бүхий нэгдсэн бүртгэл.',en:'Unified asset record with core information, location, responsible user and image.'},
+ 'intro-1-0':{src:'/ibex-flowcharts/system-flowchart.png',mn:'iBeX системийн хөрөнгө төвтэй ерөнхий урсгал.',en:'Asset-centered overview of the iBeX system flow.'}
+};
 function detailSupplementMarkup(key,g,i,en){
  const id=`${key}-${g}-${i}`,menu=(en?headerMenusEN:headerMenus)[key],title=menu.groups[g].items[i][0],lang=en?1:0;
  let html='';
+ const articleImage=detailArticleImages[id];
+ if(articleImage){const caption=en?articleImage.en:articleImage.mn;html+=`<figure class="article-feature-image"><button type="button" data-article-image="${esc(articleImage.src)}" data-article-caption="${esc(caption)}" aria-label="${esc(en?'Expand image':'Зургийг томруулж харах')}"><img src="${esc(articleImage.src)}" alt="${esc(caption)}" loading="lazy"><span>${en?'Expand':'Томруулах'} ↗</span></button><figcaption>${esc(caption)}</figcaption></figure>`;}
  for(const flow of detailFlowMap[id]||[]){html+=`<figure class="article-flow"><figcaption>${en?'Process overview':'Үйл явцын тойм'} · ${esc(flow.toUpperCase())}</figcaption><ol>${detailFlows[flow].map(step=>`<li>${esc(step[lang])}</li>`).join('')}</ol></figure>`;}
  let rows=null;
  if(id==='product-0-0')rows=en?[['Organization','Own asset register'],['Location','Where the asset belongs'],['Parent','Higher-level equipment or assembly'],['Child','Linked component; counted individually']]:[['Байгууллага','Өөрийн хөрөнгийн бүртгэл'],['Салбар, байршил','Хөрөнгийн харьяалал'],['Parent','Дээд түвшний тоног төхөөрөмж, зангилаа'],['Child','Холбогдсон бүрэлдэхүүн; тусдаа хөрөнгөд тооцно']];
@@ -25,7 +31,7 @@ function detailSupplementMarkup(key,g,i,en){
  if(rows)html+=`<div class="article-table-wrap"><table class="article-table"><caption>${esc(title)} — ${en?'key references':'гол мэдээлэл'}</caption><thead><tr><th scope="col">${en?'Item':'Үзүүлэлт'}</th><th scope="col">${en?'Description':'Тайлбар'}</th></tr></thead><tbody>${rows.map(([a,b])=>`<tr><th scope="row">${esc(a)}</th><td>${esc(b)}</td></tr>`).join('')}</tbody></table></div>`;
  const evidence=detailEvidenceMap[id];
  if(evidence!==undefined){html+=`<section class="continuous-evidence"><h3>${en?'System screens':'Системийн дэлгэцүүд'}</h3><div class="flow-step-media">${flowStepData(evidence,en).media.map(([file,caption])=>`<figure><img src="/ibex-screens/${esc(file)}" alt="${esc(caption)}" loading="lazy"><figcaption>${esc(caption)}</figcaption></figure>`).join('')}</div></section>`;}
- const hasImages=evidence!==undefined||id==='intro-1-1';
+ const hasImages=!!articleImage||evidence!==undefined||id==='intro-1-1';
  html+=`<section class="article-media-pending" aria-label="${en?'Materials to be added':'Нэмж оруулах материал'}">`;
  if(!hasImages)html+=`<p><strong>${en?'Image to be added':'Зураг оруулна'}</strong><span>${esc(title)} — ${en?'relevant screen or supporting illustration.':'холбогдох дэлгэц эсвэл тайлбар зураг.'}</span></p>`;
  html+=`<p><strong>${en?'Video to be added':'Видео оруулна'}</strong><span>${esc(title)} — ${en?'short demonstration or topic video.':'богино үзүүлэн эсвэл сэдэвт видео.'}</span></p></section>`;

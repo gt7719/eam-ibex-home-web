@@ -47,3 +47,17 @@ const continuousBack=closeResourceDetail;
 closeResourceDetail=function(){continuousBack();document.getElementById('detailContent').classList.remove('reading-detail');const d=(currentLang==='en'?headerMenusEN:headerMenus)[currentDetailMenu];if(d){document.getElementById('detailTitle').textContent=d.t;document.getElementById('detailIntro').textContent=d.i;}};
 const continuousLanguage=applyLanguage;
 applyLanguage=function(){const key=currentDetailMenu,selection=currentResourceSelection;continuousLanguage();if(key&&selection&&!menuDetail.hidden)renderContinuousDetail(key,selection.groupIndex,selection.itemIndex,false);};
+
+const articleLightbox=document.createElement('dialog');
+articleLightbox.className='article-lightbox';
+articleLightbox.innerHTML='<button type="button" class="article-lightbox-close" aria-label="Хаах">×</button><img alt=""><p></p>';
+document.body.appendChild(articleLightbox);
+document.getElementById('detailContent').addEventListener('click',event=>{
+ const trigger=event.target.closest('[data-article-image]');if(!trigger)return;
+ const image=articleLightbox.querySelector('img'),caption=articleLightbox.querySelector('p');
+ image.src=trigger.dataset.articleImage;image.alt=trigger.dataset.articleCaption||'';caption.textContent=trigger.dataset.articleCaption||'';
+ articleLightbox.querySelector('.article-lightbox-close').setAttribute('aria-label',currentLang==='en'?'Close':'Хаах');
+ articleLightbox.showModal();articleLightbox.querySelector('.article-lightbox-close').focus();
+});
+articleLightbox.querySelector('.article-lightbox-close').addEventListener('click',()=>articleLightbox.close());
+articleLightbox.addEventListener('click',event=>{if(event.target===articleLightbox)articleLightbox.close();});

@@ -40,8 +40,9 @@ test("pricing and social content controls are permission-gated admin surfaces", 
     concept = read("public/concept.html"),
     payments = read("app/api/admin/payment-settings/route.ts"),
     social = read("app/api/admin/social-content/route.ts");
-  assert.match(admin, /concept\.html\?admin=content&embeddedHub=1/);
-  assert.doesNotMatch(admin, /admin-hub-tabs/);
+  assert.match(admin, /\/admin\/pricing\?embedded=1/);
+  assert.match(admin, /className="admin-hub-tabs"/);
+  assert.match(admin, /allowedSections = adminSections\.filter/);
   assert.match(concept, /pricing:'pricing\.manage'/);
   assert.match(hub, /knowledge:'knowledge\.manage'/);
   assert.match(hub, /social:'social\.manage'/);
@@ -49,17 +50,18 @@ test("pricing and social content controls are permission-gated admin surfaces", 
   assert.match(social, /hasAdminPermission\(user,'social\.manage'\)/);
 });
 
-test("all five content areas share exactly one internal permission-aware tab row", () => {
+test("all five content areas share exactly one visible permission-aware tab row", () => {
   const admin = read("app/admin/page.tsx"),
     hub = read("public/post-v31-admin-hub.js"),
     concept = read("public/concept.html"),
     style = read("public/admin-hub.css");
-  assert.equal((concept.match(/class="admin-tabs"/g) || []).length, 1);
-  assert.doesNotMatch(admin, /admin-hub-tabs|hubSection=/);
-  assert.match(admin, /concept\.html\?admin=content&embeddedHub=1/);
+  assert.equal((admin.match(/className="admin-hub-tabs"/g) || []).length, 1);
+  assert.match(admin, /concept\.html\?admin=content&embeddedHub=1&section=partners/);
+  assert.match(admin, /\/admin\/pricing\?embedded=1/);
   assert.match(hub, /\['partners','people','pricing','knowledge','social'\]/);
   assert.match(hub, /embeddedHub/);
-  assert.doesNotMatch(hub, /querySelector\('\.admin-head'\)\.hidden=true|adminTabs\.hidden=true/);
+  assert.match(style, /embedded-admin-hub \.admin-head/);
+  assert.match(style, /embedded-admin-hub \.admin-tabs/);
   assert.match(style, /overscroll-behavior:\s*contain/);
   assert.match(read("app/globals.css"), /html\.admin-hub-open[^}]+overflow:hidden/);
   assert.match(concept, /admin-hub\.css/);

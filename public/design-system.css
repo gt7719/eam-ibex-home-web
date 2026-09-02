@@ -151,3 +151,21 @@ body.theme-day .assistant-form textarea { color: var(--ibex-day-text); backgroun
 @media (min-width: 421px) and (max-width: 680px) {
   .payment-methods { grid-template-columns: 1fr 1fr; }
 }
+/* Version 36: one semantic outline icon language for every navigation item. */
+.mega-item,.detail-item{display:grid;grid-template-columns:34px minmax(0,1fr);column-gap:10px;align-items:start}
+.mega-item{padding-left:8px}
+.menu-item-icon{display:grid!important;place-items:center;width:32px;height:32px;margin:0!important;border:1px solid rgba(57,229,140,.28);border-radius:10px;color:var(--green);background:rgba(57,229,140,.055);transition:border-color .2s,background .2s,color .2s,transform .2s}
+.menu-item-icon svg{display:block;width:19px;height:19px}
+.menu-item-copy{display:block!important;min-width:0;margin:0!important;color:inherit!important}
+.menu-item-copy>strong,.menu-item-copy>small,.menu-item-copy>span{display:block}
+.mega-item:hover .menu-item-icon,.mega-item:focus-visible .menu-item-icon,.detail-item:hover .menu-item-icon,.detail-item:focus-visible .menu-item-icon,.detail-item.active .menu-item-icon{border-color:rgba(255,209,102,.55);color:var(--gold);background:rgba(255,209,102,.07);transform:translateY(-1px)}
+.detail-item>.menu-item-copy>span{margin-top:4px;color:#8f8798;font-size:10px;line-height:1.45}
+body.theme-day .menu-item-icon{border-color:rgba(32,135,88,.25);color:#17784b;background:#eaf8f1}
+body.theme-day .detail-item>.menu-item-copy>span{color:#675d70}
+
+/* Keep scrolling functional while removing the distracting nested scrollbar chrome. */
+.embedded-admin-hub,.embedded-admin-hub .admin-tabs,.admin-hub-page,.admin-hub-content,
+.embedded-admin-page,.embedded-child-admin .social-content-page{scrollbar-width:none;-ms-overflow-style:none}
+.embedded-admin-hub::-webkit-scrollbar,.embedded-admin-hub .admin-tabs::-webkit-scrollbar,
+.admin-hub-page::-webkit-scrollbar,.admin-hub-content::-webkit-scrollbar,
+.embedded-admin-page::-webkit-scrollbar,.embedded-child-admin .social-content-page::-webkit-scrollbar{width:0;height:0;display:none}
