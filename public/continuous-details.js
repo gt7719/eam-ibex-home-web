@@ -41,8 +41,16 @@ function continuousArticleMarkup(key,groupIndex,itemIndex,en){
   return html+detailSupplementMarkup(key,groupIndex,itemIndex,en)+'</article>';
 }
 function renderContinuousDetail(key,groupIndex,itemIndex,scroll=true){
-  renderNavigationArticle(key,groupIndex,itemIndex);
-  if(scroll)document.getElementById('detailBack').focus({preventScroll:true});
+  const en=currentLang==='en',menu=(en?headerMenusEN:headerMenus)[key],item=menu?.groups?.[groupIndex]?.items?.[itemIndex];
+  const inline=document.getElementById('resourceInline');if(!inline||!item)return;
+  currentDetailView='index';currentDetailFocus=groupIndex;currentResourceSelection={groupIndex,itemIndex};currentFlowStep=null;
+  syncDetailNavigation();
+  document.getElementById('detailTitle').textContent=menu.t;
+  document.getElementById('detailIntro').textContent=menu.i;
+  document.getElementById('detailContent').classList.add('reading-detail');
+  document.querySelectorAll('#detailContent .detail-item').forEach(button=>button.classList.toggle('active',Number(button.dataset.group)===groupIndex&&Number(button.dataset.item)===itemIndex));
+  inline.innerHTML=`<h3 class="inline-topic-title">${esc(item[0])}</h3>`+continuousArticleMarkup(key,groupIndex,itemIndex,en);inline.classList.add('open');
+  if(scroll){const pane=document.getElementById('detailScroll'),head=document.querySelector('.detail-head');const top=pane.scrollTop+inline.getBoundingClientRect().top-pane.getBoundingClientRect().top-head.getBoundingClientRect().height-16;pane.scrollTo({top:Math.max(0,top),behavior:reduceMotion?'auto':'smooth'});}
 }
 const continuousBaseRenderer=renderDetailContent;
 renderDetailContent=function(key,...args){
@@ -63,7 +71,7 @@ renderDetailContent=function(key,...args){
 const continuousBack=closeResourceDetail;
 closeResourceDetail=function(){continuousBack();document.getElementById('detailContent').classList.remove('reading-detail');const d=(currentLang==='en'?headerMenusEN:headerMenus)[currentDetailMenu];if(d){document.getElementById('detailTitle').textContent=d.t;document.getElementById('detailIntro').textContent=d.i;}};
 const continuousLanguage=applyLanguage;
-applyLanguage=function(){const key=currentDetailMenu,selection=currentResourceSelection,state=navigationState;continuousLanguage();if(state&&!menuDetail.hidden)restoreNavigation(state);else if(key&&selection&&!menuDetail.hidden)renderContinuousDetail(selection.key||key,selection.groupIndex,selection.itemIndex,false);};
+applyLanguage=function(){const key=currentDetailMenu,selection=currentResourceSelection;continuousLanguage();if(key&&selection&&!menuDetail.hidden)renderContinuousDetail(key,selection.groupIndex,selection.itemIndex,false);};
 
 const articleLightbox=document.createElement('dialog');
 articleLightbox.className='article-lightbox';

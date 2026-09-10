@@ -19,8 +19,8 @@ function renderLaunchOffer() {
     node.innerHTML = `<strong>${esc(title)}</strong><span>${en ? 'Applicable plans' : 'Хамаарах багц'}: ${esc(scope)}</span>`;
     return node;
   }
-  if (activeHeaderMenu === 'pricing') megaMenu.querySelector('.mega-layout').before(banner());
-  if (currentDetailMenu === 'pricing') document.getElementById('detailContent').prepend(banner());
+  if (activeHeaderMenu === 'pricing') megaMenu.querySelector('.mega-copy').append(banner());
+  if (currentDetailMenu === 'pricing') document.querySelector('.detail-head-copy').append(banner());
   for (const [selector, attribute] of [['#megaGrid [data-plan]', 'plan'], ['#detailContent [data-detail-plan]', 'detailPlan']]) {
     const visiblePlans = pricingPlans.filter(plan => plan.enabled);
     document.querySelectorAll(selector).forEach(card => {
@@ -43,6 +43,18 @@ async function refreshLaunchOffer() {
   } catch { launchOffer = null; }
   renderLaunchOffer();
 }
+const launchOfferHeaderRenderer = renderHeaderMenu;
+renderHeaderMenu = function (...args) {
+  const result = launchOfferHeaderRenderer.apply(this, args);
+  renderLaunchOffer();
+  return result;
+};
+const launchOfferDetailRenderer = renderDetailContent;
+renderDetailContent = function (...args) {
+  const result = launchOfferDetailRenderer.apply(this, args);
+  renderLaunchOffer();
+  return result;
+};
 refreshLaunchOffer();
 setInterval(() => { if (!document.hidden) refreshLaunchOffer(); }, 60000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLaunchOffer(); });

@@ -61,38 +61,26 @@ test('new classic scripts and inline site script parse without syntax errors',()
  for(const file of ['detail-articles.js','detail-supplements.js','continuous-details.js','organization-compact.js','organization-modal.js'])new vm.Script(read(file));
  for(const [,s]of read('concept.html').matchAll(/<script>([\s\S]*?)<\/script>/g))new vm.Script(s);
 });
-test('selected articles survive language changes and return through their group without repeating the full index',()=>{
+test('selected articles survive language changes, switch topics and return to the index',()=>{
  const c=contentContext(),elements=new Map();
  function element(){return {hidden:false,textContent:'',innerHTML:'',value:'',dataset:{},classList:{add(){},remove(){},toggle(){}},append(){},appendChild(){},setAttribute(){},focus(){},showModal(){},close(){},scrollTop:0,getBoundingClientRect(){return {top:200,height:80}},scrollTo(){},querySelector(s){return get(s)},addEventListener(name,fn){this[name]=fn}};}
  function get(id){if(!elements.has(id))elements.set(id,element());return elements.get(id);}
  c.document={body:element(),createElement:element,getElementById:get,querySelector:get,querySelectorAll:()=>[]};
- vm.runInContext(`const reduceMotion=true;let currentLang='mn',currentDetailMenu='product',currentDetailView='index',currentDetailFocus=-1,currentResourceSelection=null,currentFlowStep=null;const menuDetail={hidden:false};function syncDetailNavigation(){syncGroupedNavigation()};function renderDetailContent(){currentResourceSelection=null};function closeResourceDetail(){currentResourceSelection=null;currentDetailView='index'};function applyLanguage(){renderDetailContent(currentDetailMenu)};function renderSelectedDetail(k,g,i){renderContinuousDetail(k,g,i)}`,c);
- vm.runInContext(read('menu-icons.js'),c);
- vm.runInContext(read('navigation.js'),c);
+ vm.runInContext(`const reduceMotion=true;let currentLang='mn',currentDetailMenu='product',currentDetailView='index',currentDetailFocus=-1,currentResourceSelection=null,currentFlowStep=null;const menuDetail={hidden:false};function syncDetailNavigation(){};function renderDetailContent(){currentResourceSelection=null};function closeResourceDetail(){currentResourceSelection=null;currentDetailView='index'};function applyLanguage(){renderDetailContent(currentDetailMenu)};function renderSelectedDetail(k,g,i){renderContinuousDetail(k,g,i)}`,c);
  vm.runInContext(read('continuous-details.js'),c);
  vm.runInContext("renderContinuousDetail('product',0,0)",c);
- assert.match(get('detailContent').innerHTML,/Asset Core/);
- assert.doesNotMatch(get('detailContent').innerHTML,/data-nav-group|data-nav-topic/);
- assert.equal(vm.runInContext('currentDetailView',c),'resource');
- assert.equal(get('detailTitle').textContent,vm.runInContext('headerMenus.product.groups[0].items[0][0]',c));
+ assert.match(get('resourceInline').innerHTML,/Asset Core/);
+ assert.equal(vm.runInContext('currentDetailView',c),'index');
+ assert.equal(get('detailTitle').textContent,vm.runInContext('headerMenus.product.t',c));
  vm.runInContext("currentLang='en';applyLanguage()",c);
  assert.equal(vm.runInContext('currentResourceSelection.itemIndex',c),0);
- assert.doesNotMatch(get('detailContent').innerHTML,/[А-Яа-яӨөҮү]/);
+ assert.doesNotMatch(get('resourceInline').innerHTML,/[А-Яа-яӨөҮү]/);
  vm.runInContext("renderSelectedDetail('product',1,0)",c);
  assert.equal(vm.runInContext('currentResourceSelection.groupIndex',c),1);
  assert.equal(vm.runInContext('currentDetailMenu',c),'product');
- vm.runInContext('backGroupedNavigation()',c);
- assert.equal(vm.runInContext('currentResourceSelection',c),null);
- assert.equal((get('detailContent').innerHTML.match(/data-nav-topic=/g)||[]).length,4);
- vm.runInContext('backGroupedNavigation()',c);
+ vm.runInContext('closeResourceDetail()',c);
  assert.equal(vm.runInContext('currentDetailView',c),'index');
  assert.equal(vm.runInContext('currentResourceSelection',c),null);
- assert.equal((get('detailContent').innerHTML.match(/data-nav-group=/g)||[]).length,6);
- vm.runInContext("renderContinuousDetail('ai',3,1);currentLang='mn';applyLanguage()",c);
- assert.equal(vm.runInContext('currentDetailMenu',c),'product');
- assert.equal(vm.runInContext('currentResourceSelection.key',c),'ai');
- assert.match(get('detailTitle').textContent,/Generative AI/);
- assert.match(get('detailKicker').textContent,/Ирээдүйн/);
 });
 test('inline layout preserves menu cards and supplements have truthful media placeholders',()=>{
  const c=contentContext();
