@@ -55,7 +55,7 @@ export default function LaunchOfferEditor() {
       <label>Offer text · EN<textarea maxLength={240} rows={3} value={offer.textEn} placeholder="Launch offer — first {months} months free" onChange={event => update("textEn", event.target.value)} /></label>
       <p className="wide offer-hint">{t("Хоосон үлдээвэл текст автоматаар үүснэ. Өөрийн текстэд {months} гэж оруулбал сарын тоогоор солигдоно.", "Leave blank for automatic text. Use {months} in custom text to insert the number of months.")}</p>
       <label className="offer-checkbox"><input type="checkbox" checked={offer.enabled} onChange={event => update("enabled", event.target.checked)} />{t("Идэвхтэй", "Active")}</label>
-      <label className="offer-checkbox"><input type="checkbox" checked={offer.showInPricing} onChange={event => update("showInPricing", event.target.checked)} />{t("Толгойн Үнэ хэсэгт харуулах", "Show in Pricing")}</label>
+      <p className="offer-hint">{t("Идэвхтэй гэж хадгалмагц зар шууд харагдана. Эхлэх хугацаа болоогүй бол эхлэх огноог хамт харуулна.", "Saving as active shows the announcement immediately, including the start date for upcoming offers.")}</p>
       <div className="wide offer-text-preview"><span>{t("Текстийн урьдчилсан харагдац", "Text preview")}</span><p lang="mn">{launchOfferText(offer, "mn")}</p><p lang="en">{launchOfferText(offer, "en")}</p></div>
     </fieldset>
     <div className="payment-admin-actions"><span>{t("Өөрчлөлт хадгалсны дараа үйлчилнэ.", "Changes take effect after saving.")}</span><button type="submit" disabled={!ready || saving}>{saving ? t("Хадгалж байна…", "Saving…") : t("Урамшуулал хадгалах", "Save offer")}</button></div>

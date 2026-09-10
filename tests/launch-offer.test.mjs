@@ -6,12 +6,12 @@ test('offer starts and ends on inclusive Ulaanbaatar calendar days, and defaults
   const offer = validateLaunchOffer({ ...defaultLaunchOffer, enabled: true, startDate: '2026-09-10', endDate: '2026-09-12' });
   assert.equal(publicLaunchOffer(defaultLaunchOffer), null);
   assert.equal(offerDate('2026-09-10'), Date.parse('2026-09-09T16:00:00Z'));
-  assert.equal(publicLaunchOffer(offer, Date.parse('2026-09-09T15:59:59Z')), null);
+  assert.ok(publicLaunchOffer(offer, Date.parse('2026-09-09T15:59:59Z')));
   assert.ok(publicLaunchOffer(offer, Date.parse('2026-09-09T16:00:00Z')));
   assert.ok(publicLaunchOffer(offer, Date.parse('2026-09-12T15:59:59.999Z')));
   assert.equal(publicLaunchOffer(offer, Date.parse('2026-09-12T16:00:00Z')), null);
   assert.equal(publicLaunchOffer({ ...offer, enabled: false }, offerDate(offer.startDate)), null);
-  assert.equal(publicLaunchOffer({ ...offer, showInPricing: false }, offerDate(offer.startDate)), null);
+  assert.ok(publicLaunchOffer({ ...offer, showInPricing: false }, offerDate(offer.startDate)));
 });
 test('offer rejects invalid dates, months, flags and empty or unknown plan selections', () => {
   for (const patch of [{ freeMonths: 0 }, { freeMonths: 1.5 }, { freeMonths: 121 }, { enabled: 'true' }, { startDate: '2026-02-30' }, { startDate: '2026-12-01', endDate: '2026-11-30' }, { enabled: true }, { scope: 'selected' }, { planIds: ['missing'] }, { textEn: 'a'.repeat(241) }])

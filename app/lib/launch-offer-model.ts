@@ -48,6 +48,6 @@ export function launchOfferText(offer: LaunchOffer, lang: "mn" | "en") {
 }
 export function publicLaunchOffer(offer: LaunchOffer, now = Date.now()) {
   const startsAt = offerDate(offer.startDate), expiresAt = offerDate(offer.endDate) + 24 * 60 * 60 * 1000;
-  if (!offer.enabled || !offer.showInPricing || !Number.isFinite(startsAt) || !Number.isFinite(expiresAt) || now < startsAt || now >= expiresAt) return null;
+  if (!offer.enabled || !Number.isFinite(startsAt) || !Number.isFinite(expiresAt) || now >= expiresAt) return null;
   return { ...offer, textMn: launchOfferText(offer, "mn"), textEn: launchOfferText(offer, "en"), startsAt, expiresAt };
 }

@@ -3,7 +3,7 @@
 let launchOffer = null, launchOfferClockOffset = 0, launchOfferExpiryTimer;
 function visibleLaunchOffer() {
   const now = Date.now() + launchOfferClockOffset;
-  return launchOffer && now >= launchOffer.startsAt && now < launchOffer.expiresAt ? launchOffer : null;
+  return launchOffer && now < launchOffer.expiresAt ? launchOffer : null;
 }
 function renderLaunchOffer() {
   megaMenu.classList.toggle('pricing-offer-menu', activeHeaderMenu === 'pricing');
@@ -14,10 +14,12 @@ function renderLaunchOffer() {
   const plans = pricingPlans.filter(plan => plan.enabled && (offer.scope === 'all' || offer.planIds.includes(plan.id)));
   if (!plans.length) return;
   const en = currentLang === 'en', title = en ? offer.textEn : offer.textMn;
+  const upcoming = Date.now() + launchOfferClockOffset < offer.startsAt;
+  const startNotice = upcoming ? (en ? `Starts on ${offer.startDate}` : `${offer.startDate} өдрөөс эхэлнэ`) : '';
   const scope = offer.scope === 'all' ? (en ? 'All plans' : 'Бүх багц') : plans.map(plan => plan.name).join(', ');
   function banner() {
     const node = document.createElement('aside'); node.className = 'launch-offer-banner';
-    node.innerHTML = `<strong>${esc(title)}</strong><span>${en ? 'Applicable plans' : 'Хамаарах багц'}: ${esc(scope)}</span>`;
+    node.innerHTML = `<strong>${esc(title)}</strong>${upcoming ? `<span>${esc(startNotice)}</span>` : ''}<span>${en ? 'Applicable plans' : 'Хамаарах багц'}: ${esc(scope)}</span>`;
     return node;
   }
   if (activeHeaderMenu === 'pricing') megaMenu.querySelector('.mega-head').append(banner());
