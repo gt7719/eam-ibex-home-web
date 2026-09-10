@@ -3,14 +3,14 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 const read=name=>fs.readFileSync(new URL('../'+name,import.meta.url),'utf8');
-test('iBeX environment precedes pricing without changing existing menu triggers',()=>{
+test('iBeX environment precedes pricing in the approved compact navigation',()=>{
   const html=read('public/concept.html');
   const nav=html.slice(html.indexOf('<nav class="nav"'),html.indexOf('</nav>'));
-  assert.ok(nav.indexOf('data-menu="ai"')<nav.indexOf('href="/organization"'));
+  assert.ok(nav.indexOf('data-menu="solution"')<nav.indexOf('href="/organization"'));
   assert.ok(nav.indexOf('href="/organization"')<nav.indexOf('data-menu="pricing"'));
   assert.ok(nav.indexOf('data-menu="pricing"')<nav.indexOf('data-menu="intro"'));
   assert.match(nav,/<span class="mn">iBeX орчин<\/span><span class="en">iBeX environment<\/span>/);
-  assert.equal((nav.match(/class="menu-trigger"/g)||[]).length,6);
+  assert.equal((nav.match(/class="menu-trigger"/g)||[]).length,4);
   assert.match(nav,/class="organization-link" href="\/organization" target="_top"/);
   assert.match(read('app/organization/page.tsx'),/src="\/organization-preview.html"/);
 });

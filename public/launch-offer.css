@@ -1,0 +1,11 @@
+.launch-offer-banner {
+  display: grid; gap: 6px; margin: 16px 0; padding: 18px 20px;
+  border: 1px solid #d946ef60; border-radius: 14px; background: #d946ef10; color: #fae8ff;
+  overflow-wrap: anywhere;
+}
+.launch-offer-banner strong { font-size: 1.125rem; line-height: 1.5; }
+.launch-offer-banner > span { font-size: .875rem; color: #c9bdd0; }
+.launch-offer-badge { display: inline-block; margin: 8px 0 2px; padding: 5px 9px; border-radius: 8px; background: #d946ef1c; color: #f5d0fe; font-size: .875rem; line-height: 1.5; }
+body.theme-day .launch-offer-banner { background: #fdf4ff; color: #701a75; border-color: #e9b6ed; }
+body.theme-day .launch-offer-banner > span { color: #675d70; }
+body.theme-day .launch-offer-badge { background: #fae8ff; color: #86198f; }

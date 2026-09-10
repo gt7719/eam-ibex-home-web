@@ -489,6 +489,20 @@ select:focus-visible, textarea:focus-visible {
 .social-gallery-actions { justify-content: flex-end; }
 .social-gallery-actions button { min-width: 36px; padding: 0 9px; border-color: rgba(168, 85, 247, .25); color: var(--admin-text); background: rgba(168, 85, 247, .06); }
 .social-gallery-empty { padding: 18px; border: 1px dashed rgba(168, 85, 247, .18); border-radius: 11px; text-align: center; }
+.launch-offer-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 0; padding: 22px; border: 0; }
+.launch-offer-fields > label { display: grid; gap: 8px; min-width: 0; font-size: 14px; }
+.launch-offer-fields :is(input:not([type="checkbox"]), select, textarea) { width: 100%; padding: 12px; border: 1px solid #9872b555; border-radius: 10px; color: var(--admin-text); background: var(--admin-surface); font: inherit; font-size: 16px; }
+.launch-offer-fields textarea { min-height: 110px; resize: vertical; }
+.launch-offer-fields .wide { grid-column: 1 / -1; }
+.launch-offer-fields > .offer-checkbox { display: flex; align-items: center; gap: 10px; }
+.offer-plan-selection { display: flex; flex-wrap: wrap; gap: 18px; padding: 14px; border: 1px solid #9872b544; border-radius: 10px; }
+.offer-plan-selection label { display: flex; align-items: center; gap: 8px; }
+.offer-hint { margin: 0; color: var(--admin-muted); font-size: 14px; line-height: 1.6; }
+.offer-text-preview { padding: 18px; border: 1px solid #d946ef55; border-radius: 12px; background: #d946ef0d; overflow-wrap: anywhere; }
+.offer-text-preview span { color: var(--admin-muted); font-size: 14px; }
+.offer-text-preview p { margin: 10px 0 0; font-size: 16px; line-height: 1.6; }
+.launch-offer-fields :focus-visible { outline: 2px solid var(--admin-action); outline-offset: 3px; }
+@media (max-width: 680px) { .launch-offer-fields { grid-template-columns: minmax(0, 1fr); padding: 16px; } }
 [data-ibex-theme="day"] .social-media-editor { background: #faf8fc; }
 [data-ibex-theme="day"] .social-caption-fields input { color: var(--admin-text); background: #fff; }
 [data-ibex-theme="day"] .social-upload-button,

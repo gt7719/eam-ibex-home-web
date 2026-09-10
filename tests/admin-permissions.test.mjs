@@ -95,6 +95,17 @@ test("denies pricing writes when the editor lacks pricing permission", { concurr
   assert.equal(database.batches.length, 0);
 });
 
+test("launch offer requires login and pricing permission", { concurrency: false }, async () => {
+  const database = createDatabase({ permissions: ["partners.manage"] });
+  assert.equal((await dispatch(database, new Request("http://localhost/api/admin/launch-offer"))).status, 401);
+  assert.equal((await dispatch(database, adminRequest("/api/admin/launch-offer", "PUT", {}))).status, 403);
+  const allowed = createDatabase({ permissions: ["pricing.manage"] });
+  const response = await dispatch(allowed, adminRequest("/api/admin/launch-offer", "GET"));
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).offer.enabled, false);
+  assert.equal((await dispatch(allowed, adminRequest("/api/admin/launch-offer", "PUT", { revision: 0, offer: {} }))).status, 400);
+});
+
 test("allows only the content section assigned to the editor", { concurrency: false }, async () => {
   const database = createDatabase({ permissions: ["partners.manage"] });
   const response = await dispatch(

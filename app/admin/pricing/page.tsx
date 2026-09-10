@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useSiteLanguage } from "../../lib/use-site-language";
+import LaunchOfferEditor from "./launch-offer-editor";
 
 type PaymentMethod = {
   id: "card" | "qr" | "bank_app" | "transfer" | "other";
@@ -75,8 +76,9 @@ export default function PricingAdminPage() {
         <div className="pricing-admin-section-head"><span className="admin-step">01</span><h2>{t("Багцын шаталсан тохиргоо", "Tiered package configuration")}</h2><p>{t("Free → Go → Plus → Pro → Custom дарааллаар сарын MNT үнэ, жилийн хямдрал, хэрэглэгч, хөрөнгө болон цэсийг тогтооно.", "Configure monthly MNT prices, annual discounts, users, assets and menus in Free → Go → Plus → Pro → Custom order.")}</p></div>
         <iframe className="package-admin-frame" src="/package-admin.html" title={t("Багцын шаталсан тохиргоо", "Tiered package configuration")} />
       </section>
+      <LaunchOfferEditor />
       <form className="pricing-admin-section payment-admin-section" onSubmit={save}>
-        <div className="pricing-admin-section-head"><span className="admin-step">02</span><h2>{t("Төлбөрийн хэлбэр", "Payment methods")}</h2><p>{t("Нийтийн BUY цонхонд харуулах хэлбэрийг идэвхжүүлнэ. Банкнаас өгсөн HTTPS checkout холбоосыг л оруулна.", "Enable methods shown in the public BUY flow and enter only bank-provided HTTPS checkout links.")}</p></div>
+        <div className="pricing-admin-section-head"><span className="admin-step">03</span><h2>{t("Төлбөрийн хэлбэр", "Payment methods")}</h2><p>{t("Нийтийн BUY цонхонд харуулах хэлбэрийг идэвхжүүлнэ. Банкнаас өгсөн HTTPS checkout холбоосыг л оруулна.", "Enable methods shown in the public BUY flow and enter only bank-provided HTTPS checkout links.")}</p></div>
         {loading ? <p className="admin-users-empty">{t("Тохиргоог уншиж байна…", "Loading settings…")}</p> : <div className="payment-admin-grid">{methods.map((method) => (
           <article className="payment-admin-card" key={method.id}>
             <div className="payment-admin-title"><strong>{t(methodNames[method.id], method.labelEn || methodNames[method.id])}</strong><label><input type="checkbox" checked={method.enabled} onChange={(event) => update(method.id, "enabled", event.target.checked)} /> {t("Харуулах", "Show")}</label></div>

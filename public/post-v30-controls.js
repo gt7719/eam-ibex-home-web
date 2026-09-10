@@ -52,6 +52,7 @@ const postV30HeaderRenderer = renderHeaderMenu;
 renderHeaderMenu = function (key) {
   postV30HeaderRenderer(key);
   megaAdmin.hidden = true;
+  if (typeof renderLaunchOffer === "function") renderLaunchOffer();
 };
 megaAdmin.hidden = true;
 
@@ -67,13 +68,16 @@ function paymentMethodMarkup(en) {
     .join("");
 }
 
-const postV30DetailRenderer = renderDetailContent;
 renderDetailContent = function (key, focusGroup = -1) {
   if (key !== "pricing") {
-    postV30DetailRenderer(key, focusGroup);
+    renderNavigationDetail(key, focusGroup);
     updateDetailTopSafety();
     return;
   }
+  navigationState = null;
+  document.getElementById("detailShell").classList.remove("grouped-detail");
+  document.getElementById("detailKicker").hidden = false;
+  document.getElementById("detailIntro").hidden = false;
   currentDetailView = "index";
   currentDetailFocus = focusGroup;
   currentResourceSelection = null;
@@ -115,6 +119,7 @@ renderDetailContent = function (key, focusGroup = -1) {
     updatePaymentAction();
   }
   updateDetailTopSafety();
+  if (typeof renderLaunchOffer === "function") renderLaunchOffer();
 };
 
 function updatePaymentAction() {

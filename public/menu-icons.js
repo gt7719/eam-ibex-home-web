@@ -67,7 +67,10 @@ function ibexMenuIconName(key,groupIndex,itemIndex){
 }
 
 function ibexMenuIcon(key,groupIndex,itemIndex){
-  const name=ibexMenuIconName(key,groupIndex,itemIndex),paths=name?ibexMenuIconPaths[name]:null;
+  return ibexOutlineIcon(ibexMenuIconName(key,groupIndex,itemIndex));
+}
+function ibexOutlineIcon(name){
+  const paths=name?ibexMenuIconPaths[name]:null;
   if(!paths)return'';
   return `<span class="menu-item-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths}</svg></span>`;
 }
