@@ -6,6 +6,7 @@ function visibleLaunchOffer() {
   return launchOffer && now >= launchOffer.startsAt && now < launchOffer.expiresAt ? launchOffer : null;
 }
 function renderLaunchOffer() {
+  megaMenu.classList.toggle('pricing-offer-menu', activeHeaderMenu === 'pricing');
   document.querySelectorAll('.launch-offer-banner, .launch-offer-badge').forEach(node => node.remove());
   clearTimeout(launchOfferExpiryTimer);
   const offer = visibleLaunchOffer();
@@ -19,7 +20,7 @@ function renderLaunchOffer() {
     node.innerHTML = `<strong>${esc(title)}</strong><span>${en ? 'Applicable plans' : 'Хамаарах багц'}: ${esc(scope)}</span>`;
     return node;
   }
-  if (activeHeaderMenu === 'pricing') megaMenu.querySelector('.mega-copy').append(banner());
+  if (activeHeaderMenu === 'pricing') megaMenu.querySelector('.mega-head').append(banner());
   if (currentDetailMenu === 'pricing') document.querySelector('.detail-head-copy').append(banner());
   for (const [selector, attribute] of [['#megaGrid [data-plan]', 'plan'], ['#detailContent [data-detail-plan]', 'detailPlan']]) {
     const visiblePlans = pricingPlans.filter(plan => plan.enabled);

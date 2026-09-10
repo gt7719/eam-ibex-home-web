@@ -13,7 +13,7 @@ test('active offer appears in both pricing headers, changes language and clears 
       createElement: () => ({ remove() { nodes.splice(nodes.indexOf(this), 1); } }),
       addEventListener() {},
     },
-    megaMenu: { querySelector: () => header },
+    megaMenu: { querySelector: () => header, classList: { toggle() {} } },
     pricingPlans: [{ id: 'basic', name: 'Basic', enabled: true }],
     currentLang: 'mn', activeHeaderMenu: 'pricing', currentDetailMenu: '',
     renderHeaderMenu() {}, renderDetailContent() {}, esc: value => value,

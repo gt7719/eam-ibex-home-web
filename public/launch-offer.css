@@ -9,3 +9,17 @@
 body.theme-day .launch-offer-banner { background: #fdf4ff; color: #701a75; border-color: #e9b6ed; }
 body.theme-day .launch-offer-banner > span { color: #675d70; }
 body.theme-day .launch-offer-badge { background: #fae8ff; color: #86198f; }
+.pricing-offer-menu #megaFoot { display: none; }
+.pricing-offer-menu .mega-foot { justify-content: flex-end; }
+.pricing-offer-menu .mega-head { align-items: center; }
+.pricing-offer-menu .mega-copy { flex: 0 1 36%; }
+.pricing-offer-menu .mega-head > .launch-offer-banner {
+  order: 1; flex: 0 1 580px; margin: 0 auto; text-align: center;
+}
+.pricing-offer-menu .mega-close { order: 2; flex-shrink: 0; align-self: flex-start; }
+@media (max-width: 920px) {
+  .pricing-offer-menu .mega-head { flex-wrap: wrap; }
+  .pricing-offer-menu .mega-copy { flex: 1 1 70%; }
+  .pricing-offer-menu .mega-close { order: 0; }
+  .pricing-offer-menu .mega-head > .launch-offer-banner { flex-basis: 100%; }
+}
