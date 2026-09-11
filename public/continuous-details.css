@@ -3,6 +3,7 @@
 .continuous-article{max-width:1000px;margin:0 auto;color:#cfc6d6;font-size:clamp(14px,1vw,17px);line-height:1.9;overflow-wrap:anywhere}
 .continuous-article p{margin:0 0 1.3em}.continuous-article p:last-child{margin-bottom:0}
 .continuous-article h3,.continuous-article h4{color:#f5edf9;line-height:1.4}.continuous-article h3{font-size:1.3em}.continuous-article h4{font-size:1.1em}
+.agentic-lab-link{display:inline-flex;align-items:center;min-height:44px;margin-top:8px;padding:0 18px;border:1px solid rgba(57,229,140,.38);border-radius:10px;color:#f7fff9;background:linear-gradient(135deg,rgba(111,45,189,.9),rgba(78,28,135,.92));font-size:13px;font-weight:800;text-decoration:none}.agentic-lab-link:hover{border-color:#39e58c;transform:translateY(-1px)}
 .continuous-evidence{margin-top:32px;padding-top:20px;border-top:1px solid #9872b544}.continuous-evidence>section{margin-top:28px}
 .continuous-article .flow-step-media{grid-template-columns:1fr}.continuous-article .flow-step-media img{height:auto;object-fit:contain}.continuous-article .flow-step-media figcaption{font-size:12px;line-height:1.5}
 .pricing-guide{margin-top:32px;padding-top:24px;border-top:1px solid #9872b544}

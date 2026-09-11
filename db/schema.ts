@@ -1,4 +1,4 @@
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const adminUsers = sqliteTable(
   "admin_users",
@@ -54,4 +54,50 @@ export const mediaAssets = sqliteTable(
     createdAt: text("created_at").notNull(),
   },
   (table) => [index("media_assets_created_idx").on(table.createdAt)],
+);
+
+export const aiMonthlyUsage = sqliteTable(
+  "ai_monthly_usage",
+  {
+    tenantId: text("tenant_id").notNull(),
+    monthKey: text("month_key").notNull(),
+    requestCount: integer("request_count").notNull().default(0),
+    costUsd: real("cost_usd").notNull().default(0),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.tenantId, table.monthKey] }),
+    index("ai_monthly_usage_lookup_idx").on(table.tenantId, table.monthKey),
+  ],
+);
+
+export const aiAuditEvents = sqliteTable(
+  "ai_audit_events",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id").notNull(),
+    userId: text("user_id").notNull(),
+    eventType: text("event_type").notNull(),
+    model: text("model"),
+    tool: text("tool"),
+    status: text("status").notNull(),
+    metadataJson: text("metadata_json").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("ai_audit_tenant_created_idx").on(table.tenantId, table.createdAt)],
+);
+
+export const aiApprovals = sqliteTable(
+  "ai_approvals",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id").notNull(),
+    actionType: text("action_type").notNull(),
+    requestedBy: text("requested_by").notNull(),
+    status: text("status").notNull().default("pending"),
+    reason: text("reason").notNull(),
+    createdAt: text("created_at").notNull(),
+    decidedAt: text("decided_at"),
+  },
+  (table) => [index("ai_approvals_tenant_status_idx").on(table.tenantId, table.status)],
 );

@@ -15,6 +15,13 @@
       "when": 1787575135568,
       "tag": "0001_fixed_skreet",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789117374179,
+      "tag": "0002_normal_gamma_corps",
+      "breakpoints": true
     }
   ]
 }

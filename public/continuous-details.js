@@ -23,6 +23,7 @@ function continuousArticleMarkup(key,groupIndex,itemIndex,en){
   const article=detailArticles[`${key}-${groupIndex}-${itemIndex}`];
   if(!article)return `<article class="continuous-article"><p>${en?'This content has not been added yet.':'Энэ мэдээлэл хараахан нэмэгдээгүй байна.'}</p></article>`;
   let html=`<article class="continuous-article">${article[en?'en':'mn'].map(p=>`<p>${esc(p)}</p>`).join('')}`;
+  if(key==='ai'&&groupIndex===3&&itemIndex===1)html+=`<section class="continuous-evidence"><h3>Hybrid Agentic AI Lab</h3><p>${en?'A separate demo combines open-source industrial analytics, a pluggable iBeX engineering AI and OpenAI explanation. It is not connected to core iBeX or live tenant data and never executes a work or safety action.':'Тусдаа demo лаборатори нь open-source үйлдвэрийн аналитик, залгагдах iBeX инженерийн AI болон OpenAI тайлбарыг нэгтгэнэ. Үндсэн iBeX, бодит tenant өгөгдөлд холбоогүй бөгөөд ажил, safety үйлдлийг автоматаар гүйцэтгэхгүй.'}</p><a class="agentic-lab-link" href="/ai-lab" target="_top">${en?'Open Agentic AI Lab →':'Agentic AI Lab нээх →'}</a></section>`;
   // Retain the previously supplied work-flow evidence, now in reading order.
   if(key==='intro'&&groupIndex===1&&itemIndex===1){
     html+=`<section class="continuous-evidence"><h3>${en?'Work-flow screens':'Ажлын урсгалын дэлгэцүүд'}</h3>`;
