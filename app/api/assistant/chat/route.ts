@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readKnowledge, type KnowledgeEntry } from "../../../lib/assistant-knowledge";
+import bookKnowledge from "../../../lib/ibex-book-knowledge.json";
 
 const stopWords = new Set([
   "нь", "ба", "бөгөөд", "энэ", "тэр", "юу", "ямар", "яаж", "хэрхэн", "тухай", "the", "and", "is", "are", "what", "how", "about",
@@ -32,7 +33,8 @@ export async function POST(request: Request) {
   if (message.length < 2) {
     return NextResponse.json({ error: lang === "en" ? "Please enter a question." : "Асуултаа оруулна уу." }, { status: 400 });
   }
-  const { entries } = await readKnowledge();
+  const { entries: managedEntries } = await readKnowledge();
+  const entries = [...managedEntries, ...(bookKnowledge as KnowledgeEntry[])];
   const query = tokens(message);
   const matches = entries
     .filter((entry) => entry.enabled && entry.status === "approved" && entry.visibility === "public")
@@ -64,4 +66,3 @@ export async function POST(request: Request) {
     grounded: true,
   });
 }
-

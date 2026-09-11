@@ -24,6 +24,16 @@ test("assistant UI is bilingual, cites sources and is wired into the public site
   assert.match(widget, /assistant-sources/);
   assert.match(widget, /\/api\/assistant\/chat/);
   assert.match(widget, /get\('admin'\)===\s*'1'\)return/);
+  assert.doesNotMatch(widget, /PM ба PdM ямар ялгаатай вэ\?|How do PM and PdM differ\?/);
+});
+
+test("the approved Mongolian iBeX book is indexed as a public assistant source", () => {
+  const route = read("app/api/assistant/chat/route.ts");
+  const book = JSON.parse(read("app/lib/ibex-book-knowledge.json"));
+  assert.match(route, /ibex-book-knowledge\.json/);
+  assert.ok(book.length >= 400);
+  assert.ok(book.some((entry) => /БҮЛЭГ 40/i.test(`${entry.titleMn} ${entry.sourceLabel}`)));
+  assert.ok(book.every((entry) => entry.status === "approved" && entry.visibility === "public" && entry.enabled));
 });
 
 test("admin chrome reserves its own row instead of covering the workspace", () => {
