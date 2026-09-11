@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateOfferEndDate, defaultLaunchOffer, validateLaunchOffer, publicLaunchOffer, launchOfferText, offerDate } from '../app/lib/launch-offer-model.ts';
+import { calculateOfferEndDate, defaultLaunchOffer, validateLaunchOffer, publicLaunchOffer, launchOfferBadge, launchOfferText, offerDate } from '../app/lib/launch-offer-model.ts';
 
 test('active offer is announced before its start and ends after its inclusive Ulaanbaatar calendar day', () => {
   const offer = validateLaunchOffer({ ...defaultLaunchOffer, enabled: true, startDate: '2026-09-10', durationValue: 3, durationUnit: 'day', endDate: '' });
@@ -13,18 +13,20 @@ test('active offer is announced before its start and ends after its inclusive Ul
   assert.equal(publicLaunchOffer({ ...offer, enabled: false }, offerDate(offer.startDate)), null);
   assert.ok(publicLaunchOffer({ ...offer, showInPricing: false }, offerDate(offer.startDate)));
 });
-test('offer rejects invalid dates, months, flags and empty or unknown plan selections', () => {
-  for (const patch of [{ freeMonths: 0 }, { freeMonths: 1.5 }, { freeMonths: 121 }, { durationValue: 0 }, { durationUnit: 'week' }, { enabled: 'true' }, { startDate: '2026-02-30' }, { enabled: true }, { scope: 'selected' }, { planIds: ['missing'] }, { nameMn: '' }, { textEn: 'a'.repeat(241) }])
+test('offer rejects invalid dates, durations, flags and empty or unknown plan selections', () => {
+  for (const patch of [{ durationValue: 0 }, { durationValue: 121 }, { durationValue: 11, durationUnit: 'year' }, { durationUnit: 'week' }, { enabled: 'true' }, { startDate: '2026-02-30' }, { enabled: true }, { scope: 'selected' }, { planIds: ['missing'] }, { nameMn: '' }, { qualifierMn: 'a'.repeat(41) }, { textEn: 'a'.repeat(241) }])
     assert.throws(() => validateLaunchOffer({ ...defaultLaunchOffer, ...patch }));
   const offer = validateLaunchOffer({ ...defaultLaunchOffer, scope: 'selected', planIds: ['go', 'plus', 'go'] });
   assert.deepEqual(offer.planIds, ['go', 'plus']);
 });
-test('bilingual automatic and customized text use the configured free months', () => {
-  const offer = { ...defaultLaunchOffer, nameMn: 'Хаврын урамшуулал', nameEn: 'Spring offer', freeMonths: 6 };
-  assert.match(launchOfferText(offer, 'mn'), /6 сар үнэгүй/);
-  assert.match(launchOfferText(offer, 'mn'), /Хаврын урамшуулал/);
-  assert.match(launchOfferText(offer, 'en'), /6 months free/);
-  assert.equal(launchOfferText({ ...offer, textEn: '{name}: {months} free months' }, 'en'), 'Spring offer: 6 free months');
+test('automatic and customized text use the selected day, month or year duration', () => {
+  const base = { ...defaultLaunchOffer, nameMn: 'Хаврын урамшуулал', nameEn: 'Spring offer' };
+  assert.equal(launchOfferBadge({ ...base, durationValue: 10, durationUnit: 'day' }, 'mn'), 'Эхний 10 өдөр үнэгүй');
+  assert.equal(launchOfferBadge({ ...base, durationValue: 6, durationUnit: 'month' }, 'en'), 'First 6 months free');
+  assert.equal(launchOfferText({ ...base, durationValue: 1, durationUnit: 'year' }, 'mn'), 'Хаврын урамшуулал — Эхний 1 жил үнэгүй');
+  assert.equal(launchOfferText({ ...base, durationValue: 1, durationUnit: 'year' }, 'en'), 'Spring offer — First 1 year free');
+  assert.equal(launchOfferText({ ...base, qualifierMn: '', durationValue: 1, durationUnit: 'year' }, 'mn'), 'Хаврын урамшуулал — 1 жил үнэгүй');
+  assert.equal(launchOfferText({ ...base, textEn: '{name}: {qualifier} {duration} free', durationValue: 10, durationUnit: 'day' }, 'en'), 'Spring offer: First 10 days free');
 });
 
 test('duration computes an inclusive end date in days, months or years', () => {
@@ -39,6 +41,8 @@ test('legacy offer keeps its historical end date by migrating to an inclusive da
   const legacy = { freeMonths: 6, textMn: '', textEn: '', startDate: '2026-10-01', endDate: '2027-03-31', scope: 'all', planIds: [], enabled: true, showInPricing: true };
   const offer = validateLaunchOffer(legacy);
   assert.equal(offer.nameMn, 'Нээлтийн урамшуулал');
+  assert.equal(offer.qualifierMn, 'Эхний');
   assert.equal(offer.durationUnit, 'day');
   assert.equal(offer.endDate, '2027-03-31');
+  assert.equal('freeMonths' in offer, false);
 });

@@ -1,6 +1,6 @@
 .ibex-assistant {
   position: fixed;
-  z-index: 7600;
+  z-index: 9200;
   right: 24px;
   bottom: 24px;
   font-family: var(--ibex-font-body, Inter, ui-sans-serif, system-ui, sans-serif);
@@ -39,6 +39,7 @@
   display: flex;
   width: min(410px, calc(100vw - 28px));
   height: min(640px, calc(100vh - 120px));
+  height: min(640px, calc(100dvh - 120px));
   flex-direction: column;
   overflow: hidden;
   overscroll-behavior: contain;
@@ -85,10 +86,23 @@ body.theme-day .assistant-launch-copy small, body.theme-day .assistant-head-copy
 body.theme-day .assistant-source small, body.theme-day .assistant-footnote { color: #675d70; }
 
 @media (max-width: 640px) {
-  .ibex-assistant { right: 12px; bottom: 12px; }
+  .ibex-assistant {
+    right: calc(12px + env(safe-area-inset-right));
+    bottom: calc(12px + env(safe-area-inset-bottom));
+  }
   .assistant-launch-copy { display: none; }
   .assistant-launch { width: 48px; padding: 0 8px; justify-content: center; border-radius: 15px; }
-  .assistant-panel { position: fixed; inset: 10px; width: auto; height: auto; border-radius: 20px; }
+  .assistant-panel {
+    position: fixed;
+    top: calc(10px + env(safe-area-inset-top));
+    right: calc(10px + env(safe-area-inset-right));
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    left: calc(10px + env(safe-area-inset-left));
+    width: auto;
+    height: auto;
+    max-height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    border-radius: 20px;
+  }
   .assistant-message { max-width: 92%; }
   .assistant-form textarea { font-size: 16px; }
 }

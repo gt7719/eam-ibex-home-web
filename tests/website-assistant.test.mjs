@@ -27,6 +27,17 @@ test("assistant UI is bilingual, cites sources and is wired into the public site
   assert.doesNotMatch(widget, /PM ба PdM ямар ялгаатай вэ\?|How do PM and PdM differ\?/);
 });
 
+test("mobile assistant remains above the embedded admin overlay and inside device safe areas", () => {
+  const assistant = read("public/assistant-widget.css");
+  const hub = read("public/admin-hub.css");
+  assert.match(assistant, /\.ibex-assistant\s*\{[^}]*z-index:\s*9200/s);
+  assert.match(assistant, /100dvh/);
+  for (const edge of ["top", "right", "bottom", "left"])
+    assert.match(assistant, new RegExp(`safe-area-inset-${edge}`));
+  assert.match(hub, /\.embedded-admin-hub\s+\.ibex-assistant\s*\{[^}]*z-index:\s*9200/s);
+  assert.doesNotMatch(hub, /#assistantWidget\s*\{[^}]*display:\s*none/s);
+});
+
 test("the approved Mongolian iBeX book is indexed as a public assistant source", () => {
   const route = read("app/api/assistant/chat/route.ts");
   const book = JSON.parse(read("app/lib/ibex-book-knowledge.json"));

@@ -2,12 +2,13 @@ import { tierNames } from "../../public/package-model.mjs";
 
 export type OfferDurationUnit = "day" | "month" | "year";
 export type LaunchOffer = {
-  nameMn: string; nameEn: string; freeMonths: number; durationValue: number; durationUnit: OfferDurationUnit;
+  nameMn: string; nameEn: string; qualifierMn: string; qualifierEn: string;
+  durationValue: number; durationUnit: OfferDurationUnit;
   textMn: string; textEn: string; startDate: string; endDate: string;
   scope: "all" | "selected"; planIds: string[]; enabled: boolean; showInPricing: boolean;
 };
 export const defaultLaunchOffer: LaunchOffer = {
-  nameMn: "Нээлтийн урамшуулал", nameEn: "Launch offer", freeMonths: 3,
+  nameMn: "Нээлтийн урамшуулал", nameEn: "Launch offer", qualifierMn: "Эхний", qualifierEn: "First",
   durationValue: 3, durationUnit: "month", textMn: "", textEn: "", startDate: "", endDate: "",
   scope: "all", planIds: [], enabled: false, showInPricing: true,
 };
@@ -50,25 +51,29 @@ function legacyDuration(startDate: string, endDate: string) {
 export function validateLaunchOffer(value: unknown): LaunchOffer {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Урамшууллын бүтэц буруу. / Invalid offer.");
   const v = value as Record<string, unknown>;
-  if (!Number.isInteger(v.freeMonths) || Number(v.freeMonths) < 1 || Number(v.freeMonths) > 120) throw new Error("Үнэгүй сарын тоо 1–120 бүхэл тоо байна. / Enter 1–120 whole months.");
   const nameMn = String(v.nameMn ?? defaultLaunchOffer.nameMn).trim();
   const nameEn = String(v.nameEn ?? defaultLaunchOffer.nameEn).trim();
+  const qualifierMn = String(v.qualifierMn ?? defaultLaunchOffer.qualifierMn).trim();
+  const qualifierEn = String(v.qualifierEn ?? defaultLaunchOffer.qualifierEn).trim();
   if (!nameMn || !nameEn || nameMn.length > 100 || nameEn.length > 100) throw new Error("Урамшууллын MN/EN нэрийг 1–100 тэмдэгтээр оруулна уу. / Enter both offer names using 1–100 characters.");
+  if (qualifierMn.length > 40 || qualifierEn.length > 40) throw new Error("Хугацааны тодотгол 40-өөс ихгүй тэмдэгт байна. / Keep duration qualifiers within 40 characters.");
   for (const key of ["textMn", "textEn", "startDate", "endDate"])
     if (typeof v[key] !== "string" || String(v[key]).length > 240) throw new Error("Текст болон огнооны формат буруу. / Invalid text or date format.");
   if (typeof v.enabled !== "boolean" || (v.showInPricing !== undefined && typeof v.showInPricing !== "boolean") || !["all", "selected"].includes(String(v.scope))) throw new Error("Төлөв эсвэл хамрах хүрээ буруу. / Invalid status or scope.");
   const startDate = String(v.startDate), suppliedEndDate = String(v.endDate);
   const isLegacy = v.durationValue === undefined && v.durationUnit === undefined;
   if (isLegacy && startDate && suppliedEndDate && startDate > suppliedEndDate) throw new Error("Дуусах огноо эхлэхээс өмнө байж болохгүй. / End date precedes start date.");
-  const durationUnit = (isLegacy ? "day" : v.durationUnit) as OfferDurationUnit;
-  const durationValue = Number(isLegacy ? legacyDuration(startDate, suppliedEndDate) : v.durationValue);
-  if (!Number.isInteger(durationValue) || durationValue < 1 || durationValue > 3650 || !["day", "month", "year"].includes(durationUnit)) throw new Error("Үргэлжлэх хугацааг өдөр, сар эсвэл жилээр зөв оруулна уу. / Enter a valid duration in days, months or years.");
+  const legacyHasDates = Boolean(startDate && suppliedEndDate);
+  const durationUnit = (isLegacy ? (legacyHasDates ? "day" : "month") : v.durationUnit) as OfferDurationUnit;
+  const durationValue = Number(isLegacy ? (legacyHasDates ? legacyDuration(startDate, suppliedEndDate) : v.freeMonths ?? defaultLaunchOffer.durationValue) : v.durationValue);
+  const durationMaximum = durationUnit === "day" ? 3650 : durationUnit === "month" ? 120 : 10;
+  if (!Number.isInteger(durationValue) || durationValue < 1 || durationValue > durationMaximum || !["day", "month", "year"].includes(durationUnit)) throw new Error("Үргэлжлэх хугацааг өдөр, сар эсвэл жилээр зөв оруулна уу. / Enter a valid duration in days, months or years.");
   const validIds = tierNames.map((name: string) => name.toLowerCase());
   if (!Array.isArray(v.planIds) || v.planIds.some(id => typeof id !== "string" || !validIds.includes(id))) throw new Error("Хамаарах багцыг зөв сонгоно уу. / Choose valid plans.");
   for (const date of [startDate, suppliedEndDate]) if (date && !Number.isFinite(offerDate(date))) throw new Error("Огноо буруу байна. / Invalid calendar date.");
   const endDate = startDate ? calculateOfferEndDate(startDate, durationValue, durationUnit) : "";
   const offer: LaunchOffer = {
-    nameMn, nameEn, freeMonths: Number(v.freeMonths), durationValue, durationUnit,
+    nameMn, nameEn, qualifierMn, qualifierEn, durationValue, durationUnit,
     textMn: String(v.textMn).trim(), textEn: String(v.textEn).trim(), startDate, endDate,
     scope: v.scope as LaunchOffer["scope"], planIds: [...new Set(v.planIds as string[])],
     enabled: v.enabled, showInPricing: v.showInPricing !== false,
@@ -78,15 +83,45 @@ export function validateLaunchOffer(value: unknown): LaunchOffer {
   return offer;
 }
 
+export function offerDurationText(offer: LaunchOffer, lang: "mn" | "en") {
+  if (lang === "mn") {
+    const unit = offer.durationUnit === "day" ? "өдөр" : offer.durationUnit === "month" ? "сар" : "жил";
+    return `${offer.durationValue} ${unit}`;
+  }
+  return `${offer.durationValue} ${offer.durationUnit}${offer.durationValue === 1 ? "" : "s"}`;
+}
+
+function cleanOfferText(value: string) {
+  return value.replace(/\s+/g, " ").replace(/\s+([,.:;!?])/g, "$1").trim();
+}
+
 export function launchOfferText(offer: LaunchOffer, lang: "mn" | "en") {
   const text = lang === "en" ? offer.textEn : offer.textMn;
   const name = lang === "en" ? offer.nameEn : offer.nameMn;
-  const fallback = lang === "en" ? "{name} — first {months} months free" : "{name} — эхний {months} сар үнэгүй";
-  return (text || fallback).replaceAll("{name}", name).replaceAll("{months}", String(offer.freeMonths));
+  const qualifier = lang === "en" ? offer.qualifierEn : offer.qualifierMn;
+  const duration = offerDurationText(offer, lang);
+  const fallback = lang === "en" ? "{name} — {qualifier} {duration} free" : "{name} — {qualifier} {duration} үнэгүй";
+  return cleanOfferText((text || fallback)
+    .replaceAll("{name}", name)
+    .replaceAll("{qualifier}", qualifier)
+    .replaceAll("{duration}", duration)
+    .replaceAll("{months}", String(offer.durationValue)));
+}
+
+export function launchOfferBadge(offer: LaunchOffer, lang: "mn" | "en") {
+  const qualifier = lang === "en" ? offer.qualifierEn : offer.qualifierMn;
+  return cleanOfferText(lang === "en"
+    ? `${qualifier} ${offerDurationText(offer, lang)} free`
+    : `${qualifier} ${offerDurationText(offer, lang)} үнэгүй`);
 }
 
 export function publicLaunchOffer(offer: LaunchOffer, now = Date.now()) {
   const startsAt = offerDate(offer.startDate), expiresAt = offerDate(offer.endDate) + 24 * 60 * 60 * 1000;
   if (!offer.enabled || !Number.isFinite(startsAt) || !Number.isFinite(expiresAt) || now >= expiresAt) return null;
-  return { ...offer, textMn: launchOfferText(offer, "mn"), textEn: launchOfferText(offer, "en"), startsAt, expiresAt };
+  return {
+    ...offer,
+    textMn: launchOfferText(offer, "mn"), textEn: launchOfferText(offer, "en"),
+    badgeMn: launchOfferBadge(offer, "mn"), badgeEn: launchOfferBadge(offer, "en"),
+    startsAt, expiresAt,
+  };
 }

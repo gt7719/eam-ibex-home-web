@@ -17,8 +17,8 @@ body.theme-day .admin-list.admin-list-embedded { background: var(--ibex-day-page
 .embedded-admin-hub #app > .topbar,
 .embedded-admin-hub #stage,
 .embedded-admin-hub #menuDetail,
-.embedded-admin-hub #megaMenu,
-.embedded-admin-hub #assistantWidget { display: none !important; }
+.embedded-admin-hub #megaMenu { display: none !important; }
+.embedded-admin-hub .ibex-assistant { z-index: 9200; }
 .embedded-admin-hub .admin-overlay {
   position: fixed;
   inset: 0;

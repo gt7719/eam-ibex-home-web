@@ -30,7 +30,7 @@ function renderLaunchOffer() {
       const plan = visiblePlans[Number(card.dataset[attribute])];
       if (!plan || !plans.some(row => row.id === plan.id)) return;
       const badge = document.createElement('span'); badge.className = 'launch-offer-badge';
-      badge.textContent = en ? `First ${offer.freeMonths} months free` : `Эхний ${offer.freeMonths} сар үнэгүй`;
+      badge.textContent = en ? offer.badgeEn : offer.badgeMn;
       card.querySelector('h3')?.after(badge);
     });
   }
