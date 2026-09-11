@@ -55,13 +55,25 @@ renderHeaderMenu = function (key) {
 };
 megaAdmin.hidden = true;
 
+function enabledBankApps(method) {
+  return Array.isArray(method?.apps)
+    ? method.apps.filter((app) => app?.enabled !== false && app?.imageUrl && app?.bankUrl)
+    : [];
+}
+
+function paymentMethodReady(method) {
+  if (method.id === "qr") return !!(method.imageUrl || method.checkoutUrl);
+  if (method.id === "bank_app") return enabledBankApps(method).length > 0 || !!method.checkoutUrl;
+  return !!method.checkoutUrl;
+}
+
 function paymentMethodMarkup(en) {
   return paymentMethods
     .filter((method) => method.enabled)
     .map((method) => {
       const label = en ? method.labelEn : method.labelMn,
         detail = en ? method.detailEn : method.detailMn,
-        ready = !!method.checkoutUrl;
+        ready = paymentMethodReady(method);
       return `<button type="button" class="payment-method ${selectedPaymentMethod === method.id ? "active" : ""}" data-payment="${esc(method.id)}" data-checkout="${esc(method.checkoutUrl)}"><strong>${esc(label)}</strong><small>${esc(detail)}</small><em class="${ready ? "payment-ready" : "payment-pending"}">${ready ? (en ? "READY" : "ХОЛБОГДСОН") : en ? "AWAITING BANK LINK" : "БАНКНЫ ХОЛБООС ХҮЛЭЭЖ БАЙНА"}</em></button>`;
     })
     .join("");
@@ -128,6 +140,7 @@ function updatePaymentAction() {
   confirm.removeAttribute("target");
   confirm.removeAttribute("rel");
   confirm.classList.remove("ready");
+  confirm.hidden = false;
   confirm.setAttribute("aria-disabled", "true");
   if (!method) {
     detail.innerHTML = "";
@@ -137,6 +150,14 @@ function updatePaymentAction() {
     return;
   }
   detail.innerHTML = paymentDetailMarkup(method, en);
+  const localChoice = (method.id === "qr" && method.imageUrl) || (method.id === "bank_app" && enabledBankApps(method).length);
+  if (localChoice && !method.checkoutUrl) {
+    status.textContent = method.id === "qr"
+      ? (en ? "Scan the configured QR with your banking app." : "Тохируулсан QR зургийг банкны апп-аараа уншуулна уу.")
+      : (en ? "Choose a bank app below to continue securely." : "Доорх банкны аппыг сонгож аюулгүй үргэлжлүүлнэ үү.");
+    confirm.hidden = true;
+    return;
+  }
   if (!method.checkoutUrl) {
     status.textContent = en
       ? "The bank connection for this method is not configured. No QR, card data or successful payment is simulated."
@@ -161,6 +182,11 @@ function paymentDetailMarkup(method, en) {
   const configured = !!method.checkoutUrl,
     title = en ? method.labelEn : method.labelMn,
     url = esc(method.checkoutUrl || "");
+  if (method.id === "qr" && method.imageUrl)
+    return `<section class="payment-detail-shell qr"><header><span>▦</span><div><strong>${esc(title)}</strong><small>${en ? "Scan with your banking app" : "Банкны апп-аараа уншуулна уу"}</small></div></header><div class="bank-qr-image-wrap"><img class="bank-qr-image" src="${esc(method.imageUrl)}" alt="${en ? "Bank payment QR" : "Банкны төлбөрийн QR"}"></div><p>${en ? "Verify the recipient and amount in your banking app before confirming." : "Банкны апп дээр хүлээн авагч болон дүнг шалгасны дараа баталгаажуулна уу."}</p></section>`;
+  const apps = enabledBankApps(method);
+  if (method.id === "bank_app" && apps.length)
+    return `<section class="payment-detail-shell bank_app"><header><span>◉</span><div><strong>${esc(title)}</strong><small>${en ? "Choose your bank app" : "Банкны апп сонгоно уу"}</small></div></header><div class="payment-bank-app-grid">${apps.map((app) => `<a href="${esc(app.bankUrl)}" target="_blank" rel="noopener noreferrer"><img src="${esc(app.imageUrl)}" alt=""><strong>${esc(en ? app.nameEn : app.nameMn)}</strong></a>`).join("")}</div><p>${en ? "Selecting an app opens the bank-provided secure link." : "Аппыг дарахад тухайн банкны хамгаалалттай холбоос нээгдэнэ."}</p></section>`;
   if (configured)
     return `<section class="payment-detail-shell ${esc(method.id)}"><header><span>${method.id === "card" ? "▣" : method.id === "qr" ? "▦" : method.id === "bank_app" ? "◉" : method.id === "transfer" ? "⇄" : "◇"}</span><div><strong>${esc(title)}</strong><small>${en ? "Secure bank-hosted payment area" : "Банкны хамгаалалттай төлбөрийн талбай"}</small></div></header><iframe class="payment-hosted-frame" src="${url}" title="${esc(title)}" loading="lazy" referrerpolicy="no-referrer" sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-top-navigation-by-user-activation"></iframe><p>${en ? "If the provider prevents embedded display, use Continue to payment." : "Банк дотор харуулахыг хориглосон бол “Төлбөрт шилжих” командыг ашиглана."}</p></section>`;
   if (method.id === "card")

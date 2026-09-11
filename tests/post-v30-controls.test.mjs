@@ -34,6 +34,18 @@ test("checkout offers card QR bank app transfer and other methods without invent
   );
 });
 
+test("configured QR image and bank-app links render as real payment choices", () => {
+  const script = read("public/post-v30-controls.js"), style = read("public/post-v30.css"), admin = read("app/admin/pricing/page.tsx");
+  assert.match(script, /method\.id === "qr" && method\.imageUrl/);
+  assert.match(script, /enabledBankApps\(method\)/);
+  assert.match(script, /payment-bank-app-grid/);
+  assert.match(script, /target="_blank" rel="noopener noreferrer"/);
+  assert.match(style, /\.bank-qr-image/);
+  assert.match(admin, /accept=/);
+  assert.match(admin, /Аппын зураг/);
+  assert.match(admin, /Банкны холбоос/);
+});
+
 test("pricing and social content controls are permission-gated admin surfaces", () => {
   const admin = read("app/admin/page.tsx"),
     hub = read("public/post-v31-admin-hub.js"),
