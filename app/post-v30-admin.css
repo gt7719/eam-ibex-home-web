@@ -4,3 +4,122 @@
 .navigation-admin-page{width:100%;min-height:100vh;overflow:auto;padding:30px max(18px,3vw) 72px;color:#eee8f2;background:radial-gradient(circle at 86% 0,rgba(111,45,189,.22),transparent 30%),#07060a}.navigation-admin-header{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;width:min(1540px,100%);margin:0 auto 18px}.navigation-admin-header span,.navigation-section-head small,.navigation-preview>small{color:#63e5a3;font-size:9px;font-weight:850;letter-spacing:.16em}.navigation-admin-header h1{margin:7px 0 8px;font-size:clamp(29px,3.2vw,46px);line-height:1;letter-spacing:-.045em}.navigation-admin-header p{max-width:760px;margin:0;color:#9c93a4;font-size:11px;line-height:1.65}.navigation-admin-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}.navigation-admin-actions button,.navigation-groups-head button,.navigation-reset-actions button,.navigation-row-actions button,.navigation-item-card header button,.navigation-add-item{min-height:36px;padding:0 12px;border:1px solid rgba(168,85,247,.28);border-radius:10px;color:#ddd3e5;background:rgba(111,45,189,.08);font:inherit;font-size:9px;font-weight:750;cursor:pointer}.navigation-admin-actions .primary{border-color:rgba(57,229,140,.45);color:#d7f7e6;background:rgba(57,229,140,.1)}.navigation-admin-actions button:disabled,.navigation-row-actions button:disabled,.navigation-item-card header button:disabled{opacity:.35;cursor:not-allowed}.navigation-admin-alert{width:min(1540px,100%);margin:0 auto 12px;padding:11px 14px;border-radius:11px;font-size:10px}.navigation-admin-alert.error{border:1px solid rgba(255,91,128,.35);color:#ffc4d1;background:rgba(255,91,128,.07)}.navigation-admin-alert.success{border:1px solid rgba(57,229,140,.3);color:#bdf2d7;background:rgba(57,229,140,.06)}.navigation-menu-tabs{position:sticky;z-index:5;top:0;display:flex;gap:7px;width:min(1540px,100%);margin:0 auto 12px;padding:10px 0;overflow:auto;background:#07060af2;backdrop-filter:blur(18px)}.navigation-menu-tabs button{flex:0 0 auto;min-height:38px;padding:0 14px;border:1px solid rgba(168,85,247,.2);border-radius:11px;color:#9e94a5;background:rgba(255,255,255,.025);font:inherit;font-size:10px;font-weight:800;cursor:pointer}.navigation-menu-tabs button.active{border-color:rgba(57,229,140,.48);color:#dcf9e9;background:rgba(57,229,140,.08)}.navigation-admin-layout{display:grid;width:min(1540px,100%);margin:auto}.navigation-admin-layout.with-preview{grid-template-columns:minmax(0,1fr) minmax(330px,430px);gap:16px;align-items:start}.navigation-editor{min-width:0}.navigation-section-head,.navigation-fields-card,.navigation-advanced,.navigation-groups{border:1px solid rgba(168,85,247,.2);background:linear-gradient(145deg,rgba(24,15,31,.94),rgba(9,7,12,.94));box-shadow:0 24px 70px rgba(0,0,0,.22)}.navigation-section-head{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 20px;border-radius:19px}.navigation-section-head h2{margin:5px 0 0;font-size:22px}.navigation-switch{display:flex!important;align-items:center;gap:8px;color:#b6acbd!important;font-size:9px!important;font-weight:700!important;letter-spacing:0!important;text-transform:none!important}.navigation-switch input{width:16px!important;height:16px!important;margin:0;accent-color:#39e58c}.navigation-fields-card,.navigation-advanced,.navigation-groups{margin-top:11px;border-radius:19px}.navigation-fields-card{padding:19px}.navigation-fields-card h3,.navigation-groups-head h3{margin:0 0 14px;font-size:14px}.navigation-field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.navigation-field-grid label{display:flex;min-width:0;flex-direction:column;gap:6px;color:#9b92a2;font-size:8px;font-weight:800;letter-spacing:.06em}.navigation-field-grid label.wide{grid-column:span 1}.navigation-field-grid input,.navigation-field-grid textarea,.navigation-field-grid select{width:100%;min-width:0;border:1px solid rgba(168,85,247,.2);border-radius:10px;outline:none;color:#eee8f2;background:rgba(3,3,5,.48);font:inherit;font-size:11px}.navigation-field-grid input,.navigation-field-grid select{height:39px;padding:0 11px}.navigation-field-grid textarea{min-height:96px;padding:10px 11px;resize:vertical;line-height:1.55}.navigation-field-grid input:focus,.navigation-field-grid textarea:focus,.navigation-field-grid select:focus{border-color:rgba(255,209,102,.62);box-shadow:0 0 0 2px rgba(255,209,102,.07)}.navigation-advanced{overflow:hidden}.navigation-advanced summary{padding:17px 19px;color:#c8bdcf;font-size:10px;font-weight:800;cursor:pointer}.navigation-advanced[open] summary{border-bottom:1px solid rgba(255,255,255,.07)}.navigation-advanced>.navigation-field-grid{padding:18px}.navigation-groups{padding:18px}.navigation-groups-head{display:flex;align-items:center;justify-content:space-between;gap:18px}.navigation-groups-head h3{margin-bottom:4px}.navigation-groups-head p{margin:0;color:#817887;font-size:8px}.navigation-group-card{margin-top:10px;overflow:hidden;border:1px solid rgba(168,85,247,.17);border-radius:14px;background:rgba(255,255,255,.02)}.navigation-group-card>summary{display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer}.navigation-group-card>summary>span{display:grid;place-items:center;width:27px;height:27px;border-radius:8px;color:#c99ef4;background:rgba(168,85,247,.13);font-size:8px}.navigation-group-card>summary>strong{font-size:11px}.navigation-group-card>summary>em{margin-left:auto;color:#817887;font-size:8px;font-style:normal}.navigation-group-body{padding:0 14px 14px;border-top:1px solid rgba(255,255,255,.06)}.navigation-row-actions{display:flex;align-items:center;gap:7px;padding:12px 0}.navigation-row-actions .navigation-switch{margin-left:auto}.navigation-row-actions .danger,.navigation-item-card .danger{border-color:rgba(255,91,128,.25);color:#ffc0cf;background:rgba(255,91,128,.05)}.navigation-field-grid.compact textarea{min-height:78px}.navigation-items{display:grid;gap:9px;margin-top:12px}.navigation-item-card{padding:12px;border:1px solid rgba(168,85,247,.14);border-radius:12px;background:rgba(3,3,5,.25)}.navigation-item-card>header{display:flex;align-items:center;gap:8px;margin-bottom:11px}.navigation-item-card>header>span{display:grid;place-items:center;width:23px;height:23px;border-radius:50%;color:#bfa3dc;background:rgba(168,85,247,.12);font-size:8px}.navigation-item-card>header>strong{font-size:10px}.navigation-item-card>header>div{display:flex;gap:5px;margin-left:auto}.navigation-item-card header button{min-width:29px;min-height:29px;padding:0}.navigation-add-item{justify-self:start;border-color:rgba(57,229,140,.3);color:#c9f5df;background:rgba(57,229,140,.06)}.navigation-reset-actions{display:flex;justify-content:flex-end;gap:8px;padding:13px 0}.navigation-preview{position:sticky;top:64px;max-height:calc(100vh - 82px);overflow:auto;padding:22px;border:1px solid rgba(168,85,247,.3);border-radius:20px;background:linear-gradient(145deg,rgba(21,13,28,.98),rgba(7,6,10,.98));box-shadow:0 28px 80px rgba(0,0,0,.4)}.navigation-preview>h2{margin:9px 0;font-size:25px;line-height:1.1}.navigation-preview>p{margin:0 0 17px;color:#a198a8;font-size:10px;line-height:1.6}.navigation-preview>div{display:grid;gap:9px}.navigation-preview section{padding:12px;border:1px solid rgba(168,85,247,.16);border-radius:12px;background:rgba(255,255,255,.025)}.navigation-preview section h3{margin:0 0 9px;color:#ddd3e4;font-size:10px}.navigation-preview article{display:flex;flex-direction:column;gap:3px;padding:7px 0;border-top:1px solid rgba(255,255,255,.05)}.navigation-preview article strong{font-size:9px}.navigation-preview article span{color:#817887;font-size:8px;line-height:1.45}.navigation-admin-state{display:grid;place-items:center;min-height:100vh;color:#aaa0b1;background:#07060a}.navigation-admin-state.error{color:#ffc0cf}[data-ibex-theme="day"] .navigation-admin-page{color:#30283a;background:#f4f2f7}[data-ibex-theme="day"] .navigation-menu-tabs{background:#f4f2f7f2}[data-ibex-theme="day"] .navigation-section-head,[data-ibex-theme="day"] .navigation-fields-card,[data-ibex-theme="day"] .navigation-advanced,[data-ibex-theme="day"] .navigation-groups,[data-ibex-theme="day"] .navigation-preview{border-color:rgba(111,45,189,.17);background:#fff;box-shadow:0 18px 55px rgba(54,38,70,.07)}[data-ibex-theme="day"] .navigation-field-grid input,[data-ibex-theme="day"] .navigation-field-grid textarea,[data-ibex-theme="day"] .navigation-field-grid select{color:#30283a;background:#fff}[data-ibex-theme="day"] .navigation-item-card{background:#faf8fc}
 @media(max-width:1050px){.navigation-admin-layout.with-preview{grid-template-columns:1fr}.navigation-preview{position:static;max-height:none}.navigation-admin-header{align-items:flex-start;flex-direction:column}.navigation-admin-actions{justify-content:flex-start}}
 @media(max-width:680px){.navigation-admin-page{padding:20px 12px 60px}.navigation-admin-actions{width:100%}.navigation-admin-actions button{flex:1}.navigation-field-grid{grid-template-columns:1fr}.navigation-field-grid label.wide{grid-column:auto}.navigation-section-head{align-items:flex-start}.navigation-groups-head{align-items:flex-start;flex-direction:column}.navigation-row-actions{flex-wrap:wrap}.navigation-row-actions .navigation-switch{order:4;width:100%;margin-left:0}.navigation-reset-actions{align-items:stretch;flex-direction:column}.navigation-item-card>header>strong{max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+
+/* Version 48: the header-menu editor owns its mobile scroll and remains legible in both themes. */
+.navigation-admin-page{
+  box-sizing:border-box;
+  height:100dvh;
+  min-height:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+}
+.navigation-admin-page .navigation-admin-header p,
+.navigation-admin-page .navigation-groups-head p,
+.navigation-admin-page .navigation-preview>p,
+.navigation-admin-page .navigation-preview article span{
+  font-size:13px;
+}
+.navigation-admin-page .navigation-admin-actions button,
+.navigation-admin-page .navigation-groups-head button,
+.navigation-admin-page .navigation-reset-actions button,
+.navigation-admin-page .navigation-row-actions button,
+.navigation-admin-page .navigation-item-card header button,
+.navigation-admin-page .navigation-add-item,
+.navigation-admin-page .navigation-menu-tabs button{
+  font-size:13px;
+}
+.navigation-admin-page .navigation-field-grid label,
+.navigation-admin-page .navigation-switch,
+.navigation-admin-page .navigation-groups-head p,
+.navigation-admin-page .navigation-group-card>summary>em{
+  font-size:12px!important;
+}
+.navigation-admin-page .navigation-field-grid input,
+.navigation-admin-page .navigation-field-grid textarea,
+.navigation-admin-page .navigation-field-grid select{
+  font-size:16px;
+}
+[data-ibex-theme="day"] .navigation-admin-page .navigation-admin-header p,
+[data-ibex-theme="day"] .navigation-admin-page .navigation-groups-head p,
+[data-ibex-theme="day"] .navigation-admin-page .navigation-preview>p,
+[data-ibex-theme="day"] .navigation-admin-page .navigation-preview article span,
+[data-ibex-theme="day"] .navigation-admin-page .navigation-group-card>summary>em{
+  color:#62566b;
+}
+[data-ibex-theme="day"] .navigation-admin-page .navigation-admin-actions button,
+[data-ibex-theme="day"] .navigation-admin-page .navigation-groups-head button,
+[data-ibex-theme="day"] .navigation-admin-page .navigation-reset-actions button,
+[data-ibex-theme="day"] .navigation-admin-page .navigation-row-actions button,
+[data-ibex-theme="day"] .navigation-admin-page .navigation-item-card header button,
+[data-ibex-theme="day"] .navigation-admin-page .navigation-add-item{
+  border-color:#cdbedd;
+  color:#493954;
+  background:#f5f0f9;
+}
+[data-ibex-theme="day"] .navigation-admin-page .navigation-admin-actions .primary,
+[data-ibex-theme="day"] .navigation-admin-page .navigation-add-item{
+  border-color:#61bd8e;
+  color:#155f3e;
+  background:#e7f6ee;
+}
+[data-ibex-theme="day"] .navigation-admin-page .navigation-admin-actions button:disabled,
+[data-ibex-theme="day"] .navigation-admin-page .navigation-row-actions button:disabled,
+[data-ibex-theme="day"] .navigation-admin-page .navigation-item-card header button:disabled{
+  opacity:.62;
+}
+[data-ibex-theme="day"] .navigation-admin-page .navigation-menu-tabs button{
+  border-color:#cdbedd;
+  color:#51425b;
+  background:#fff;
+}
+[data-ibex-theme="day"] .navigation-admin-page .navigation-menu-tabs button.active{
+  border-color:#55b985;
+  color:#12633f;
+  background:#e5f6ed;
+}
+[data-ibex-theme="day"] .navigation-admin-page .navigation-switch{
+  color:#51475a!important;
+}
+[data-ibex-theme="day"] .navigation-admin-page .navigation-field-grid label{
+  color:#5e5267;
+}
+[data-ibex-theme="day"] .navigation-admin-page .navigation-field-grid input,
+[data-ibex-theme="day"] .navigation-admin-page .navigation-field-grid textarea,
+[data-ibex-theme="day"] .navigation-admin-page .navigation-field-grid select{
+  border-color:#cfc3d8;
+}
+[data-ibex-theme="day"] .navigation-admin-page .navigation-advanced summary,
+[data-ibex-theme="day"] .navigation-admin-page .navigation-preview section h3{
+  color:#43364c;
+}
+[data-ibex-theme="day"] .navigation-admin-page .navigation-group-card{
+  border-color:#d8cde0;
+  background:#faf8fc;
+}
+[data-ibex-theme="day"] .navigation-admin-page .navigation-group-body,
+[data-ibex-theme="day"] .navigation-admin-page .navigation-preview article{
+  border-color:#e5dfea;
+}
+@media(max-width:680px){
+  .navigation-admin-page{
+    padding:18px 12px max(72px,calc(48px + env(safe-area-inset-bottom)));
+    scroll-padding-top:12px;
+  }
+  .navigation-admin-page .navigation-admin-header{gap:16px}
+  .navigation-admin-page .navigation-admin-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .navigation-admin-page .navigation-admin-actions .primary:last-child{grid-column:1/-1}
+  .navigation-admin-page .navigation-menu-tabs{
+    position:static;
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+    overflow:visible;
+    padding:8px 0 12px;
+  }
+  .navigation-admin-page .navigation-menu-tabs button{width:100%;min-width:0;padding:9px 8px;white-space:normal}
+  .navigation-admin-page .navigation-menu-tabs button:last-child:nth-child(odd){grid-column:1/-1}
+  .navigation-admin-page .navigation-section-head{gap:12px;flex-direction:column}
+}

@@ -45,6 +45,9 @@ test("one admin hub tab contains five sub-tabs and preserves existing sections",
   assert.match(editor, /Нийтлэх/);
   assert.match(editor, /Урьдчилан харах/);
   assert.match(css, /navigation-admin-page[^}]+overflow:auto/);
+  assert.match(css, /Version 48:[\s\S]+\.navigation-admin-page\{[\s\S]*?height:100dvh;[\s\S]*?overflow-y:auto;[\s\S]*?touch-action:pan-y/);
+  assert.match(css, /\[data-ibex-theme="day"\] \.navigation-admin-page \.navigation-menu-tabs button\.active/);
+  assert.match(css, /@media\(max-width:680px\)[\s\S]+\.navigation-admin-page \.navigation-menu-tabs\{[\s\S]*?grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(css, /navigation-field-grid textarea\{min-height:96px[^}]+resize:vertical/);
 });
 
