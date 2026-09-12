@@ -13,6 +13,7 @@ type AdminUser = {
 type Lang = "mn" | "en";
 
 const adminSections = [
+  { id: "navigation", permission: "navigation.manage", mn: "Толгой цэсний мэдээлэл", en: "Header menu content", src: "/admin/navigation?embedded=1" },
   { id: "partners", permission: "partners.manage", mn: "Хамтрагч байгууллага", en: "Partner organizations", src: "/concept.html?admin=content&embeddedHub=1&section=partners" },
   { id: "people", permission: "people.manage", mn: "Төслийн баг", en: "Project team", src: "/concept.html?admin=content&embeddedHub=1&section=people" },
   { id: "pricing", permission: "pricing.manage", mn: "Үнэ ба багц", en: "Pricing", src: "/admin/pricing?embedded=1" },
@@ -21,6 +22,7 @@ const adminSections = [
 ] as const;
 
 const adminPermissions = new Set([
+  "navigation.manage",
   "partners.manage",
   "people.manage",
   "pricing.manage",

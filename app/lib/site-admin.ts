@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 export const ADMIN_SESSION_COOKIE = "ibex_site_session";
 export const ADMIN_SESSION_MAX_AGE = 60 * 60 * 24 * 7;
 export const ADMIN_PERMISSIONS = [
+  "navigation.manage",
   "pricing.manage",
   "partners.manage",
   "people.manage",
@@ -12,6 +13,7 @@ export const ADMIN_PERMISSIONS = [
   "media.upload",
 ] as const;
 export const ADMIN_CONTENT_PERMISSIONS = [
+  "navigation.manage",
   "pricing.manage",
   "partners.manage",
   "people.manage",

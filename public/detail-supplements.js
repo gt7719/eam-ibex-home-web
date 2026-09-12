@@ -16,7 +16,7 @@ const detailArticleImages={
  'intro-1-0':{src:'/ibex-flowcharts/system-flowchart.png',mn:'iBeX системийн хөрөнгө төвтэй ерөнхий урсгал.',en:'Asset-centered overview of the iBeX system flow.'}
 };
 function detailSupplementMarkup(key,g,i,en){
- const id=`${key}-${g}-${i}`,menu=(en?headerMenusEN:headerMenus)[key],title=menu.groups[g].items[i][0],lang=en?1:0;
+ const menu=(en?headerMenusEN:headerMenus)[key],selected=menu.groups[g].items[i],id=selected?.[2]?.id||`${key}-${g}-${i}`,title=selected[0],lang=en?1:0;
  let html='';
  const articleImage=detailArticleImages[id];
  if(articleImage){const caption=en?articleImage.en:articleImage.mn;html+=`<figure class="article-feature-image"><button type="button" data-article-image="${esc(articleImage.src)}" data-article-caption="${esc(caption)}" aria-label="${esc(en?'Expand image':'Зургийг томруулж харах')}"><img src="${esc(articleImage.src)}" alt="${esc(caption)}" loading="lazy"><span>${en?'Expand':'Томруулах'} ↗</span></button><figcaption>${esc(caption)}</figcaption></figure>`;}

@@ -3,9 +3,10 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useSiteLanguage } from "../../lib/use-site-language";
 
-type AdminPermission = "pricing.manage" | "partners.manage" | "people.manage" | "knowledge.manage" | "social.manage" | "media.upload";
+type AdminPermission = "navigation.manage" | "pricing.manage" | "partners.manage" | "people.manage" | "knowledge.manage" | "social.manage" | "media.upload";
 
 const permissionOptions: Array<{ id: AdminPermission; label: string; labelEn: string; detail: string; detailEn: string }> = [
+  { id: "navigation.manage", label: "Толгой цэсний мэдээлэл", labelEn: "Header menu content", detail: "Бүтээгдэхүүн, Шийдэл, Салбар, AI хөгжүүлэлт, Танилцуулга", detailEn: "Product, Solutions, Industries, AI Development and Resources" },
   { id: "pricing.manage", label: "Үнэ ба багц", labelEn: "Pricing and packages", detail: "Багц, үнэ, хэрэглэгч болон хөрөнгийн хязгаар", detailEn: "Package, price, user and asset limits" },
   { id: "partners.manage", label: "Хамтрагч байгууллага", labelEn: "Partner organizations", detail: "Байгууллагын мэдээлэл, лого, холбоос", detailEn: "Organization details, logo and links" },
   { id: "people.manage", label: "Төслийн баг", labelEn: "Project team", detail: "Багийн гишүүн, албан тушаал, танилцуулга", detailEn: "Team members, roles and profiles" },

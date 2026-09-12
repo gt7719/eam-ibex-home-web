@@ -20,22 +20,23 @@ function eventCards(en){
   }).join('')}</div>`;
 }
 function continuousArticleMarkup(key,groupIndex,itemIndex,en){
-  const article=detailArticles[`${key}-${groupIndex}-${itemIndex}`];
+  const selected=(en?headerMenusEN:headerMenus)[key]?.groups?.[groupIndex]?.items?.[itemIndex],articleId=selected?.[2]?.id||`${key}-${groupIndex}-${itemIndex}`;
+  const article=detailArticles[articleId];
   if(!article)return `<article class="continuous-article"><p>${en?'This content has not been added yet.':'Энэ мэдээлэл хараахан нэмэгдээгүй байна.'}</p></article>`;
   let html=`<article class="continuous-article">${article[en?'en':'mn'].map(p=>`<p>${esc(p)}</p>`).join('')}`;
-  if(key==='ai'&&groupIndex===3&&itemIndex===1)html+=`<section class="continuous-evidence"><h3>Hybrid Agentic AI Lab</h3><p>${en?'A separate demo combines open-source industrial analytics, a pluggable iBeX engineering AI and OpenAI explanation. It is not connected to core iBeX or live tenant data and never executes a work or safety action.':'Тусдаа demo лаборатори нь open-source үйлдвэрийн аналитик, залгагдах iBeX инженерийн AI болон OpenAI тайлбарыг нэгтгэнэ. Үндсэн iBeX, бодит tenant өгөгдөлд холбоогүй бөгөөд ажил, safety үйлдлийг автоматаар гүйцэтгэхгүй.'}</p><a class="agentic-lab-link" href="/ai-lab" target="_top">${en?'Open Agentic AI Lab →':'Agentic AI Lab нээх →'}</a></section>`;
+  if(articleId==='ai-3-1')html+=`<section class="continuous-evidence"><h3>Hybrid Agentic AI Lab</h3><p>${en?'A separate demo combines open-source industrial analytics, a pluggable iBeX engineering AI and OpenAI explanation. It is not connected to core iBeX or live tenant data and never executes a work or safety action.':'Тусдаа demo лаборатори нь open-source үйлдвэрийн аналитик, залгагдах iBeX инженерийн AI болон OpenAI тайлбарыг нэгтгэнэ. Үндсэн iBeX, бодит tenant өгөгдөлд холбоогүй бөгөөд ажил, safety үйлдлийг автоматаар гүйцэтгэхгүй.'}</p><a class="agentic-lab-link" href="/ai-lab" target="_top">${en?'Open Agentic AI Lab →':'Agentic AI Lab нээх →'}</a></section>`;
   // Retain the previously supplied work-flow evidence, now in reading order.
-  if(key==='intro'&&groupIndex===1&&itemIndex===1){
+  if(articleId==='intro-1-1'){
     html+=`<section class="continuous-evidence"><h3>${en?'Work-flow screens':'Ажлын урсгалын дэлгэцүүд'}</h3>`;
     for(let i=0;i<4;i++){const step=flowStepData(i,en);html+=`<section><h4>${esc(step.t)}</h4><p>${esc(step.p)}</p><div class="flow-step-media">${step.media.map(([file,caption])=>`<figure><img src="/ibex-screens/${esc(file)}" alt="${esc(caption)}" loading="lazy"><figcaption>${esc(caption)}</figcaption></figure>`).join('')}</div></section>`;}
     html+='</section>';
   }
-  if(key==='intro'&&groupIndex===3&&itemIndex===0){
+  if(articleId==='intro-3-0'){
     const posts=[...socialRows('post'),...socialRows('reel')].sort((a,b)=>(Number(a.sortOrder)||0)-(Number(b.sortOrder)||0));
     html+=`<section class="continuous-evidence"><h3>${en?'iBeX Project Mongolia content':'iBeX Project Mongolia контент'}</h3>${posts.length?`<div class="resource-cards">${posts.map(post=>`<article class="resource-card">${post.imageUrl?`<img src="${esc(post.imageUrl)}" alt="${esc((en?post.imageCaptionEn:post.imageCaptionMn)||post.title||'')}" loading="lazy" style="width:100%;height:auto;border-radius:10px;margin-bottom:12px">`:''}<small>${esc(String(post.type||'post').toUpperCase())}</small><h3>${esc(post.title||post.sourceUrl)}</h3><p>${esc(post.text||'')}</p><a href="${esc(post.sourceUrl)}" target="_blank" rel="noopener noreferrer">${en?'View original ↗':'Эх контентыг харах ↗'}</a></article>`).join('')}</div>`:`<p>${en?'Published Facebook posts and Reels will appear here after administrator review.':'Админ хянаж нийтэлсэн Facebook пост болон Reel энд харагдана.'}</p>`}</section>`;
   }
-  if(key==='intro'&&groupIndex===3&&itemIndex===1)html+=`<section class="continuous-evidence public-events"><h3>${en?'Published public events':'Нийтэлсэн олон нийтийн арга хэмжээ'}</h3>${eventCards(en)}</section>`;
-  if(key==='intro'&&groupIndex===3&&itemIndex===2){
+  if(articleId==='intro-3-1')html+=`<section class="continuous-evidence public-events"><h3>${en?'Published public events':'Нийтэлсэн олон нийтийн арга хэмжээ'}</h3>${eventCards(en)}</section>`;
+  if(articleId==='intro-3-2'){
     const research=socialRows('research');
     html+=`<section class="continuous-evidence"><h3>${en?'Research and development':'Судалгаа ба хөгжүүлэлт'}</h3>${research.length?`<div class="resource-cards">${research.map(row=>`<article class="resource-card">${row.imageUrl?`<img src="${esc(row.imageUrl)}" alt="${esc((en?row.imageCaptionEn:row.imageCaptionMn)||row.title||localizedRow(row,'title',en))}" loading="lazy">`:''}<h3>${esc(row.title||localizedRow(row,'title',en))}</h3><p>${esc(row.text||localizedRow(row,'description',en))}</p>${row.sourceUrl?`<a href="${esc(row.sourceUrl)}" target="_blank" rel="noopener noreferrer">${en?'View source ↗':'Эх сурвалжийг харах ↗'}</a>`:''}</article>`).join('')}</div>`:`<p>${en?'Published research and development content will appear here.':'Нийтэлсэн судалгаа ба хөгжүүлэлтийн мэдээлэл энд харагдана.'}</p>`}</section>`;
   }

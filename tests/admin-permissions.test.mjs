@@ -33,6 +33,10 @@ function createDatabase({ role = "editor", permissions = [], targetRole = "edito
         if (sql.includes("SELECT role FROM admin_users")) return { role: targetRole };
         return null;
       },
+      async all() {
+        if (sql.includes("FROM site_content")) return { results: [] };
+        return { results: [] };
+      },
       async run() {
         runs.push(this);
         return { success: true };
@@ -63,15 +67,16 @@ function runtime(database) {
 }
 
 function adminRequest(path, method, body) {
-  return new Request(`http://localhost${path}`, {
+  const init = {
     method,
     headers: {
       accept: "application/json",
       "content-type": "application/json",
       cookie: "ibex_site_session=test-session-token",
     },
-    body: JSON.stringify(body),
-  });
+  };
+  if (method !== "GET" && method !== "HEAD") init.body = JSON.stringify(body);
+  return new Request(`http://localhost${path}`, init);
 }
 
 async function dispatch(database, request) {
@@ -156,4 +161,23 @@ test("lets an authorized content editor save a public event without a Facebook U
   const saved = database.runs.find((statement) => statement.sql.includes("INSERT INTO site_content"));
   assert.ok(saved);
   assert.equal(saved.values[0], "socialContent");
+});
+
+test("header navigation requires its own permission and publishes atomically", { concurrency: false }, async () => {
+  const denied = createDatabase({ permissions: ["partners.manage"] });
+  assert.equal((await dispatch(denied, adminRequest("/api/admin/navigation", "GET", {}))).status, 403);
+
+  const allowed = createDatabase({ permissions: ["navigation.manage"] });
+  const readResponse = await dispatch(allowed, adminRequest("/api/admin/navigation", "GET", {}));
+  assert.equal(readResponse.status, 200);
+  const navigation = (await readResponse.json()).draft;
+  assert.deepEqual(navigation.menus.map((menu) => menu.id), ["product", "solution", "industry", "ai", "intro"]);
+
+  const publishResponse = await dispatch(
+    allowed,
+    adminRequest("/api/admin/navigation", "PUT", { action: "publish", navigation }),
+  );
+  assert.equal(publishResponse.status, 200);
+  assert.equal(allowed.batches.length, 1);
+  assert.deepEqual(allowed.batches[0].map((statement) => statement.values[0]), ["headerNavigationDraft", "headerNavigation"]);
 });
