@@ -43,6 +43,7 @@ export default function AdminPage() {
   const [checking, setChecking] = useState(true);
   const [lang, setLang] = useState<Lang>("mn");
   const [section, setSection] = useState<string>("partners");
+  const [iframeDirty, setIframeDirty] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.add("admin-hub-open");
@@ -50,6 +51,7 @@ export default function AdminPage() {
     const receiveAppearance = (event: MessageEvent) => {
       if (event.origin !== location.origin) return;
       if (event.data?.type === "ibex-global-appearance") syncLanguage();
+      if (event.data?.type === "ibex-admin-dirty") setIframeDirty(event.data.dirty === true);
     };
     const appearanceTimer = window.setTimeout(syncLanguage, 0);
     window.addEventListener("storage", syncLanguage);
@@ -76,8 +78,16 @@ export default function AdminPage() {
   }, []);
 
   async function logout() {
+    if (iframeDirty && !window.confirm(lang === "en" ? "Discard unsaved changes?" : "Хадгалаагүй өөрчлөлтийг цуцлах уу?")) return;
     await fetch("/api/admin/logout", { method: "POST" });
     window.location.replace("/admin/login");
+  }
+
+  function changeSection(next: string) {
+    if (next === section) return;
+    if (iframeDirty && !window.confirm(lang === "en" ? "Discard unsaved changes?" : "Хадгалаагүй өөрчлөлтийг цуцлах уу?")) return;
+    setIframeDirty(false);
+    setSection(next);
   }
 
   if (checking) {
@@ -101,14 +111,14 @@ export default function AdminPage() {
           <small>{user?.email}</small>
         </span>
         {user?.canManageAdmins ? <Link href="/admin/users">{ui.users}</Link> : null}
-        <Link href="/">{ui.home}</Link>
+        <Link href="/" onClick={(event) => { if (iframeDirty && !window.confirm(lang === "en" ? "Discard unsaved changes?" : "Хадгалаагүй өөрчлөлтийг цуцлах уу?")) event.preventDefault(); }}>{ui.home}</Link>
         <button type="button" onClick={logout}>{ui.logout}</button>
       </div>
       <section className="admin-hub-shell admin-hub-single" aria-label="Сайтын админ удирдлага">
         {hasWorkspaceAccess ? (
           <>
-            <nav className="admin-hub-tabs" aria-label={lang === "en" ? "Administration sections" : "Админ тохиргооны хэсгүүд"}>
-              {allowedSections.map((item) => <button key={item.id} type="button" className={item.id === activeSection?.id ? "active" : ""} onClick={() => setSection(item.id)}>{lang === "en" ? item.en : item.mn}</button>)}
+            <nav className="admin-hub-tabs" role="tablist" aria-label={lang === "en" ? "Administration sections" : "Админ тохиргооны хэсгүүд"}>
+              {allowedSections.map((item) => <button key={item.id} type="button" role="tab" aria-selected={item.id === activeSection?.id} className={item.id === activeSection?.id ? "active" : ""} onClick={() => changeSection(item.id)}>{lang === "en" ? item.en : item.mn}</button>)}
             </nav>
             <div className="admin-hub-content">
               {activeSection ? <iframe key={activeSection.id} src={activeSection.src} title={lang === "en" ? activeSection.en : activeSection.mn} /> : null}

@@ -35,6 +35,18 @@ export const adminSessions = sqliteTable(
   ],
 );
 
+export const adminLoginAttempts = sqliteTable(
+  "admin_login_attempts",
+  {
+    attemptKey: text("attempt_key").primaryKey(),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    firstAttemptAt: text("first_attempt_at").notNull(),
+    lockedUntil: text("locked_until"),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [index("admin_login_attempts_updated_idx").on(table.updatedAt)],
+);
+
 export const siteContent = sqliteTable("site_content", {
   key: text("key").primaryKey(),
   valueJson: text("value_json").notNull(),

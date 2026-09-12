@@ -70,6 +70,7 @@ openSiteAdmin=function(preferredSection){
   adminDraft=clonePlans(pricingPlans);
   partnerDraft=JSON.parse(JSON.stringify(partnerOrganizations));
   peopleDraft=JSON.parse(JSON.stringify(projectPeople));
+  setAdminDirty(false);
   renderAdmin();pricingAdmin.hidden=false;document.getElementById('adminTitle').focus?.();
 };
 

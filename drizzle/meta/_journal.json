@@ -22,6 +22,13 @@
       "when": 1789117374179,
       "tag": "0002_normal_gamma_corps",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1789223410198,
+      "tag": "0003_cooing_timeslip",
+      "breakpoints": true
     }
   ]
 }

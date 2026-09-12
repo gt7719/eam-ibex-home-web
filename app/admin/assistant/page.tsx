@@ -26,6 +26,8 @@ export default function AssistantKnowledgePage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [revision, setRevision] = useState<string | null>(null);
+  const [savedSnapshot, setSavedSnapshot] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -37,13 +39,20 @@ export default function AssistantKnowledgePage() {
       setError(payload.error || "Мэдлэгийн санг уншиж чадсангүй."); setLoading(false); return;
     }
     const next = (payload.entries || []) as KnowledgeEntry[];
-    setEntries(next); setSelectedId((current) => current || next[0]?.id || ""); setLoading(false);
+    setEntries(next); setRevision(payload.updatedAt || null); setSavedSnapshot(JSON.stringify(next)); setSelectedId((current) => current || next[0]?.id || ""); setLoading(false);
   }, []);
   useEffect(() => {
     const embeddedTimer = window.setTimeout(() => setEmbedded(new URLSearchParams(window.location.search).get("embedded") === "1"), 0);
     const timer = window.setTimeout(() => void load(), 0);
     return () => { window.clearTimeout(timer); window.clearTimeout(embeddedTimer); };
   }, [load]);
+  const dirty = Boolean(savedSnapshot && JSON.stringify(entries) !== savedSnapshot);
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => { if (dirty) { event.preventDefault(); event.returnValue = ""; } };
+    window.addEventListener("beforeunload", warn);
+    window.parent.postMessage({ type: "ibex-admin-dirty", dirty }, location.origin);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
 
   const selectedIndex = entries.findIndex((entry) => entry.id === selectedId);
   const selected = selectedIndex >= 0 ? entries[selectedIndex] : null;
@@ -85,18 +94,18 @@ export default function AssistantKnowledgePage() {
   }
   async function save(event: FormEvent) {
     event.preventDefault(); setSaving(true); setError(""); setMessage("");
-    const response = await fetch("/api/admin/assistant-knowledge", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entries }) }).catch(() => null);
+    const response = await fetch("/api/admin/assistant-knowledge", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entries, revision }) }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) setError(payload.error || t("Өөрчлөлтийг хадгалж чадсангүй.", "Could not save changes."));
-    else { setEntries(payload.entries || entries); setMessage(t("Мэдлэгийн сангийн шинэ хувилбарыг хадгаллаа.", "A new knowledge-base version was saved.")); }
+    else { const next = payload.entries || entries; setEntries(next); setRevision(payload.revision || payload.updatedAt || null); setSavedSnapshot(JSON.stringify(next)); setMessage(t("Мэдлэгийн сангийн шинэ хувилбарыг хадгаллаа.", "A new knowledge-base version was saved.")); }
     setSaving(false);
   }
   async function resetDefaults() {
     setSaving(true); setError(""); setMessage("");
-    const response = await fetch("/api/admin/assistant-knowledge", { method: "DELETE" }).catch(() => null);
+    const response = await fetch("/api/admin/assistant-knowledge", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ revision }) }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) setError(payload.error || t("Анхны санг сэргээж чадсангүй.", "Could not restore the approved default library."));
-    else { setEntries(payload.entries || []); setSelectedId(payload.entries?.[0]?.id || ""); setMessage(t("Баталгаажсан анхны мэдлэгийн санг сэргээв.", "The approved default knowledge base was restored.")); }
+    else { const next = payload.entries || []; setEntries(next); setRevision(payload.revision || payload.updatedAt || null); setSavedSnapshot(JSON.stringify(next)); setSelectedId(next[0]?.id || ""); setMessage(t("Баталгаажсан анхны мэдлэгийн санг сэргээв.", "The approved default knowledge base was restored.")); }
     setSaving(false);
   }
 

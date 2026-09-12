@@ -13,6 +13,9 @@ export default function PricingAdminPage() {
   const [embedded, setEmbedded] = useState(false), [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true), [saving, setSaving] = useState(false), [uploading, setUploading] = useState("");
   const [message, setMessage] = useState(""), [error, setError] = useState("");
+  const [revision, setRevision] = useState<string | null>(null), [savedSnapshot, setSavedSnapshot] = useState("");
+  const [packageDirty, setPackageDirty] = useState(false);
+  const [offerDirty, setOfferDirty] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setEmbedded(new URLSearchParams(window.location.search).get("embedded") === "1"), 0);
@@ -20,10 +23,22 @@ export default function PricingAdminPage() {
       if (response.status === 401) { window.location.replace("/admin/login"); return; }
       if (response.status === 403) { window.location.replace("/admin"); return; }
       const payload = await response.json(); if (!response.ok) throw new Error(payload.error || "Төлбөрийн тохиргоог уншиж чадсангүй.");
-      setMethods(payload.methods || []); setLoading(false);
+      const next = payload.methods || []; setMethods(next); setRevision(payload.revision || null); setSavedSnapshot(JSON.stringify(next)); setLoading(false);
     }).catch(reason => { setError(reason instanceof Error ? reason.message : "Төлбөрийн тохиргоог уншиж чадсангүй."); setLoading(false); });
     return () => window.clearTimeout(timer);
   }, []);
+  useEffect(() => {
+    const receive = (event: MessageEvent) => { if (event.origin === location.origin && event.data?.type === "ibex-admin-dirty") setPackageDirty(event.data.dirty === true); };
+    const receiveOffer = (event: Event) => setOfferDirty((event as CustomEvent<boolean>).detail === true);
+    window.addEventListener("message", receive); window.addEventListener("ibex-launch-dirty", receiveOffer);
+    return () => { window.removeEventListener("message", receive); window.removeEventListener("ibex-launch-dirty", receiveOffer); };
+  }, []);
+  const dirty = packageDirty || offerDirty || Boolean(savedSnapshot && JSON.stringify(methods) !== savedSnapshot);
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => { if (dirty) { event.preventDefault(); event.returnValue = ""; } };
+    window.addEventListener("beforeunload", warn); window.parent.postMessage({ type: "ibex-admin-dirty", dirty }, location.origin);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
 
   function update(id: PaymentMethod["id"], key: keyof PaymentMethod, value: string | boolean | BankApp[]) {
     setMethods(current => current.map(method => method.id === id ? { ...method, [key]: value } : method)); setMessage("");
@@ -55,10 +70,10 @@ export default function PricingAdminPage() {
   }
   async function save(event: FormEvent) {
     event.preventDefault(); setSaving(true); setMessage(""); setError("");
-    const response = await fetch("/api/admin/payment-settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ methods }) }).catch(() => null);
+    const response = await fetch("/api/admin/payment-settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ methods, revision }) }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) setError(payload.error || t("Төлбөрийн тохиргоог хадгалж чадсангүй.", "Could not save payment settings."));
-    else { setMethods(payload.methods || methods); setMessage(t("Төлбөрийн хэлбэрийн тохиргоог хадгаллаа.", "Payment method settings were saved.")); }
+    else { const next = payload.methods || methods; setMethods(next); setRevision(payload.revision || null); setSavedSnapshot(JSON.stringify(next)); setMessage(t("Төлбөрийн хэлбэрийн тохиргоог хадгаллаа.", "Payment method settings were saved.")); }
     setSaving(false);
   }
 
@@ -76,10 +91,10 @@ export default function PricingAdminPage() {
         <label>{t("Тайлбар", "Description")} · MN<input value={method.detailMn} onChange={event => update(method.id, "detailMn", event.target.value)} /></label>
         <label>Description · EN<input value={method.detailEn} onChange={event => update(method.id, "detailEn", event.target.value)} /></label>
         {method.id !== "qr" && method.id !== "bank_app" && <label className="wide">{t("Банкны checkout холбоос", "Bank checkout URL")}<input type="url" value={method.checkoutUrl} onChange={event => update(method.id, "checkoutUrl", event.target.value)} placeholder="https://bank-or-gateway.example/checkout" /></label>}
-        {method.id === "qr" && <div className="payment-media-editor wide"><div>{method.imageUrl ? <img src={method.imageUrl} alt={t("Банкны QR урьдчилсан харагдац", "Bank QR preview")} /> : <span>QR</span>}</div><label>{t("QR зураг сонгох", "Choose QR image")}<input type="file" accept="image/*" disabled={uploading === "qr"} onChange={event => { const file = event.target.files?.[0]; if (file) void uploadImage(file, "qr"); event.target.value = ""; }} /></label>{method.imageUrl && <button type="button" onClick={() => update("qr", "imageUrl", "")}>{t("Зураг авах", "Remove image")}</button>}<small>{uploading === "qr" ? t("Байршуулж байна…", "Uploading…") : t("PNG, JPG, WEBP эсвэл SVG зураг.", "PNG, JPG, WEBP or SVG image.")}</small></div>}
+        {method.id === "qr" && <div className="payment-media-editor wide"><div>{method.imageUrl ? <img src={method.imageUrl} alt={t("Банкны QR урьдчилсан харагдац", "Bank QR preview")} /> : <span>QR</span>}</div><label>{t("QR зураг сонгох", "Choose QR image")}<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={uploading === "qr"} onChange={event => { const file = event.target.files?.[0]; if (file) void uploadImage(file, "qr"); event.target.value = ""; }} /></label>{method.imageUrl && <button type="button" onClick={() => update("qr", "imageUrl", "")}>{t("Зураг авах", "Remove image")}</button>}<small>{uploading === "qr" ? t("Байршуулж байна…", "Uploading…") : t("PNG, JPG, WEBP эсвэл GIF зураг.", "PNG, JPG, WEBP or GIF image.")}</small></div>}
         {method.id === "bank_app" && <section className="bank-app-editor wide"><header><div><strong>{t("Банкны аппууд", "Bank apps")}</strong><small>{t("Апп бүрийн зураг болон дарахад нээгдэх холбоосыг тусад нь оруулна.", "Set each app image and its click-through link separately.")}</small></div><button type="button" onClick={addApp}>+ {t("Апп нэмэх", "Add app")}</button></header>{method.apps.length ? <div className="bank-app-list">{method.apps.map((app, index) => <article className="bank-app-row" key={app.id}>
           <div className="bank-app-order"><b>{String(index + 1).padStart(2, "0")}</b><button type="button" disabled={index === 0} onClick={() => moveApp(app.id, -1)}>↑</button><button type="button" disabled={index === method.apps.length - 1} onClick={() => moveApp(app.id, 1)}>↓</button></div>
-          <div className="bank-app-image">{app.imageUrl ? <img src={app.imageUrl} alt="" /> : <span>APP</span>}<label>{t("Аппын зураг", "App image")}<input type="file" accept="image/*" disabled={uploading === app.id} onChange={event => { const file = event.target.files?.[0]; if (file) void uploadImage(file, app.id); event.target.value = ""; }} /></label>{app.imageUrl && <button type="button" onClick={() => updateApp(app.id, "imageUrl", "")}>{t("Авах", "Remove")}</button>}</div>
+          <div className="bank-app-image">{app.imageUrl ? <img src={app.imageUrl} alt="" /> : <span>APP</span>}<label>{t("Аппын зураг", "App image")}<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={uploading === app.id} onChange={event => { const file = event.target.files?.[0]; if (file) void uploadImage(file, app.id); event.target.value = ""; }} /></label>{app.imageUrl && <button type="button" onClick={() => updateApp(app.id, "imageUrl", "")}>{t("Авах", "Remove")}</button>}</div>
           <label>{t("Аппын нэр", "App name")} · MN<input value={app.nameMn} onChange={event => updateApp(app.id, "nameMn", event.target.value)} /></label><label>App name · EN<input value={app.nameEn} onChange={event => updateApp(app.id, "nameEn", event.target.value)} /></label><label className="bank-app-url">{t("Банкны холбоос", "Bank link")}<input type="url" value={app.bankUrl} placeholder="https://bank.example/pay" onChange={event => updateApp(app.id, "bankUrl", event.target.value)} /></label>
           <label className="bank-app-enabled"><input type="checkbox" checked={app.enabled} onChange={event => updateApp(app.id, "enabled", event.target.checked)} />{t("Харуулах", "Show")}</label><button className="bank-app-delete" type="button" onClick={() => update("bank_app", "apps", method.apps.filter(item => item.id !== app.id))}>×</button>
         </article>)}</div> : <p className="bank-app-empty">{t("Банкны апп нэмээгүй байна.", "No bank apps added.")}</p>}</section>}

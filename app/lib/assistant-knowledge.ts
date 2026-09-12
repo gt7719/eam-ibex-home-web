@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { safeHttpsUrl } from "./admin-security";
 
 export type KnowledgeStatus = "draft" | "approved" | "archived";
 export type KnowledgeVisibility = "public" | "internal" | "restricted";
@@ -143,7 +144,7 @@ export function normalizeKnowledge(value: unknown): KnowledgeEntry[] {
   return value.filter(isEntry).map((row) => ({
     ...row,
     keywords: row.keywords.map(String).filter(Boolean).slice(0, 30),
-    sourceUrl: row.sourceUrl || "",
+    sourceUrl: safeHttpsUrl(row.sourceUrl) || "",
     titleEn: row.titleEn || row.titleMn,
     contentEn: row.contentEn || row.contentMn,
     version: row.version || "1.0",

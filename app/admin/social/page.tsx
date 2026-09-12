@@ -63,6 +63,8 @@ export default function SocialContentPage() {
   const [uploading, setUploading] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [revision, setRevision] = useState<string | null>(null);
+  const [savedSnapshot, setSavedSnapshot] = useState("");
 
   useEffect(() => {
     if (new URLSearchParams(location.search).get("embedded") === "1") {
@@ -73,11 +75,18 @@ export default function SocialContentPage() {
         if (response.status === 401) { location.replace("/admin/login"); return; }
         if (response.status === 403) { location.replace("/admin"); return; }
         const payload = await response.json();
-        setEntries(payload.entries || []);
+        const next = payload.entries || []; setEntries(next); setRevision(payload.revision || null); setSavedSnapshot(JSON.stringify(next));
       })
       .catch(() => setError("Контентын мэдээллийг уншиж чадсангүй. / Could not load content."));
     return () => document.body.classList.remove("embedded-child-admin");
   }, []);
+  const dirty = Boolean(savedSnapshot && JSON.stringify(entries) !== savedSnapshot);
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => { if (dirty) { event.preventDefault(); event.returnValue = ""; } };
+    window.addEventListener("beforeunload", warn);
+    window.parent.postMessage({ type: "ibex-admin-dirty", dirty }, location.origin);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
 
   function update<K extends keyof Entry>(id: string, key: K, value: Entry[K]) {
     setEntries((rows) => rows.map((row) => row.id === id ? { ...row, [key]: value } : row));
@@ -92,8 +101,8 @@ export default function SocialContentPage() {
   }
 
   async function uploadImage(file: File) {
-    if (!file.type.startsWith("image/") || file.size > 25 * 1024 * 1024) {
-      throw new Error(t("PNG, JPG, WebP, GIF эсвэл SVG зураг 25 MB-аас бага байна.", "Choose a PNG, JPG, WebP, GIF or SVG image smaller than 25 MB."));
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type) || file.size > 25 * 1024 * 1024) {
+      throw new Error(t("PNG, JPG, WebP эсвэл GIF зураг 25 MB-аас бага байна.", "Choose a PNG, JPG, WebP or GIF image smaller than 25 MB."));
     }
     const form = new FormData();
     form.append("file", file);
@@ -199,12 +208,12 @@ export default function SocialContentPage() {
     const response = await fetch("/api/admin/social-content", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ entries }),
+      body: JSON.stringify({ entries, revision }),
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) setError(payload.error || t("Хадгалж чадсангүй.", "Could not save changes."));
     else {
-      setEntries(payload.entries);
+      setEntries(payload.entries); setRevision(payload.revision || null); setSavedSnapshot(JSON.stringify(payload.entries));
       setMessage(t("Мэдээ ба контентын өөрчлөлтийг хадгаллаа.", "News and content changes were saved."));
     }
     setBusy(false);

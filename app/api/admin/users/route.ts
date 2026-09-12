@@ -10,6 +10,7 @@ import {
   normalizeAdminPermissions,
   type AdminPermission,
 } from "../../../lib/site-admin";
+import { hasTrustedOrigin } from "../../../lib/admin-security";
 
 type UserRow = {
   id: string;
@@ -65,6 +66,7 @@ function requestedPermissions(value: unknown) {
 }
 
 export async function POST(request: Request) {
+  if (!hasTrustedOrigin(request)) return NextResponse.json({ error: "Origin mismatch" }, { status: 403 });
   const owner = await ownerSession();
   if (!owner) return NextResponse.json({ error: "Админ нэмэх эрхгүй байна." }, { status: 403 });
   let body: { email?: string; name?: string; password?: string; permissions?: unknown };
@@ -106,6 +108,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  if (!hasTrustedOrigin(request)) return NextResponse.json({ error: "Origin mismatch" }, { status: 403 });
   const owner = await ownerSession();
   if (!owner) return NextResponse.json({ error: "Админы төлөв өөрчлөх эрхгүй байна." }, { status: 403 });
   let body: { id?: string; status?: "active" | "suspended"; permissions?: unknown };

@@ -3,11 +3,12 @@ let lang='mn';try{lang=localStorage.getItem('ibex-lang')==='en'?'en':'mn';docume
 const t=(mn,en)=>lang==='en'?en:mn,el=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function syncStoredAppearance(){try{lang=localStorage.getItem('ibex-lang')==='en'?'en':'mn';document.body.classList.toggle('day',localStorage.getItem('ibex-theme')==='day');render();}catch{}}
 let saved=null,config=null,step=0,checked=new Set(),editing=false,busy=false,dirty=false;
+function setDirty(value){dirty=value;parent.postMessage({type:'ibex-admin-dirty',dirty:value},location.origin)}
 const label=f=>lang==='en'?f.en:f.mn;
 function message(text){el('status').textContent=text;}
 async function load(){
   busy=true;renderButtons();
-  try{const r=await fetch('/api/admin/packages',{cache:'no-store'});const p=await r.json();if(!r.ok)throw new Error(p.error);saved=p;config=normalizeConfig(structuredClone(p.draft||p.published));checked=new Set(p.draft?p.checked:p.publishedAt?[0,1,2,3,4]:[]);editing=!!p.publishedAt;dirty=false;render();message(t('Тохиргоо ачааллаа. Нийтлэх хүртэл өөрчлөлт ноорог байна.','Loaded. Changes remain a draft until published.'));}
+  try{const r=await fetch('/api/admin/packages',{cache:'no-store'});const p=await r.json();if(!r.ok)throw new Error(p.error);saved=p;config=normalizeConfig(structuredClone(p.draft||p.published));checked=new Set(p.draft?p.checked:p.publishedAt?[0,1,2,3,4]:[]);editing=!!p.publishedAt;setDirty(false);render();message(t('Тохиргоо ачааллаа. Нийтлэх хүртэл өөрчлөлт ноорог байна.','Loaded. Changes remain a draft until published.'));}
   catch(e){message(e.message);}finally{busy=false;renderButtons();}
 }
 function renderButtons(){el('previous').textContent=t('Өмнөх','Back');el('save').textContent=t('Ноорог хадгалах','Save draft');el('next').textContent=step===5?t('Баталж нийтлэх','Publish configuration'):t('Үргэлжлүүлэх','Continue');el('previous').disabled=busy||!config||step===0;el('save').disabled=busy||!config;el('next').disabled=busy||!config||(step===5&&checked.size<5);}
@@ -25,7 +26,7 @@ function render(){
 function renderReview(){
   el('panel').innerHTML=`<h2>${t('Эцсийн хяналт','Final review')}</h2><p class="notice">${t('Өөрчлөлт бүх хэрэглэгчийн шинэ сонголтод үйлчилнэ. Өмнөх баталгаажсан захиалга өөрчлөгдөхгүй.','Changes apply to new selections. Existing confirmed orders are not changed.')}</p><div class="table-wrap"><table><thead><tr><th>${t('Багц','Tier')}</th><th>${t('Хэрэглэгч','Users')}</th><th>${t('Хөрөнгө','Assets')}</th><th>${t('Сар / Жил · MNT','Month / Year · MNT')}</th><th>${t('Цэс','Menus')}</th></tr></thead><tbody>${config.tiers.map((p,i)=>`<tr><td>${p.name}</td><td>${p.users??'Custom'}</td><td>${p.assets??'Custom'}</td><td>${formatMnt(p.monthlyMnt,lang)} / ${formatMnt(annualMnt(p),lang)}${p.annualDiscountPercent?` (−${p.annualDiscountPercent}%)`:''}</td><td>${features.filter(f=>config.assignments[f.id]<=i).length}</td></tr>`).join('')}</tbody></table></div>${config.tiers.map((p,i)=>`<details><summary>${p.name} · ${t('Бүрэлдэхүүн','Contents')}</summary><p class="feature">${features.filter(f=>config.assignments[f.id]<=i).map(f=>esc(label(f))).join(' · ')}</p></details>`).join('')}<h3>${t('Нийтэлсэн тохиргооны түүх','Publication history')}</h3><p>${t('Сэргээхэд зөвхөн ноорог үүснэ. Хянаж нийтэлсний дараа үйлчилнэ. Сүүлийн 100 бүртгэлийг харуулж байна.','Restore creates a draft only. Review and publish to apply. Showing the latest 100 entries.')}</p>${(saved.history||[]).map(h=>`<div class="history"><span>${esc(h.updated_at)} · ${esc(h.updated_by||'')}</span><button data-restore="${esc(h.key)}">${t('Ноорогт сэргээх','Restore to draft')}</button></div>`).join('')||t('Нийтэлсэн түүх хараахан байхгүй.','No publications yet.')}`;
 }
-function invalidate(){for(let i=step;i<5;i++)checked.delete(i);dirty=true;}
+function invalidate(){for(let i=step;i<5;i++)checked.delete(i);setDirty(true);}
 async function save(action,historyKey){
   if(busy)return;const issues=validateConfig(config);if(issues.length){message(issues.join('\n'));return;}
   if(action==='publish'&&!confirm(t('Бүх багцын тохиргоог нийтлэх үү?','Publish all package settings?')))return;
@@ -40,7 +41,7 @@ el('panel').addEventListener('click',e=>{const b=e.target.closest('button');if(!
 el('tabs').addEventListener('click',e=>{const b=e.target.closest('[data-step]');if(b&&!b.disabled){step=Number(b.dataset.step);render();window.scrollTo(0,0);}});
 el('previous').onclick=()=>{step=Math.max(0,step-1);render();window.scrollTo(0,0);};
 el('save').onclick=()=>save('draft');
-el('next').onclick=()=>{if(step===5){save('publish');return;}const issues=validateConfig(config);if(issues.length){message(issues.join('\n'));return;}checked.add(step);step++;dirty=true;message('');render();window.scrollTo(0,0);};
+el('next').onclick=()=>{if(step===5){save('publish');return;}const issues=validateConfig(config);if(issues.length){message(issues.join('\n'));return;}checked.add(step);step++;setDirty(true);message('');render();window.scrollTo(0,0);};
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();parent.postMessage({type:'ibex-close-admin'},location.origin);}});
 window.addEventListener('message',e=>{if(e.origin!==location.origin||e.source!==parent||e.data?.type!=='ibex-appearance')return;if(['mn','en'].includes(e.data.lang))lang=e.data.lang;if(typeof e.data.day==='boolean')document.body.classList.toggle('day',e.data.day);render();});

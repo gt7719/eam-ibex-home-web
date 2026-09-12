@@ -10,6 +10,14 @@ export type NavigationItem = {
   href: string;
   openInNewTab: boolean;
   enabled: boolean;
+  media?: {
+    type: "none" | "image" | "video" | "pdf";
+    url: string;
+    altMn: string;
+    altEn: string;
+    captionMn: string;
+    captionEn: string;
+  };
 };
 
 export type NavigationGroup = {
@@ -926,10 +934,22 @@ function id(value: unknown, fallback: string) {
 
 function safeHref(value: unknown) {
   const candidate = typeof value === "string" ? value.trim().slice(0, 500) : "";
-  if (!candidate || candidate.startsWith("/") || candidate.startsWith("#")) return candidate;
+  if (!candidate || candidate.startsWith("#")) return candidate;
+  if (candidate.startsWith("/") && !candidate.startsWith("//")) return candidate;
   try {
     const url = new URL(candidate);
     return url.protocol === "https:" ? candidate : "";
+  } catch {
+    return "";
+  }
+}
+
+function safeMediaHref(value: unknown) {
+  const candidate = text(value, "", 800);
+  if (/^\/api\/media\/[a-zA-Z0-9-]{1,100}$/.test(candidate)) return candidate;
+  try {
+    const parsed = new URL(candidate);
+    return parsed.protocol === "https:" ? candidate : "";
   } catch {
     return "";
   }
@@ -963,6 +983,18 @@ export function normalizeNavigation(value: unknown): NavigationConfig | null {
                   href: safeHref(item?.href),
                   openInNewTab: item?.openInNewTab === true,
                   enabled: item?.enabled !== false,
+                  media: (() => {
+                    const mediaType = ["image", "video", "pdf"].includes(item?.media?.type) ? item.media.type as "image" | "video" | "pdf" : "none";
+                    const mediaUrl = safeMediaHref(item?.media?.url);
+                    return {
+                      type: mediaType !== "none" && mediaUrl ? mediaType : "none",
+                      url: mediaUrl,
+                      altMn: text(item?.media?.altMn, "", 300),
+                      altEn: text(item?.media?.altEn, "", 300),
+                      captionMn: text(item?.media?.captionMn, "", 500),
+                      captionEn: text(item?.media?.captionEn, "", 500),
+                    };
+                  })(),
                 };
               })
             : [];

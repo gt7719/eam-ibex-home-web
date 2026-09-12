@@ -16,7 +16,7 @@ function localizedNavigationMenu(menu,en){
       items:(group.items||[]).filter(item=>item.enabled!==false).map(item=>[
         en?item.titleEn:item.titleMn,
         en?item.descriptionEn:item.descriptionMn,
-        {id:item.id,icon:item.icon,href:item.href||'',openInNewTab:item.openInNewTab===true}
+        {id:item.id,icon:item.icon,href:item.href||'',openInNewTab:item.openInNewTab===true,media:item.media?{type:item.media.type,url:item.media.url||'',alt:en?item.media.altEn:item.media.altMn,caption:en?item.media.captionEn:item.media.captionMn}:null}
       ])
     }))
   }

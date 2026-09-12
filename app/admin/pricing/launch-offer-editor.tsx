@@ -11,6 +11,7 @@ export default function LaunchOfferEditor() {
   const [revision, setRevision] = useState(0);
   const [ready, setReady] = useState(false), [saving, setSaving] = useState(false);
   const [error, setError] = useState(""), [message, setMessage] = useState("");
+  const [savedSnapshot, setSavedSnapshot] = useState("");
   const load = useCallback(async () => {
     try {
       const response = await fetch("/api/admin/launch-offer", { cache: "no-store" });
@@ -18,12 +19,16 @@ export default function LaunchOfferEditor() {
       if (response.status === 403) { window.location.replace("/admin"); return; }
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Урамшууллыг уншиж чадсангүй. / Could not load offer.");
-      setOffer(data.offer); setRevision(data.revision); setReady(true);
+      setOffer(data.offer); setRevision(data.revision); setSavedSnapshot(JSON.stringify(data.offer)); setReady(true);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Холболтоо шалгана уу. / Check your connection."); }
   }, []);
   // load only updates state after the network request settles.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [load]);
+  const dirty = Boolean(savedSnapshot && JSON.stringify(offer) !== savedSnapshot);
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("ibex-launch-dirty", { detail: dirty }));
+  }, [dirty]);
   function update<K extends keyof LaunchOffer>(key: K, value: LaunchOffer[K]) {
     setOffer(current => {
       const next = { ...current, [key]: value };
@@ -38,7 +43,7 @@ export default function LaunchOfferEditor() {
       const response = await fetch("/api/admin/launch-offer", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ offer, revision }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || t("Хадгалж чадсангүй.", "Could not save."));
-      setOffer(data.offer); setRevision(data.revision);
+      setOffer(data.offer); setRevision(data.revision); setSavedSnapshot(JSON.stringify(data.offer));
       setMessage(t("Урамшууллыг хадгаллаа.", "Offer saved."));
       window.parent.postMessage({ type: "ibex-launch-offer-updated" }, window.location.origin);
     } catch (reason) { setError(reason instanceof Error ? reason.message : t("Холболтоо шалган дахин оролдоно уу.", "Check your connection and retry.")); }

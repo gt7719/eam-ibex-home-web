@@ -8,6 +8,7 @@ import {
   hashPassword,
   isValidEmail,
 } from "../../../lib/site-admin";
+import { hasTrustedOrigin } from "../../../lib/admin-security";
 
 function setupFailure(requestId: string, stage: string, error: unknown) {
   const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
@@ -39,6 +40,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!hasTrustedOrigin(request)) return NextResponse.json({ error: "Origin mismatch" }, { status: 403 });
   const requestId = crypto.randomUUID();
   let adminCount: number;
   try {

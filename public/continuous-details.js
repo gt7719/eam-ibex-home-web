@@ -20,10 +20,11 @@ function eventCards(en){
   }).join('')}</div>`;
 }
 function continuousArticleMarkup(key,groupIndex,itemIndex,en){
-  const selected=(en?headerMenusEN:headerMenus)[key]?.groups?.[groupIndex]?.items?.[itemIndex],articleId=selected?.[2]?.id||`${key}-${groupIndex}-${itemIndex}`;
+  const selected=(en?headerMenusEN:headerMenus)[key]?.groups?.[groupIndex]?.items?.[itemIndex],meta=selected?.[2]||{},articleId=meta.id||`${key}-${groupIndex}-${itemIndex}`,media=meta.media;
   const article=detailArticles[articleId];
-  if(!article)return `<article class="continuous-article"><p>${en?'This content has not been added yet.':'Энэ мэдээлэл хараахан нэмэгдээгүй байна.'}</p></article>`;
-  let html=`<article class="continuous-article">${article[en?'en':'mn'].map(p=>`<p>${esc(p)}</p>`).join('')}`;
+  const mediaMarkup=media?.url&&media.type==='image'?`<figure class="navigation-content-media"><img src="${esc(media.url)}" alt="${esc(media.alt||selected?.[0]||'')}" loading="lazy">${media.caption?`<figcaption>${esc(media.caption)}</figcaption>`:''}</figure>`:media?.url&&media.type==='video'?`<figure class="navigation-content-media"><video src="${esc(media.url)}" controls preload="metadata" aria-label="${esc(media.alt||selected?.[0]||'')}"></video>${media.caption?`<figcaption>${esc(media.caption)}</figcaption>`:''}</figure>`:media?.url&&media.type==='pdf'?`<p class="navigation-content-document"><a href="${esc(media.url)}" target="_blank" rel="noopener noreferrer">${esc(media.caption||(en?'Open PDF document ↗':'PDF баримт нээх ↗'))}</a></p>`:'';
+  if(!article)return `<article class="continuous-article">${mediaMarkup}<p>${en?'This content has not been added yet.':'Энэ мэдээлэл хараахан нэмэгдээгүй байна.'}</p></article>`;
+  let html=`<article class="continuous-article">${mediaMarkup}${article[en?'en':'mn'].map(p=>`<p>${esc(p)}</p>`).join('')}`;
   if(articleId==='ai-3-1')html+=`<section class="continuous-evidence"><h3>Hybrid Agentic AI Lab</h3><p>${en?'A separate demo combines open-source industrial analytics, a pluggable iBeX engineering AI and OpenAI explanation. It is not connected to core iBeX or live tenant data and never executes a work or safety action.':'Тусдаа demo лаборатори нь open-source үйлдвэрийн аналитик, залгагдах iBeX инженерийн AI болон OpenAI тайлбарыг нэгтгэнэ. Үндсэн iBeX, бодит tenant өгөгдөлд холбоогүй бөгөөд ажил, safety үйлдлийг автоматаар гүйцэтгэхгүй.'}</p><a class="agentic-lab-link" href="/ai-lab" target="_top">${en?'Open Agentic AI Lab →':'Agentic AI Lab нээх →'}</a></section>`;
   // Retain the previously supplied work-flow evidence, now in reading order.
   if(articleId==='intro-1-1'){

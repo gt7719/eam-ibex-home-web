@@ -12,9 +12,13 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   if (!object) return new Response("Not found", { status: 404 });
   const headers = new Headers();
   object.writeHttpMetadata(headers);
-  headers.set("Content-Type", record.content_type);
-  headers.set("Content-Disposition", `inline; filename*=UTF-8''${encodeURIComponent(record.filename)}`);
+  const legacySvg = record.content_type === "image/svg+xml";
+  headers.set("Content-Type", legacySvg ? "application/octet-stream" : record.content_type);
+  headers.set("Content-Disposition", `${legacySvg || record.content_type === "application/pdf" ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(record.filename)}`);
   headers.set("Cache-Control", "public, max-age=31536000, immutable");
+  headers.set("Content-Security-Policy", "default-src 'none'; sandbox");
+  headers.set("Cross-Origin-Resource-Policy", "same-origin");
+  headers.set("X-Content-Type-Options", "nosniff");
   if (object.httpEtag) headers.set("ETag", object.httpEtag);
   return new Response(object.body, { headers });
 }

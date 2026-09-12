@@ -418,11 +418,20 @@ select:focus-visible, textarea:focus-visible {
 @media (max-width: 760px) {
   .admin-hub-page { padding: 60px 6px 6px; }
   .admin-hub-shell.admin-hub-single { border-radius: 16px; }
+  .admin-hub-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px;overflow:visible}
+  .admin-hub-tabs button{width:100%;min-width:0;min-height:44px;padding:8px;white-space:normal;border-bottom:1px solid var(--admin-border);border-radius:10px}
+  .admin-hub-tabs button:last-child:nth-child(odd){grid-column:1/-1}
   .admin-auth-card input, .admin-invite-card input, .payment-admin-card input,
   .knowledge-search, .knowledge-grid input, .knowledge-grid select,
   .knowledge-grid textarea, .social-import-fields input { font-size: 16px; }
   .embedded-admin-page.knowledge-page { overflow: auto !important; }
   .embedded-admin-page .knowledge-workspace { flex: 0 0 auto; overflow: visible; }
+}
+
+.admin-session-bar a,.admin-session-bar button,.admin-hub-tabs button,
+.knowledge-editor-head button,.knowledge-reset,.knowledge-actions button,
+.payment-admin-actions button,.social-manual-actions button,.social-delete{
+  min-height:44px;
 }
 
 .social-content-image {

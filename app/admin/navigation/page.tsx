@@ -34,6 +34,7 @@ function newItem(menuId: string): NavigationItem {
     href: "",
     openInNewTab: false,
     enabled: true,
+    media: { type: "none", url: "", altMn: "", altEn: "", captionMn: "", captionEn: "" },
   };
 }
 
@@ -51,12 +52,16 @@ export default function NavigationAdminPage() {
   const { t, lang } = useSiteLanguage();
   const [draft, setDraft] = useState<NavigationConfig | null>(null);
   const [published, setPublished] = useState<NavigationConfig | null>(null);
+  const [revision, setRevision] = useState<string | null>(null);
+  const [savedSnapshot, setSavedSnapshot] = useState("");
   const [activeId, setActiveId] = useState("product");
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [preview, setPreview] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [canUploadMedia, setCanUploadMedia] = useState(false);
+  const [uploading, setUploading] = useState("");
 
   useEffect(() => {
     fetch("/api/admin/navigation", { cache: "no-store" })
@@ -69,6 +74,9 @@ export default function NavigationAdminPage() {
         if (!response.ok) throw new Error(payload.error);
         setDraft(payload.draft);
         setPublished(payload.published);
+        setRevision(payload.draftUpdatedAt || null);
+        setSavedSnapshot(JSON.stringify(payload.draft));
+        setCanUploadMedia(payload.canUploadMedia === true);
         setLoading(false);
       })
       .catch((reason) => {
@@ -76,6 +84,15 @@ export default function NavigationAdminPage() {
         setLoading(false);
       });
   }, []);
+
+  const dirty = Boolean(draft && savedSnapshot && JSON.stringify(draft) !== savedSnapshot);
+
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => { if (dirty) { event.preventDefault(); event.returnValue = ""; } };
+    window.addEventListener("beforeunload", warn);
+    window.parent.postMessage({ type: "ibex-admin-dirty", dirty }, location.origin);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
 
   const activeMenu = useMemo(
     () => draft?.menus.find((menu) => menu.id === activeId) || draft?.menus[0],
@@ -110,7 +127,7 @@ export default function NavigationAdminPage() {
     const response = await fetch("/api/admin/navigation", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, navigation: draft }),
+      body: JSON.stringify({ action, navigation: draft, revision }),
     }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) {
@@ -119,11 +136,29 @@ export default function NavigationAdminPage() {
       return;
     }
     setDraft(payload.navigation);
+    setRevision(payload.revision || payload.updatedAt || null);
+    setSavedSnapshot(JSON.stringify(payload.navigation));
     if (action === "publish") setPublished(clone(payload.navigation));
     setMessage(action === "publish"
       ? t("Цэсийн мэдээллийг сайтад нийтэллээ.", "The menu content was published to the site.")
       : t("Нооргийг хадгаллаа. Сайтын харагдах мэдээлэл өөрчлөгдөөгүй.", "Draft saved. The public site is unchanged."));
     setWorking(false);
+  }
+
+  async function uploadMedia(groupId: string, item: NavigationItem, file: File) {
+    const mediaType = item.media?.type || "none";
+    const allowed = mediaType === "image" ? ["image/jpeg", "image/png", "image/webp", "image/gif"]
+      : mediaType === "video" ? ["video/mp4", "video/webm"] : mediaType === "pdf" ? ["application/pdf"] : [];
+    if (!allowed.includes(file.type)) { setError(t("Сонгосон медиа төрөлтэй тохирох файл оруулна уу.", "Choose a file that matches the selected media type.")); return; }
+    setUploading(item.id); setError("");
+    try {
+      const form = new FormData(); form.append("file", file);
+      const response = await fetch("/api/admin/media", { method: "POST", body: form });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || t("Файлыг байршуулж чадсангүй.", "Could not upload the file."));
+      updateItem(groupId, item.id, (row) => ({ ...row, media: { ...(row.media || { type: mediaType, altMn: "", altEn: "", captionMn: "", captionEn: "" }), type: mediaType, url: payload.url } }));
+    } catch (reason) { setError(reason instanceof Error ? reason.message : t("Файлыг байршуулж чадсангүй.", "Could not upload the file.")); }
+    finally { setUploading(""); }
   }
 
   if (loading) return <main className="navigation-admin-state">{t("Цэсийн мэдээллийг ачаалж байна…", "Loading menu content…")}</main>;
@@ -149,9 +184,9 @@ export default function NavigationAdminPage() {
       {error ? <div className="navigation-admin-alert error" role="alert">{error}</div> : null}
       {message ? <div className="navigation-admin-alert success" role="status">{message}</div> : null}
 
-      <nav className="navigation-menu-tabs" aria-label={t("Удирдах толгой цэс", "Header menu to manage")}>
+      <nav className="navigation-menu-tabs" role="tablist" aria-label={t("Удирдах толгой цэс", "Header menu to manage")}>
         {draft.menus.map((menu) => (
-          <button key={menu.id} type="button" className={menu.id === activeMenu.id ? "active" : ""} onClick={() => setActiveId(menu.id)}>
+          <button key={menu.id} type="button" role="tab" aria-selected={menu.id === activeMenu.id} className={menu.id === activeMenu.id ? "active" : ""} onClick={() => setActiveId(menu.id)}>
             {localized(menu.labelMn, menu.labelEn)}
           </button>
         ))}
@@ -182,7 +217,7 @@ export default function NavigationAdminPage() {
             <summary>{t("Нэмэлт харагдах мэдээлэл", "Additional display content")}</summary>
             <div className="navigation-field-grid">
               {(["eyebrowMn", "eyebrowEn", "titleMn", "titleEn", "descriptionMn", "descriptionEn", "statMn", "statEn", "ctaMn", "ctaEn"] as const).map((key) => (
-                <label key={key}>{key}<input value={activeMenu.feature[key]} onChange={(event) => featureField(key, event.target.value)} /></label>
+                <label key={key}>{({eyebrowMn:"Дээд тэмдэглэгээ • MN",eyebrowEn:"Eyebrow • EN",titleMn:"Онцлох гарчиг • MN",titleEn:"Feature title • EN",descriptionMn:"Онцлох тайлбар • MN",descriptionEn:"Feature description • EN",statMn:"Тоо/үзүүлэлт • MN",statEn:"Statistic • EN",ctaMn:"Дэлгэрүүлэх товч • MN",ctaEn:"Detail button • EN"} as const)[key]}<input value={activeMenu.feature[key]} onChange={(event) => featureField(key, event.target.value)} /></label>
               ))}
               <label className="wide">Footer • MN<textarea value={activeMenu.footerMn} onChange={(event) => field("footerMn", event.target.value)} /></label>
               <label className="wide">Footer • EN<textarea value={activeMenu.footerEn} onChange={(event) => field("footerEn", event.target.value)} /></label>
@@ -200,10 +235,10 @@ export default function NavigationAdminPage() {
                 </summary>
                 <div className="navigation-group-body">
                   <div className="navigation-row-actions">
-                    <button type="button" onClick={() => updateMenu((menu) => ({ ...menu, groups: move(menu.groups, groupIndex, -1) }))} disabled={groupIndex === 0}>↑</button>
-                    <button type="button" onClick={() => updateMenu((menu) => ({ ...menu, groups: move(menu.groups, groupIndex, 1) }))} disabled={groupIndex === activeMenu.groups.length - 1}>↓</button>
+                    <button type="button" aria-label={t("Бүлгийг дээш зөөх", "Move group up")} onClick={() => updateMenu((menu) => ({ ...menu, groups: move(menu.groups, groupIndex, -1) }))} disabled={groupIndex === 0}>↑</button>
+                    <button type="button" aria-label={t("Бүлгийг доош зөөх", "Move group down")} onClick={() => updateMenu((menu) => ({ ...menu, groups: move(menu.groups, groupIndex, 1) }))} disabled={groupIndex === activeMenu.groups.length - 1}>↓</button>
                     <label className="navigation-switch"><input type="checkbox" checked={group.enabled} onChange={(event) => updateGroup(group.id, (row) => ({ ...row, enabled: event.target.checked }))} />{t("Харагдана", "Visible")}</label>
-                    <button type="button" className="danger" onClick={() => { if (activeMenu.groups.length > 1 && confirm(t("Энэ бүлгийг устгах уу?", "Delete this group?"))) updateMenu((menu) => ({ ...menu, groups: menu.groups.filter((row) => row.id !== group.id) })); }}>{t("Бүлэг устгах", "Delete group")}</button>
+                    <button type="button" className="danger" disabled={activeMenu.groups.length <= 1} onClick={() => { if (confirm(t("Энэ бүлгийг устгах уу?", "Delete this group?"))) updateMenu((menu) => ({ ...menu, groups: menu.groups.filter((row) => row.id !== group.id) })); }}>{t("Бүлэг устгах", "Delete group")}</button>
                   </div>
                   <div className="navigation-field-grid compact">
                     <label>{t("Бүлгийн нэр • MN", "Group title • MN")}<input value={group.titleMn} onChange={(event) => updateGroup(group.id, (row) => ({ ...row, titleMn: event.target.value }))} /></label>
@@ -212,7 +247,7 @@ export default function NavigationAdminPage() {
                   <div className="navigation-items">
                     {group.items.map((item, itemIndex) => (
                       <article className="navigation-item-card" key={item.id}>
-                        <header><span>{itemIndex + 1}</span><strong>{localized(item.titleMn, item.titleEn)}</strong><div><button type="button" onClick={() => updateGroup(group.id, (row) => ({ ...row, items: move(row.items, itemIndex, -1) }))} disabled={itemIndex === 0}>↑</button><button type="button" onClick={() => updateGroup(group.id, (row) => ({ ...row, items: move(row.items, itemIndex, 1) }))} disabled={itemIndex === group.items.length - 1}>↓</button><button type="button" className="danger" onClick={() => { if (group.items.length > 1 && confirm(t("Энэ мэдээллийг устгах уу?", "Delete this item?"))) updateGroup(group.id, (row) => ({ ...row, items: row.items.filter((entry) => entry.id !== item.id) })); }}>×</button></div></header>
+                        <header><span>{itemIndex + 1}</span><strong>{localized(item.titleMn, item.titleEn)}</strong><div><button type="button" aria-label={t("Мэдээллийг дээш зөөх", "Move item up")} onClick={() => updateGroup(group.id, (row) => ({ ...row, items: move(row.items, itemIndex, -1) }))} disabled={itemIndex === 0}>↑</button><button type="button" aria-label={t("Мэдээллийг доош зөөх", "Move item down")} onClick={() => updateGroup(group.id, (row) => ({ ...row, items: move(row.items, itemIndex, 1) }))} disabled={itemIndex === group.items.length - 1}>↓</button><button type="button" aria-label={t("Мэдээлэл устгах", "Delete item")} className="danger" disabled={group.items.length <= 1} onClick={() => { if (confirm(t("Энэ мэдээллийг устгах уу?", "Delete this item?"))) updateGroup(group.id, (row) => ({ ...row, items: row.items.filter((entry) => entry.id !== item.id) })); }}>×</button></div></header>
                         <div className="navigation-field-grid compact">
                           <label>{t("Нэр • MN", "Title • MN")}<input value={item.titleMn} onChange={(event) => updateItem(group.id, item.id, (row) => ({ ...row, titleMn: event.target.value }))} /></label>
                           <label>{t("Нэр • EN", "Title • EN")}<input value={item.titleEn} onChange={(event) => updateItem(group.id, item.id, (row) => ({ ...row, titleEn: event.target.value }))} /></label>
@@ -223,6 +258,21 @@ export default function NavigationAdminPage() {
                           <label className="navigation-switch"><input type="checkbox" checked={item.enabled} onChange={(event) => updateItem(group.id, item.id, (row) => ({ ...row, enabled: event.target.checked }))} />{t("Харагдана", "Visible")}</label>
                           <label className="navigation-switch"><input type="checkbox" checked={item.openInNewTab} onChange={(event) => updateItem(group.id, item.id, (row) => ({ ...row, openInNewTab: event.target.checked }))} />{t("Шинэ tab-д нээх", "Open in new tab")}</label>
                         </div>
+                        <details className="navigation-item-media">
+                          <summary>{t("Зураг, бичлэг эсвэл PDF", "Image, video or PDF")}</summary>
+                          <div className="navigation-field-grid compact">
+                            <label>{t("Медиа төрөл", "Media type")}<select value={item.media?.type || "none"} onChange={(event) => updateItem(group.id, item.id, (row) => ({ ...row, media: { ...(row.media || { url: "", altMn: "", altEn: "", captionMn: "", captionEn: "" }), type: event.target.value as "none" | "image" | "video" | "pdf" } }))}><option value="none">{t("Медиа байхгүй", "No media")}</option><option value="image">{t("Зураг", "Image")}</option><option value="video">{t("Бичлэг", "Video")}</option><option value="pdf">PDF</option></select></label>
+                            {(item.media?.type || "none") !== "none" ? <>
+                              {canUploadMedia ? <label>{t("Файл сонгох", "Choose file")}<input type="file" disabled={uploading === item.id} accept={item.media?.type === "image" ? "image/png,image/jpeg,image/webp,image/gif" : item.media?.type === "video" ? "video/mp4,video/webm" : "application/pdf"} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadMedia(group.id, item, file); event.target.value = ""; }} /></label> : <p>{t("Медиа байршуулах эрх олгогдоогүй.", "Media upload permission is not assigned.")}</p>}
+                              <label className="wide">{t("Файлын холбоос", "File URL")}<input readOnly value={item.media?.url || ""} /></label>
+                              <label>Alt text • MN<input value={item.media?.altMn || ""} onChange={(event) => updateItem(group.id, item.id, (row) => ({ ...row, media: { ...(row.media || { type: "none", url: "", altEn: "", captionMn: "", captionEn: "" }), altMn: event.target.value } }))} /></label>
+                              <label>Alt text • EN<input value={item.media?.altEn || ""} onChange={(event) => updateItem(group.id, item.id, (row) => ({ ...row, media: { ...(row.media || { type: "none", url: "", altMn: "", captionMn: "", captionEn: "" }), altEn: event.target.value } }))} /></label>
+                              <label>{t("Тайлбар • MN", "Caption • MN")}<input value={item.media?.captionMn || ""} onChange={(event) => updateItem(group.id, item.id, (row) => ({ ...row, media: { ...(row.media || { type: "none", url: "", altMn: "", altEn: "", captionEn: "" }), captionMn: event.target.value } }))} /></label>
+                              <label>{t("Тайлбар • EN", "Caption • EN")}<input value={item.media?.captionEn || ""} onChange={(event) => updateItem(group.id, item.id, (row) => ({ ...row, media: { ...(row.media || { type: "none", url: "", altMn: "", altEn: "", captionMn: "" }), captionEn: event.target.value } }))} /></label>
+                              {item.media?.url ? <button type="button" className="danger" onClick={() => updateItem(group.id, item.id, (row) => ({ ...row, media: { ...(row.media || { type: "none", altMn: "", altEn: "", captionMn: "", captionEn: "" }), url: "" } }))}>{t("Медиа холбоосыг авах", "Remove media reference")}</button> : null}
+                            </> : null}
+                          </div>
+                        </details>
                       </article>
                     ))}
                     <button type="button" className="navigation-add-item" onClick={() => updateGroup(group.id, (row) => ({ ...row, items: [...row.items, newItem(activeMenu.id)] }))}>＋ {t("Мэдээлэл нэмэх", "Add item")}</button>
