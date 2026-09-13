@@ -2,7 +2,7 @@
 
 // Published navigation owns the editable header menus. Pricing and iBeX
 // environment remain protected, fixed entries in the established header.
-let publishedNavigation=null,navigationMoreItem=null,navigationMoreButton=null;
+let publishedNavigation=null,navigationMoreItem=null,navigationMoreButton=null,websiteAccountUser=null;
 
 function localizedNavigationMenu(menu,en){
   return{
@@ -48,6 +48,10 @@ function createMoreItem(menus){
 function rebuildHeaderMenus(config){
   const nav=document.getElementById('primaryNav'),organizationItem=nav.querySelector('.organization-link')?.closest('.navitem'),pricingButton=nav.querySelector('.menu-trigger[data-menu="pricing"]'),pricingItem=pricingButton?.closest('.navitem'),controls=nav.querySelector('.view-controls');
   if(!organizationItem||!pricingButton||!pricingItem||!controls)return;
+  // Published navigation is the single source for every editable menu. Remove
+  // both the original fallback triggers and any previously rebuilt triggers,
+  // while preserving the protected Pricing and iBeX environment entries.
+  nav.querySelectorAll('.menu-trigger[data-menu]').forEach(button=>{if(button!==pricingButton)button.closest('.navitem')?.remove()});
   nav.querySelectorAll('[data-managed-navigation="1"],.navigation-more').forEach(node=>node.remove());navigationMoreItem=null;navigationMoreButton=null;
   const visible=(config.menus||[]).filter(menu=>menu.archived!==true&&menu.enabled!==false),primary=visible.slice(0,4),tail=visible.slice(4),directTail=tail.slice(0,1),overflow=tail.slice(1),primaryButtons=[],tailButtons=[];
   for(const menu of primary){const created=createManagedMenuItem(menu);nav.insertBefore(created.item,organizationItem);primaryButtons.push(created.button)}
@@ -78,10 +82,11 @@ renderHeaderMenu=function(key){navigationHeaderRenderer(key);if(key!=='pricing')
 const navigationDetailRenderer=renderDetailContent;
 renderDetailContent=function(key,...args){navigationDetailRenderer(key,...args);if(key!=='pricing')bindConfiguredContent(document.getElementById('detailContent'),key)};
 const navigationLanguageRenderer=applyLanguage;
-applyLanguage=function(){if(publishedNavigation){const visible=publishedNavigation.menus.filter(menu=>menu.archived!==true&&menu.enabled!==false),primary=visible.slice(0,4),tail=visible.slice(4);ui.mn.nav=[...primary.map(menu=>menu.labelMn),'Үнэ',...tail.map(menu=>menu.labelMn)];ui.en.nav=[...primary.map(menu=>menu.labelEn),'Pricing',...tail.map(menu=>menu.labelEn)]}navigationLanguageRenderer();if(navigationMoreButton){navigationMoreButton.textContent=currentLang==='en'?'More':'Бусад';const chev=document.createElement('span');chev.className='chev';chev.textContent='⌄';navigationMoreButton.append(' ',chev);navigationMoreItem.querySelectorAll('[data-more-menu]').forEach(button=>{const menu=publishedNavigation?.menus.find(row=>row.id===button.dataset.moreMenu);button.textContent=currentLang==='en'?menu?.labelEn||'':menu?.labelMn||''})}};
+applyLanguage=function(){if(publishedNavigation){const visible=publishedNavigation.menus.filter(menu=>menu.archived!==true&&menu.enabled!==false),primary=visible.slice(0,4),tail=visible.slice(4);ui.mn.nav=[...primary.map(menu=>menu.labelMn),'Үнэ',...tail.map(menu=>menu.labelMn)];ui.en.nav=[...primary.map(menu=>menu.labelEn),'Pricing',...tail.map(menu=>menu.labelEn)]}navigationLanguageRenderer();if(navigationMoreButton){navigationMoreButton.textContent=currentLang==='en'?'More':'Бусад';const chev=document.createElement('span');chev.className='chev';chev.textContent='⌄';navigationMoreButton.append(' ',chev);navigationMoreItem.querySelectorAll('[data-more-menu]').forEach(button=>{const menu=publishedNavigation?.menus.find(row=>row.id===button.dataset.moreMenu);button.textContent=currentLang==='en'?menu?.labelEn||'':menu?.labelMn||''})}if(websiteAccountUser){const link=document.getElementById('webAccountLink'),title=document.getElementById('webAccountTitle'),copy=document.getElementById('webAccountText'),register=document.getElementById('webRegisterLink');link.href='/account';title.textContent=currentLang==='en'?'My website account':'Миний веб бүртгэл';copy.textContent=websiteAccountUser.fullName||websiteAccountUser.email;register.hidden=true}};
 
 document.addEventListener('click',event=>{if(!event.target.closest?.('.navigation-more'))closeNavigationMore();const target=event.target.closest?.('.mega-item[data-href],.detail-item[data-href]'),href=target?.dataset?.href;if(!href)return;event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();if(target.dataset.newTab==='1')window.open(href,'_blank','noopener,noreferrer');else window.top.location.href=href},true);
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&navigationMoreItem?.classList.contains('open')){closeNavigationMore();navigationMoreButton?.focus()}});
 fetch('/api/content',{cache:'no-store'}).then(async response=>{if(!response.ok)return;const payload=await response.json();applyPublishedNavigation(payload?.content?.navigation);if(activeHeaderMenu)renderHeaderMenu(activeHeaderMenu);if(currentDetailMenu)renderDetailContent(currentDetailMenu)}).catch(()=>{});
+fetch('/api/account/session',{cache:'no-store'}).then(async response=>{if(!response.ok)return;const payload=await response.json();if(!payload.user)return;websiteAccountUser=payload.user;applyLanguage()}).catch(()=>{});
 
 globalThis.applyPublishedNavigation=applyPublishedNavigation;

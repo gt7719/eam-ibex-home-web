@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useSiteLanguage } from "../../lib/use-site-language";
 
-type AdminPermission = "navigation.manage" | "pricing.manage" | "partners.manage" | "people.manage" | "knowledge.manage" | "social.manage" | "media.upload";
+type AdminPermission = "navigation.manage" | "pricing.manage" | "partners.manage" | "people.manage" | "knowledge.manage" | "social.manage" | "accounts.manage" | "media.upload";
 
 const permissionOptions: Array<{ id: AdminPermission; label: string; labelEn: string; detail: string; detailEn: string }> = [
   { id: "navigation.manage", label: "Толгой цэсний мэдээлэл", labelEn: "Header menu content", detail: "Бүтээгдэхүүн, Шийдэл, Салбар, AI хөгжүүлэлт, Танилцуулга", detailEn: "Product, Solutions, Industries, AI Development and Resources" },
@@ -12,6 +12,7 @@ const permissionOptions: Array<{ id: AdminPermission; label: string; labelEn: st
   { id: "people.manage", label: "Төслийн баг", labelEn: "Project team", detail: "Багийн гишүүн, албан тушаал, танилцуулга", detailEn: "Team members, roles and profiles" },
   { id: "knowledge.manage", label: "AI мэдлэгийн сан", labelEn: "AI knowledge base", detail: "Сайтын туслахын баталгаажсан эх сурвалж, төлөв ба хувилбар", detailEn: "Approved sources, status and versions for the site assistant" },
   { id: "social.manage", label: "Мэдээ ба контент", labelEn: "News and content", detail: "Facebook пост, Reel холбоос, зураг болон нийтлэх төлөв", detailEn: "Facebook posts, Reels, images and publication status" },
+  { id: "accounts.manage", label: "Веб хэрэглэгчид", labelEn: "Website users", detail: "Бүртгэл, баталгаажуулалт болон хэрэглэгчийн төлөв", detailEn: "Registration, verification and account status" },
   { id: "media.upload", label: "Медиа файл", labelEn: "Media files", detail: "Зураг, видео болон PDF файл байршуулах", detailEn: "Upload images, videos and PDF files" },
 ];
 

@@ -1,4 +1,5 @@
-import { index, integer, primaryKey, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const adminUsers = sqliteTable(
   "admin_users",
@@ -112,4 +113,164 @@ export const aiApprovals = sqliteTable(
     decidedAt: text("decided_at"),
   },
   (table) => [index("ai_approvals_tenant_status_idx").on(table.tenantId, table.status)],
+);
+
+// Public website accounts are intentionally separate from both admin_users
+// and the tenant users of the core iBeX product.
+export const siteUsers = sqliteTable(
+  "site_users",
+  {
+    id: text("id").primaryKey(),
+    fullName: text("full_name").notNull(),
+    email: text("email").notNull().unique(),
+    phoneCountryIso: text("phone_country_iso").notNull(),
+    phoneCallingCode: text("phone_calling_code").notNull(),
+    phoneE164: text("phone_e164").notNull(),
+    passwordHash: text("password_hash").notNull(),
+    passwordSalt: text("password_salt").notNull(),
+    accountStatus: text("account_status").notNull().default("pending"),
+    emailStatus: text("email_status").notNull().default("unverified"),
+    emailVerifiedAt: text("email_verified_at"),
+    phoneStatus: text("phone_status").notNull().default("unverified"),
+    phoneVerifiedAt: text("phone_verified_at"),
+    locale: text("locale").notNull().default("mn"),
+    termsVersion: text("terms_version").notNull(),
+    privacyVersion: text("privacy_version").notNull(),
+    termsAcceptedAt: text("terms_accepted_at").notNull(),
+    privacyAcceptedAt: text("privacy_accepted_at").notNull(),
+    marketingEmailOptIn: integer("marketing_email_opt_in", { mode: "boolean" }).notNull().default(false),
+    marketingSmsOptIn: integer("marketing_sms_opt_in", { mode: "boolean" }).notNull().default(false),
+    securitySmsEnabled: integer("security_sms_enabled", { mode: "boolean" }).notNull().default(true),
+    lastLoginAt: text("last_login_at"),
+    lockedUntil: text("locked_until"),
+    deletionRequestedAt: text("deletion_requested_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("site_users_status_idx").on(table.accountStatus),
+    index("site_users_created_idx").on(table.createdAt),
+    uniqueIndex("site_users_verified_phone_unique")
+      .on(table.phoneE164)
+      .where(sql`${table.phoneStatus} = 'verified'`),
+  ],
+);
+
+export const siteUserSessions = sqliteTable(
+  "site_user_sessions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    status: text("status").notNull().default("active"),
+    expiresAt: text("expires_at").notNull(),
+    revokedAt: text("revoked_at"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("site_user_sessions_user_idx").on(table.userId),
+    index("site_user_sessions_expiry_idx").on(table.expiresAt),
+  ],
+);
+
+export const siteUserTokens = sqliteTable(
+  "site_user_tokens",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    purpose: text("purpose").notNull(),
+    emailValue: text("email_value"),
+    tokenHash: text("token_hash").notNull().unique(),
+    status: text("status").notNull().default("pending"),
+    expiresAt: text("expires_at").notNull(),
+    usedAt: text("used_at"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("site_user_tokens_user_purpose_idx").on(table.userId, table.purpose, table.status),
+    index("site_user_tokens_expiry_idx").on(table.expiresAt),
+  ],
+);
+
+export const siteUserLoginAttempts = sqliteTable(
+  "site_user_login_attempts",
+  {
+    attemptKey: text("attempt_key").primaryKey(),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    firstAttemptAt: text("first_attempt_at").notNull(),
+    lockedUntil: text("locked_until"),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [index("site_user_login_attempts_updated_idx").on(table.updatedAt)],
+);
+
+export const siteUserConsents = sqliteTable(
+  "site_user_consents",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    consentType: text("consent_type").notNull(),
+    policyVersion: text("policy_version").notNull(),
+    status: text("status").notNull(),
+    source: text("source").notNull().default("registration"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("site_user_consents_user_type_idx").on(table.userId, table.consentType, table.createdAt)],
+);
+
+export const authDeliveryEvents = sqliteTable(
+  "auth_delivery_events",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id"),
+    channel: text("channel").notNull(),
+    template: text("template").notNull(),
+    recipientMasked: text("recipient_masked").notNull(),
+    provider: text("provider").notNull().default("unconfigured"),
+    providerMessageId: text("provider_message_id"),
+    status: text("status").notNull().default("queued"),
+    errorCode: text("error_code"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("auth_delivery_events_user_status_idx").on(table.userId, table.status),
+    index("auth_delivery_events_created_idx").on(table.createdAt),
+  ],
+);
+
+// Reserved for the approved future SMS verification flow. No SMS is sent in v1.0.
+export const siteUserSmsVerifications = sqliteTable(
+  "site_user_sms_verifications",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    phoneE164: text("phone_e164").notNull(),
+    codeHash: text("code_hash").notNull(),
+    status: text("status").notNull().default("queued"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    expiresAt: text("expires_at").notNull(),
+    resendAvailableAt: text("resend_available_at").notNull(),
+    createdAt: text("created_at").notNull(),
+    verifiedAt: text("verified_at"),
+  },
+  (table) => [index("site_user_sms_user_status_idx").on(table.userId, table.status)],
+);
+
+export const siteUserAccessRequests = sqliteTable(
+  "site_user_access_requests",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    organizationName: text("organization_name"),
+    status: text("status").notNull().default("draft"),
+    adminNote: text("admin_note"),
+    submittedAt: text("submitted_at"),
+    decidedAt: text("decided_at"),
+    provisionedAt: text("provisioned_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [index("site_user_access_requests_user_status_idx").on(table.userId, table.status)],
 );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export type SiteLanguage = "mn" | "en";
 
@@ -30,8 +30,6 @@ export function useSiteLanguage() {
     };
   }, []);
 
-  return {
-    lang,
-    t: (mn: string, en: string) => lang === "en" ? en : mn,
-  };
+  const t = useCallback((mn: string, en: string) => lang === "en" ? en : mn, [lang]);
+  return { lang, t };
 }

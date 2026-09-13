@@ -1,0 +1,7 @@
+# Local/runtime values for the public website-account verification flow.
+# Do not commit real secrets. Configure production values in the Site environment.
+RESEND_API_KEY=
+EMAIL_FROM=iBeX Account <no-reply@account.ibex.mn>
+EMAIL_REPLY_TO=support@ibex.mn
+TURNSTILE_SITE_KEY=
+TURNSTILE_SECRET_KEY=
