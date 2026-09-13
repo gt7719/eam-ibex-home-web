@@ -56,6 +56,7 @@ test("public navigation keeps the existing renderer and safe fallback", () => {
   assert.match(publicApi, /if \(!content\.navigation\) content\.navigation = cloneDefaultNavigation\(\)/);
   assert.match(concept, /<script src="\/navigation-content\.js"><\/script>/);
   assert.match(adapter, /navigationBaseIcon=ibexMenuIcon/);
-  assert.match(adapter, /trigger\.hidden=menu\.enabled===false/);
+  assert.match(adapter, /rebuildHeaderMenus\(config\)/);
+  assert.match(adapter, /menu\.archived!==true&&menu\.enabled!==false/);
   assert.match(adapter, /window\.open\(href,'_blank','noopener,noreferrer'\)/);
 });

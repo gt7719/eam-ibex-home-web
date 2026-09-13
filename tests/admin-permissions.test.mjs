@@ -181,3 +181,41 @@ test("header navigation requires its own permission and publishes atomically", {
   assert.equal(allowed.batches.length, 1);
   assert.deepEqual(allowed.batches[0].map((statement) => statement.values[0]), ["headerNavigationDraft", "headerNavigation"]);
 });
+
+test("header navigation accepts a complete custom menu and caps each gallery type", { concurrency: false }, async () => {
+  const database = createDatabase({ permissions: ["navigation.manage"] });
+  const readResponse = await dispatch(database, adminRequest("/api/admin/navigation", "GET", {}));
+  const navigation = (await readResponse.json()).draft;
+  const custom = structuredClone(navigation.menus[0]);
+  custom.id = "customer-stories";
+  custom.labelMn = "Туршлага";
+  custom.labelEn = "Stories";
+  custom.titleMn = "Хэрэглэгчийн туршлага";
+  custom.titleEn = "Customer stories";
+  custom.groups = [{
+    id: "stories-group",
+    titleMn: "Нэвтрүүлэлт",
+    titleEn: "Implementations",
+    enabled: true,
+    items: [{
+      ...custom.groups[0].items[0],
+      id: "stories-item",
+      bodyMn: "Монгол дэлгэрэнгүй агуулга",
+      bodyEn: "English detailed content",
+      media: [
+        ...Array.from({ length: 11 }, (_, index) => ({ id: `image-${index}`, type: "image", url: `/api/media/image-${index}` })),
+        ...Array.from({ length: 6 }, (_, index) => ({ id: `video-${index}`, type: "video", url: `/api/media/video-${index}` })),
+        ...Array.from({ length: 6 }, (_, index) => ({ id: `pdf-${index}`, type: "pdf", url: `/api/media/pdf-${index}` })),
+      ],
+    }],
+  }];
+  navigation.menus.push(custom);
+  const response = await dispatch(database, adminRequest("/api/admin/navigation", "PUT", { action: "publish", navigation }));
+  assert.equal(response.status, 200);
+  const saved = await response.json(), item = saved.navigation.menus.at(-1).groups[0].items[0];
+  assert.equal(saved.navigation.menus.length, 6);
+  assert.equal(item.bodyMn, "Монгол дэлгэрэнгүй агуулга");
+  assert.equal(item.media.filter((row) => row.type === "image").length, 10);
+  assert.equal(item.media.filter((row) => row.type === "video").length, 5);
+  assert.equal(item.media.filter((row) => row.type === "pdf").length, 5);
+});

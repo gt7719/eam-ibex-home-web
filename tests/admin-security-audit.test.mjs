@@ -37,8 +37,11 @@ test("header menu media uses restricted uploads and safe public rendering", () =
   assert.match(editor, /image\/png,image\/jpeg,image\/webp,image\/gif/);
   assert.match(editor, /video\/mp4,video\/webm/);
   assert.match(editor, /application\/pdf/);
-  assert.match(adapter, /media:item\.media/);
-  assert.match(renderer, /navigation-content-media/);
+  assert.match(adapter, /Array\.isArray\(item\.media\)/);
+  assert.match(renderer, /navigationGalleryMarkup/);
+  assert.match(renderer, /navigation-image-gallery/);
+  assert.match(renderer, /navigation-video-gallery/);
+  assert.match(renderer, /navigation-document-list/);
   assert.match(renderer, /rel="noopener noreferrer"/);
 });
 

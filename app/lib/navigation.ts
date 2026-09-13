@@ -1,4 +1,17 @@
-export type HeaderMenuId = "product" | "solution" | "industry" | "ai" | "intro";
+export type HeaderMenuId = string;
+
+export type NavigationMedia = {
+  id: string;
+  type: "image" | "video" | "pdf";
+  url: string;
+  altMn: string;
+  altEn: string;
+  captionMn: string;
+  captionEn: string;
+  posterUrl: string;
+  posterAltMn: string;
+  posterAltEn: string;
+};
 
 export type NavigationItem = {
   id: string;
@@ -10,14 +23,9 @@ export type NavigationItem = {
   href: string;
   openInNewTab: boolean;
   enabled: boolean;
-  media?: {
-    type: "none" | "image" | "video" | "pdf";
-    url: string;
-    altMn: string;
-    altEn: string;
-    captionMn: string;
-    captionEn: string;
-  };
+  bodyMn?: string;
+  bodyEn?: string;
+  media?: NavigationMedia[];
 };
 
 export type NavigationGroup = {
@@ -33,6 +41,7 @@ export type NavigationMenu = {
   labelMn: string;
   labelEn: string;
   enabled: boolean;
+  archived?: boolean;
   kickerMn: string;
   kickerEn: string;
   titleMn: string;
@@ -59,6 +68,7 @@ export type NavigationMenu = {
 export type NavigationConfig = { menus: NavigationMenu[] };
 
 export const NAVIGATION_MENU_IDS: HeaderMenuId[] = ["product", "solution", "industry", "ai", "intro"];
+export const NAVIGATION_LIMITS = { menus: 8, groups: 8, items: 20, image: 10, video: 5, pdf: 5 } as const;
 
 export const DEFAULT_NAVIGATION: NavigationConfig = {
   "menus": [
@@ -959,20 +969,66 @@ export function cloneDefaultNavigation(): NavigationConfig {
   return JSON.parse(JSON.stringify(DEFAULT_NAVIGATION)) as NavigationConfig;
 }
 
+function uniqueNavigationId(value: unknown, fallback: string, seen: Set<string>, reserved = false) {
+  let candidate = id(value, fallback);
+  if (reserved || seen.has(candidate)) candidate = fallback;
+  let suffix = 2;
+  while (seen.has(candidate) || ["pricing", "organization", "environment", "more"].includes(candidate)) {
+    candidate = `${fallback}-${suffix++}`;
+  }
+  seen.add(candidate);
+  return candidate;
+}
+
+function normalizeMedia(value: unknown, itemId: string): NavigationMedia[] {
+  const rawRows = Array.isArray(value) ? value : value && typeof value === "object" ? [value] : [];
+  const counts = { image: 0, video: 0, pdf: 0 };
+  const seen = new Set<string>();
+  const rows: NavigationMedia[] = [];
+  for (const [index, raw] of rawRows.entries()) {
+    if (!raw || typeof raw !== "object") continue;
+    const row = raw as Partial<NavigationMedia> & { type?: string };
+    if (row.type !== "image" && row.type !== "video" && row.type !== "pdf") continue;
+    if (counts[row.type] >= NAVIGATION_LIMITS[row.type]) continue;
+    const url = safeMediaHref(row.url);
+    if (!url) continue;
+    counts[row.type] += 1;
+    rows.push({
+      id: uniqueNavigationId(row.id, `${itemId}-media-${index + 1}`, seen),
+      type: row.type,
+      url,
+      altMn: text(row.altMn, "", 300),
+      altEn: text(row.altEn, "", 300),
+      captionMn: text(row.captionMn, "", 500),
+      captionEn: text(row.captionEn, "", 500),
+      posterUrl: row.type === "video" ? safeMediaHref(row.posterUrl) : "",
+      posterAltMn: row.type === "video" ? text(row.posterAltMn, "", 300) : "",
+      posterAltEn: row.type === "video" ? text(row.posterAltEn, "", 300) : "",
+    });
+  }
+  return rows;
+}
+
 export function normalizeNavigation(value: unknown): NavigationConfig | null {
   if (!value || typeof value !== "object" || !Array.isArray((value as NavigationConfig).menus)) return null;
-  const incoming = (value as NavigationConfig).menus;
-  const menus = NAVIGATION_MENU_IDS.map((menuId) => {
-    const fallback = DEFAULT_NAVIGATION.menus.find((menu) => menu.id === menuId)!;
-    const candidate = incoming.find((menu) => menu?.id === menuId);
-    if (!candidate) return null;
+  const incoming = (value as NavigationConfig).menus.slice(0, NAVIGATION_LIMITS.menus);
+  const seenMenus = new Set<string>();
+  const menus = incoming.map((candidate, menuIndex) => {
+    if (!candidate || typeof candidate !== "object") return null;
+    const knownFallback = DEFAULT_NAVIGATION.menus.find((menu) => menu.id === candidate.id);
+    const fallback = knownFallback || DEFAULT_NAVIGATION.menus[0];
+    const fallbackId = knownFallback?.id || `menu-${menuIndex + 1}`;
+    const menuId = uniqueNavigationId(candidate.id, fallbackId, seenMenus, ["pricing", "organization", "environment", "more"].includes(String(candidate.id)));
+    const seenGroups = new Set<string>();
     const groups = Array.isArray(candidate.groups)
-      ? candidate.groups.slice(0, 8).map((group, groupIndex) => {
-          const fallbackGroup = fallback.groups[groupIndex] || fallback.groups[0];
+      ? candidate.groups.slice(0, NAVIGATION_LIMITS.groups).map((group, groupIndex) => {
+          const fallbackGroup = knownFallback ? fallback.groups[groupIndex] || fallback.groups[0] : undefined;
+          const groupId = uniqueNavigationId(group?.id, `${menuId}-group-${groupIndex + 1}`, seenGroups);
+          const seenItems = new Set<string>();
           const items = Array.isArray(group?.items)
-            ? group.items.slice(0, 20).map((item, itemIndex) => {
+            ? group.items.slice(0, NAVIGATION_LIMITS.items).map((item, itemIndex) => {
                 const fallbackItem = fallbackGroup?.items[itemIndex] || fallbackGroup?.items[0];
-                const itemId = id(item?.id, `${menuId}-${groupIndex}-${itemIndex}`);
+                const itemId = uniqueNavigationId(item?.id, `${groupId}-item-${itemIndex + 1}`, seenItems);
                 return {
                   id: itemId,
                   titleMn: text(item?.titleMn, fallbackItem?.titleMn || "Шинэ мэдээлэл", 140),
@@ -983,23 +1039,14 @@ export function normalizeNavigation(value: unknown): NavigationConfig | null {
                   href: safeHref(item?.href),
                   openInNewTab: item?.openInNewTab === true,
                   enabled: item?.enabled !== false,
-                  media: (() => {
-                    const mediaType = ["image", "video", "pdf"].includes(item?.media?.type) ? item.media.type as "image" | "video" | "pdf" : "none";
-                    const mediaUrl = safeMediaHref(item?.media?.url);
-                    return {
-                      type: mediaType !== "none" && mediaUrl ? mediaType : "none",
-                      url: mediaUrl,
-                      altMn: text(item?.media?.altMn, "", 300),
-                      altEn: text(item?.media?.altEn, "", 300),
-                      captionMn: text(item?.media?.captionMn, "", 500),
-                      captionEn: text(item?.media?.captionEn, "", 500),
-                    };
-                  })(),
+                  bodyMn: text(item?.bodyMn, "", 50000),
+                  bodyEn: text(item?.bodyEn, "", 50000),
+                  media: normalizeMedia(item?.media, itemId),
                 };
               })
             : [];
           return {
-            id: id(group?.id, `${menuId}-${groupIndex}`),
+            id: groupId,
             titleMn: text(group?.titleMn, fallbackGroup?.titleMn || "Шинэ бүлэг", 140),
             titleEn: text(group?.titleEn, fallbackGroup?.titleEn || "New group", 140),
             enabled: group?.enabled !== false,
@@ -1010,31 +1057,32 @@ export function normalizeNavigation(value: unknown): NavigationConfig | null {
     if (!groups.length || groups.every((group) => !group.items.length)) return null;
     return {
       id: menuId,
-      labelMn: text(candidate.labelMn, fallback.labelMn, 60),
-      labelEn: text(candidate.labelEn, fallback.labelEn, 60),
+      labelMn: text(candidate.labelMn, knownFallback?.labelMn || "Шинэ цэс", 60),
+      labelEn: text(candidate.labelEn, knownFallback?.labelEn || "New menu", 60),
       enabled: candidate.enabled !== false,
-      kickerMn: text(candidate.kickerMn, fallback.kickerMn, 180),
-      kickerEn: text(candidate.kickerEn, fallback.kickerEn, 180),
-      titleMn: text(candidate.titleMn, fallback.titleMn, 180),
-      titleEn: text(candidate.titleEn, fallback.titleEn, 180),
-      introMn: text(candidate.introMn, fallback.introMn),
-      introEn: text(candidate.introEn, fallback.introEn),
-      footerMn: text(candidate.footerMn, fallback.footerMn),
-      footerEn: text(candidate.footerEn, fallback.footerEn),
+      archived: candidate.archived === true,
+      kickerMn: text(candidate.kickerMn, knownFallback?.kickerMn || "", 180),
+      kickerEn: text(candidate.kickerEn, knownFallback?.kickerEn || "", 180),
+      titleMn: text(candidate.titleMn, knownFallback?.titleMn || "Шинэ цэс", 180),
+      titleEn: text(candidate.titleEn, knownFallback?.titleEn || "New menu", 180),
+      introMn: text(candidate.introMn, knownFallback?.introMn || ""),
+      introEn: text(candidate.introEn, knownFallback?.introEn || ""),
+      footerMn: text(candidate.footerMn, knownFallback?.footerMn || ""),
+      footerEn: text(candidate.footerEn, knownFallback?.footerEn || ""),
       feature: {
-        eyebrowMn: text(candidate.feature?.eyebrowMn, fallback.feature.eyebrowMn, 140),
-        eyebrowEn: text(candidate.feature?.eyebrowEn, fallback.feature.eyebrowEn, 140),
-        titleMn: text(candidate.feature?.titleMn, fallback.feature.titleMn, 180),
-        titleEn: text(candidate.feature?.titleEn, fallback.feature.titleEn, 180),
-        descriptionMn: text(candidate.feature?.descriptionMn, fallback.feature.descriptionMn, 360),
-        descriptionEn: text(candidate.feature?.descriptionEn, fallback.feature.descriptionEn, 360),
-        statMn: text(candidate.feature?.statMn, fallback.feature.statMn, 100),
-        statEn: text(candidate.feature?.statEn, fallback.feature.statEn, 100),
-        ctaMn: text(candidate.feature?.ctaMn, fallback.feature.ctaMn, 100),
-        ctaEn: text(candidate.feature?.ctaEn, fallback.feature.ctaEn, 100),
+        eyebrowMn: text(candidate.feature?.eyebrowMn, knownFallback?.feature.eyebrowMn || "", 140),
+        eyebrowEn: text(candidate.feature?.eyebrowEn, knownFallback?.feature.eyebrowEn || "", 140),
+        titleMn: text(candidate.feature?.titleMn, knownFallback?.feature.titleMn || "", 180),
+        titleEn: text(candidate.feature?.titleEn, knownFallback?.feature.titleEn || "", 180),
+        descriptionMn: text(candidate.feature?.descriptionMn, knownFallback?.feature.descriptionMn || "", 360),
+        descriptionEn: text(candidate.feature?.descriptionEn, knownFallback?.feature.descriptionEn || "", 360),
+        statMn: text(candidate.feature?.statMn, knownFallback?.feature.statMn || "", 100),
+        statEn: text(candidate.feature?.statEn, knownFallback?.feature.statEn || "", 100),
+        ctaMn: text(candidate.feature?.ctaMn, knownFallback?.feature.ctaMn || (knownFallback ? "" : "Бүгдийг харах →"), 100),
+        ctaEn: text(candidate.feature?.ctaEn, knownFallback?.feature.ctaEn || (knownFallback ? "" : "View all →"), 100),
       },
       groups,
     };
   });
-  return menus.some((menu) => !menu) ? null : { menus: menus as NavigationMenu[] };
+  return !menus.length || menus.some((menu) => !menu) ? null : { menus: menus as NavigationMenu[] };
 }
