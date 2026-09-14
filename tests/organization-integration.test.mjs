@@ -6,12 +6,13 @@ const read=name=>fs.readFileSync(new URL('../'+name,import.meta.url),'utf8');
 test('iBeX environment precedes pricing without changing existing menu triggers',()=>{
   const html=read('public/concept.html');
   const nav=html.slice(html.indexOf('<nav class="nav"'),html.indexOf('</nav>'));
-  assert.ok(nav.indexOf('data-menu="ai"')<nav.indexOf('href="/organization"'));
-  assert.ok(nav.indexOf('href="/organization"')<nav.indexOf('data-menu="pricing"'));
+  assert.ok(nav.indexOf('data-menu="ai"')<nav.indexOf('data-menu="environment"'));
+  assert.ok(nav.indexOf('data-menu="environment"')<nav.indexOf('data-menu="pricing"'));
   assert.ok(nav.indexOf('data-menu="pricing"')<nav.indexOf('data-menu="intro"'));
-  assert.match(nav,/<span class="mn">iBeX орчин<\/span><span class="en">iBeX environment<\/span>/);
-  assert.equal((nav.match(/class="menu-trigger"/g)||[]).length,6);
-  assert.match(nav,/class="organization-link" href="\/organization" target="_top"/);
+  assert.match(nav,/class="menu-trigger" data-menu="environment"/);
+  assert.equal((nav.match(/class="menu-trigger"/g)||[]).length,7);
+  assert.match(html,/environmentTarget:'web'/);
+  assert.match(html,/environmentTarget:'mobile'/);
   assert.match(read('app/organization/page.tsx'),/src="\/organization-preview.html"/);
 });
 test('integrated configurator has all local assets, home exit and explicit preview boundary',()=>{

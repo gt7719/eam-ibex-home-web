@@ -32,9 +32,9 @@ test("version 50 manages complete menus without changing protected entries", () 
   assert.match(editor, /function restoreMenu/);
   assert.match(editor, /function deleteArchivedMenu/);
   assert.match(editor, /Дэлгэрэнгүй агуулга • MN/);
-  assert.match(concept, /class="organization-link"/);
+  assert.match(concept, /data-menu="environment"/);
   assert.match(concept, /data-menu="pricing"/);
-  assert.match(adapter, /organizationItem/);
+  assert.match(adapter, /environmentItem/);
   assert.match(adapter, /pricingButton/);
   assert.match(adapter, /createMoreItem\(overflow\)/);
   assert.match(css, /\.navigation-overflow-item\{display:none\}/);

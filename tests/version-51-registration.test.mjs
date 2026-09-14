@@ -7,7 +7,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf
 test("version 51 removes fallback menu triggers before rebuilding managed navigation", () => {
   const adapter = read("public/navigation-content.js");
   assert.match(adapter, /querySelectorAll\('\.menu-trigger\[data-menu\]'\)/);
-  assert.match(adapter, /if\(button!==pricingButton\)button\.closest\('\.navitem'\)\?\.remove\(\)/);
+  assert.match(adapter, /if\(button!==environmentButton&&button!==pricingButton\)button\.closest\('\.navitem'\)\?\.remove\(\)/);
   assert.match(adapter, /preserving the protected Pricing and iBeX environment entries/);
 });
 

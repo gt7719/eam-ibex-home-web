@@ -16,7 +16,7 @@ test("version 37 assigns a unique explicit icon to every choice in each menu", (
   const concept = read("public/concept.html");
   vm.runInContext(concept.slice(concept.indexOf("const headerMenus="), concept.indexOf("const menuExperience=")), context);
   vm.runInContext(read("public/menu-icons.js"), context);
-  const result = vm.runInContext(`Object.fromEntries(Object.entries(headerMenus).filter(([,menu])=>!menu.pricing).map(([key,menu])=>{
+  const result = vm.runInContext(`Object.fromEntries(Object.entries(headerMenus).filter(([key,menu])=>!menu.pricing&&key!=='environment').map(([key,menu])=>{
     const assigned=menu.groups.flatMap((group,groupIndex)=>group.items.map((item,itemIndex)=>ibexMenuIconName(key,groupIndex,itemIndex)));
     return [key,{assigned,total:menu.groups.flatMap(group=>group.items).length}];
   }))`, context);

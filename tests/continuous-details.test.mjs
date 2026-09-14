@@ -15,7 +15,7 @@ function contentContext(){
 }
 test('all 49 approved content topics have distinct complete MN and EN articles',()=>{
  const context=contentContext();
- const result=vm.runInContext(`Object.entries(headerMenus).flatMap(([key,m])=>(m.groups||[]).flatMap((g,gi)=>g.items.map((item,ii)=>({id:key+'-'+gi+'-'+ii,article:detailArticles[key+'-'+gi+'-'+ii]}))))`,context);
+ const result=vm.runInContext(`Object.entries(headerMenus).filter(([key])=>key!=='environment').flatMap(([key,m])=>(m.groups||[]).flatMap((g,gi)=>g.items.map((item,ii)=>({id:key+'-'+gi+'-'+ii,article:detailArticles[key+'-'+gi+'-'+ii]}))))`,context);
  assert.equal(result.length,49);const seen=new Set();
  for(const {id,article} of result){assert.ok(article,id);for(const lang of ['mn','en']){assert.ok(article[lang].length>=2,id);assert.ok(article[lang].join(' ').length>180,id);if(lang==='en')assert.doesNotMatch(article[lang].join(' '),/[А-Яа-яӨөҮү]/);}
  assert.ok(!seen.has(article.mn.join(' ')),id);seen.add(article.mn.join(' '));}

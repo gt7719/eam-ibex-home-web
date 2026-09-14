@@ -14,6 +14,7 @@ function defaultNavigation() {
 
 test("the header administrator starts with the exact five existing menus", () => {
   const defaults = defaultNavigation();
+  assert.equal(defaults.environmentVisible, true);
   assert.deepEqual(defaults.menus.map((menu) => menu.id), ["product", "solution", "industry", "ai", "intro"]);
   assert.deepEqual(defaults.menus.map((menu) => menu.labelMn), ["Бүтээгдэхүүн", "Шийдэл", "Салбар", "AI хөгжүүлэлт", "Танилцуулга"]);
   assert.ok(defaults.menus.every((menu) => menu.groups.length && menu.groups.every((group) => group.items.length)));
@@ -44,6 +45,8 @@ test("one admin hub tab contains five sub-tabs and preserves existing sections",
   assert.match(editor, /Ноорог хадгалах/);
   assert.match(editor, /Нийтлэх/);
   assert.match(editor, /Урьдчилан харах/);
+  assert.match(editor, /navigation-environment-toggle/);
+  assert.match(editor, /environmentVisible/);
   assert.match(css, /navigation-admin-page[^}]+overflow:auto/);
   assert.match(css, /Version 48:[\s\S]+\.navigation-admin-page\{[\s\S]*?height:100dvh;[\s\S]*?overflow-y:auto;[\s\S]*?touch-action:pan-y/);
   assert.match(css, /\[data-ibex-theme="day"\] \.navigation-admin-page \.navigation-menu-tabs button\.active/);

@@ -65,12 +65,13 @@ export type NavigationMenu = {
   groups: NavigationGroup[];
 };
 
-export type NavigationConfig = { menus: NavigationMenu[] };
+export type NavigationConfig = { environmentVisible: boolean; menus: NavigationMenu[] };
 
 export const NAVIGATION_MENU_IDS: HeaderMenuId[] = ["product", "solution", "industry", "ai", "intro"];
 export const NAVIGATION_LIMITS = { menus: 8, groups: 8, items: 20, image: 10, video: 5, pdf: 5 } as const;
 
 export const DEFAULT_NAVIGATION: NavigationConfig = {
+  "environmentVisible": true,
   "menus": [
     {
       "id": "product",
@@ -1084,5 +1085,8 @@ export function normalizeNavigation(value: unknown): NavigationConfig | null {
       groups,
     };
   });
-  return !menus.length || menus.some((menu) => !menu) ? null : { menus: menus as NavigationMenu[] };
+  return !menus.length || menus.some((menu) => !menu) ? null : {
+    environmentVisible: (value as { environmentVisible?: unknown }).environmentVisible !== false,
+    menus: menus as NavigationMenu[],
+  };
 }

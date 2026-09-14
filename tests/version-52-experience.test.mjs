@@ -48,13 +48,13 @@ test("registration is separate from the sign-in menu and is hidden for a signed-
 });
 
 test("protected iBeX environment menu separates web and mobile routes", () => {
-  const concept = read("public/concept.html"), adapter = read("public/navigation-content.js"), menu = read("public/version-52-header.js");
-  assert.match(concept, /id="environmentTrigger"/);
-  assert.match(concept, /class="organization-link" href="\/organization"/);
-  assert.match(concept, /class="mobile-environment-link" href="\/mobile"/);
+  const concept = read("public/concept.html"), adapter = read("public/navigation-content.js"), modal = read("public/organization-modal.js");
+  assert.match(concept, /class="menu-trigger" data-menu="environment"/);
+  assert.match(concept, /href:'\/organization',environmentTarget:'web'/);
+  assert.match(concept, /href:'\/mobile',environmentTarget:'mobile'/);
   assert.match(adapter, /Pricing and iBeX\s+\/\/ environment remain protected|Pricing and iBeX\n\/\/ environment remain protected/);
-  assert.match(menu, /toggleEnvironmentMenu/);
-  assert.match(menu, /closeLoginMenu\(\)/);
+  assert.match(adapter, /menuTriggers\.splice\(0,menuTriggers\.length,\.\.\.primaryButtons,environmentButton,pricingButton/);
+  assert.match(modal, /globalThis\.openOrganization=openOrganization/);
 });
 
 test("mobile environment route is truthful about its version 52 foundation boundary", () => {

@@ -172,12 +172,15 @@ test("header navigation requires its own permission and publishes atomically", {
   assert.equal(readResponse.status, 200);
   const navigation = (await readResponse.json()).draft;
   assert.deepEqual(navigation.menus.map((menu) => menu.id), ["product", "solution", "industry", "ai", "intro"]);
+  assert.equal(navigation.environmentVisible, true);
+  navigation.environmentVisible = false;
 
   const publishResponse = await dispatch(
     allowed,
     adminRequest("/api/admin/navigation", "PUT", { action: "publish", navigation }),
   );
   assert.equal(publishResponse.status, 200);
+  assert.equal((await publishResponse.json()).navigation.environmentVisible, false);
   assert.equal(allowed.batches.length, 1);
   assert.deepEqual(allowed.batches[0].map((statement) => statement.values[0]), ["headerNavigationDraft", "headerNavigation"]);
 });

@@ -132,7 +132,7 @@ export default function NavigationAdminPage() {
   }
 
   function updateMenu(update: (menu: NavigationMenu) => NavigationMenu) {
-    setDraft((current) => current ? { menus: current.menus.map((menu) => menu.id === activeId ? update(menu) : menu) } : current);
+    setDraft((current) => current ? { ...current, menus: current.menus.map((menu) => menu.id === activeId ? update(menu) : menu) } : current);
   }
 
   function field<K extends keyof NavigationMenu>(key: K, value: NavigationMenu[K]) {
@@ -157,7 +157,7 @@ export default function NavigationAdminPage() {
       return;
     }
     const menu = newMenu();
-    updateConfig((current) => ({ menus: [...current.menus.filter((row) => !row.archived), menu, ...current.menus.filter((row) => row.archived)] }));
+    updateConfig((current) => ({ ...current, menus: [...current.menus.filter((row) => !row.archived), menu, ...current.menus.filter((row) => row.archived)] }));
     setActiveId(menu.id);
     setError("");
   }
@@ -166,7 +166,7 @@ export default function NavigationAdminPage() {
     updateConfig((current) => {
       const active = current.menus.filter((menu) => !menu.archived);
       const index = active.findIndex((menu) => menu.id === menuId);
-      return { menus: [...move(active, index, direction), ...current.menus.filter((menu) => menu.archived)] };
+      return { ...current, menus: [...move(active, index, direction), ...current.menus.filter((menu) => menu.archived)] };
     });
   }
 
@@ -177,18 +177,18 @@ export default function NavigationAdminPage() {
     }
     if (!confirm(t("Энэ цэсийг бүх дэд мэдээлэл, галерейтай нь архивлах уу?", "Archive this menu with all sub-items and galleries?"))) return;
     if (menuId === activeId) setActiveId(activeMenus.find((menu) => menu.id !== menuId)?.id || activeId);
-    updateConfig((current) => ({ menus: current.menus.map((menu) => menu.id === menuId ? { ...menu, archived: true, enabled: false } : menu) }));
+    updateConfig((current) => ({ ...current, menus: current.menus.map((menu) => menu.id === menuId ? { ...menu, archived: true, enabled: false } : menu) }));
   }
 
   function restoreMenu(menuId: string) {
-    updateConfig((current) => ({ menus: current.menus.map((menu) => menu.id === menuId ? { ...menu, archived: false, enabled: true } : menu) }));
+    updateConfig((current) => ({ ...current, menus: current.menus.map((menu) => menu.id === menuId ? { ...menu, archived: false, enabled: true } : menu) }));
     setActiveId(menuId);
   }
 
   function deleteArchivedMenu(menuId: string) {
     if (!confirm(t("Архивласан цэсийг бүр мөсөн устгах уу?", "Permanently delete this archived menu?"))) return;
     if (!confirm(t("Энэ үйлдлийг буцаах боломжгүй. Үргэлжлүүлэх үү?", "This cannot be undone. Continue?"))) return;
-    updateConfig((current) => ({ menus: current.menus.filter((menu) => menu.id !== menuId) }));
+    updateConfig((current) => ({ ...current, menus: current.menus.filter((menu) => menu.id !== menuId) }));
   }
 
   async function save(action: "draft" | "publish") {
@@ -309,7 +309,7 @@ export default function NavigationAdminPage() {
         <div>
           <span>HEADER CONTENT</span>
           <h1>{t("Толгой цэсний мэдээлэл", "Header menu content")}</h1>
-          <p>{t("Таван цэсийг нэг дор удирдана. Үнэ, iBeX орчин болон бусад админ тохиргоонд нөлөөлөхгүй.", "Manage five menus in one place. Pricing, the iBeX environment and other administration areas are unaffected.")}</p>
+          <p>{t("Үндсэн цэсүүдийг удирдаж, iBeX орчны харагдах эсэхийг тусад нь тохируулна. Үнэ болон орчны дэд бүтэц хамгаалагдана.", "Manage the main menus and control iBeX environment visibility separately. Pricing and the environment structure remain protected.")}</p>
         </div>
         <div className="navigation-admin-actions">
           <button type="button" onClick={() => setPreview((value) => !value)}>{preview ? t("Урьдчилан харахыг хаах", "Close preview") : t("Урьдчилан харах", "Preview")}</button>
@@ -320,6 +320,19 @@ export default function NavigationAdminPage() {
 
       {error ? <div className="navigation-admin-alert error" role="alert">{error}</div> : null}
       {message ? <div className="navigation-admin-alert success" role="status">{message}</div> : null}
+
+      <section className="navigation-protected-menu" aria-labelledby="environment-control-title">
+        <div>
+          <span>{t("ХАМГААЛАГДСАН ЦЭС", "PROTECTED MENU")}</span>
+          <h2 id="environment-control-title">{t("iBeX орчин", "iBeX environment")}</h2>
+          <p>{t("Зөвхөн толгой цэсэнд харуулах эсэхийг удирдана. Веб, мобайл орчны нэр, дэд цэс болон холбоос өөрчлөгдөхгүй.", "Only control whether it appears in the header. Web and mobile names, submenus and links cannot be changed here.")}</p>
+        </div>
+        <label className="navigation-environment-toggle">
+          <input type="checkbox" checked={draft.environmentVisible} onChange={(event) => updateConfig((current) => ({ ...current, environmentVisible: event.target.checked }))} />
+          <span aria-hidden="true"></span>
+          <strong>{draft.environmentVisible ? t("Харагдана", "Visible") : t("Нуугдана", "Hidden")}</strong>
+        </label>
+      </section>
 
       <nav className="navigation-menu-tabs" role="tablist" aria-label={t("Удирдах толгой цэс", "Header menu to manage")}>
         {activeMenus.map((menu) => (
