@@ -5,17 +5,18 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useSiteLanguage } from "../lib/use-site-language";
 
-export function AccountShell({ kicker, titleMn, titleEn, introMn, introEn, children }: {
+export function AccountShell({ kicker, titleMn, titleEn, introMn, introEn, children, variant = "default" }: {
   kicker: string;
   titleMn: string;
   titleEn: string;
   introMn: string;
   introEn: string;
   children: ReactNode;
+  variant?: "default" | "registration";
 }) {
   const { t } = useSiteLanguage();
   return (
-    <main className="account-page">
+    <main className={`account-page${variant === "registration" ? " account-page-registration" : ""}`}>
       <div className="account-orbit account-orbit-one" aria-hidden="true" />
       <div className="account-orbit account-orbit-two" aria-hidden="true" />
       <Link className="account-brand" href="/" aria-label={t("iBeX нүүр", "iBeX home")}>
@@ -23,6 +24,7 @@ export function AccountShell({ kicker, titleMn, titleEn, introMn, introEn, child
         <span><strong>iBeX</strong><small>Enterprise Asset Management</small></span>
       </Link>
       <section className="account-card">
+        <Link className="account-close" href="/" aria-label={t("Нүүр хуудас руу буцах", "Return to home")} title={t("Хаах", "Close")}>×</Link>
         <span className="account-kicker">{kicker}</span>
         <h1>{t(titleMn, titleEn)}</h1>
         <p className="account-intro">{t(introMn, introEn)}</p>

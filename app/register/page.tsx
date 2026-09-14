@@ -6,14 +6,19 @@ import { AccountAlert, AccountShell } from "../components/account-shell";
 import { TurnstileField } from "../components/turnstile-field";
 import { useSiteLanguage } from "../lib/use-site-language";
 
-const countries = [
+const callingCodeOptions = [
   ["MN", "+976", "Монгол", "Mongolia"], ["CN", "+86", "Хятад", "China"], ["RU", "+7", "Орос", "Russia"],
   ["KR", "+82", "БНСУ", "South Korea"], ["JP", "+81", "Япон", "Japan"], ["US", "+1", "АНУ", "United States"],
   ["CA", "+1", "Канад", "Canada"], ["AU", "+61", "Австрали", "Australia"], ["NZ", "+64", "Шинэ Зеланд", "New Zealand"],
-  ["GB", "+44", "Их Британи", "United Kingdom"], ["DE", "+49", "Герман", "Germany"], ["FR", "+33", "Франц", "France"],
+  ["GB", "+44", "Их Британи", "United Kingdom"], ["DE", "+49", "Герман", "Germany"], ["FR", "+33", "Франц", "France"], ["IT", "+39", "Итали", "Italy"], ["ES", "+34", "Испани", "Spain"],
   ["SG", "+65", "Сингапур", "Singapore"], ["AE", "+971", "АНЭУ", "United Arab Emirates"], ["KZ", "+7", "Казахстан", "Kazakhstan"],
   ["KG", "+996", "Кыргызстан", "Kyrgyzstan"], ["TR", "+90", "Турк", "Türkiye"], ["IN", "+91", "Энэтхэг", "India"],
-  ["VN", "+84", "Вьетнам", "Vietnam"], ["TH", "+66", "Тайланд", "Thailand"], ["OTHER", "", "Бусад улс", "Other country"],
+  ["VN", "+84", "Вьетнам", "Vietnam"], ["TH", "+66", "Тайланд", "Thailand"], ["MY", "+60", "Малайз", "Malaysia"], ["ID", "+62", "Индонез", "Indonesia"],
+  ["PH", "+63", "Филиппин", "Philippines"], ["HK", "+852", "Хонконг", "Hong Kong"], ["TW", "+886", "Тайвань", "Taiwan"], ["QA", "+974", "Катар", "Qatar"],
+  ["SA", "+966", "Саудын Араб", "Saudi Arabia"], ["CH", "+41", "Швейцар", "Switzerland"], ["SE", "+46", "Швед", "Sweden"], ["NO", "+47", "Норвеги", "Norway"],
+  ["FI", "+358", "Финланд", "Finland"], ["DK", "+45", "Дани", "Denmark"], ["NL", "+31", "Нидерланд", "Netherlands"], ["BE", "+32", "Бельги", "Belgium"],
+  ["AT", "+43", "Австри", "Austria"], ["PL", "+48", "Польш", "Poland"], ["CZ", "+420", "Чех", "Czechia"], ["UA", "+380", "Украин", "Ukraine"],
+  ["BR", "+55", "Бразил", "Brazil"], ["MX", "+52", "Мексик", "Mexico"],
 ] as const;
 
 export default function RegisterPage() {
@@ -35,13 +40,15 @@ export default function RegisterPage() {
   const [formStartedAt] = useState(() => Date.now());
   const [working, setWorking] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string; emailSent?: boolean } | null>(null);
-  const selected = useMemo(() => countries.find((country) => country[0] === countryIso), [countryIso]);
+  const selected = useMemo(() => callingCodeOptions.find((country) => country[0] === countryIso), [countryIso]);
 
   useEffect(() => {
     fetch("/api/account/country", { cache: "no-store" }).then((response) => response.json()).then((data) => {
-      const match = countries.find((country) => country[0] === data.country);
-      setCountryIso(match ? match[0] : "OTHER");
-      setCallingCode(data.callingCode || match?.[1] || "");
+      const match = callingCodeOptions.find((country) => country[0] === data.country);
+      if (match) {
+        setCountryIso(match[0]);
+        setCallingCode(match[1]);
+      }
     }).catch(() => {});
   }, []);
 
@@ -52,7 +59,7 @@ export default function RegisterPage() {
     const response = await fetch("/api/account/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fullName, email, phoneCountryIso: countryIso === "OTHER" ? "ZZ" : countryIso, phoneCallingCode: callingCode, phoneNationalNumber: phone, password, passwordConfirm, termsAccepted: terms, privacyAccepted: privacy, marketingEmailOptIn: marketingEmail, marketingSmsOptIn: marketingSms, website, formStartedAt, locale: lang, turnstileToken }),
+      body: JSON.stringify({ fullName, email, phoneCountryIso: countryIso, phoneCallingCode: callingCode, phoneNationalNumber: phone, password, passwordConfirm, termsAccepted: terms, privacyAccepted: privacy, marketingEmailOptIn: marketingEmail, marketingSmsOptIn: marketingSms, website, formStartedAt, locale: lang, turnstileToken }),
     }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     setResult({ ok: Boolean(response?.ok), message: payload.message || payload.error || t("Сервертэй холбогдож чадсангүй.", "Could not connect to the server."), emailSent: payload.emailSent });
@@ -66,18 +73,17 @@ export default function RegisterPage() {
     </AccountShell>;
   }
 
-  return <AccountShell kicker="WEBSITE ACCOUNT" titleMn="Шинэ хэрэглэгч бүртгүүлэх" titleEn="Create your account" introMn="И-мэйлээ баталгаажуулсны дараа веб бүртгэл идэвхжинэ. Утасны дугаар SMS баталгаажуулалтад бэлэн хадгалагдана." introEn="Your website account becomes active after email verification. Your mobile number is stored ready for future SMS verification.">
-    <form className="account-form" onSubmit={submit}>
+  return <AccountShell variant="registration" kicker="WEBSITE ACCOUNT" titleMn="Шинэ хэрэглэгч бүртгүүлэх" titleEn="Create your account" introMn="И-мэйлээ баталгаажуулсны дараа веб бүртгэл идэвхжинэ. Утасны дугаар SMS баталгаажуулалтад бэлэн хадгалагдана." introEn="Your website account becomes active after email verification. Your mobile number is stored ready for future SMS verification.">
+    <form className="account-form account-register-form" onSubmit={submit}>
       <label>{t("Овог, нэр", "Full name")}<input value={fullName} onChange={(event) => setFullName(event.target.value)} autoComplete="name" maxLength={160} required /></label>
       <label>{t("И-мэйл", "Email")}<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" maxLength={254} required /></label>
       <fieldset className="account-phone"><legend>{t("Гар утас", "Mobile phone")}</legend><div>
-        <label>{t("Улс", "Country")}<select value={countryIso} onChange={(event) => { const next = countries.find((country) => country[0] === event.target.value); setCountryIso(event.target.value); setCallingCode(next?.[1] || ""); }}>{countries.map((country) => <option value={country[0]} key={country[0]}>{lang === "en" ? country[3] : country[2]} {country[1]}</option>)}</select></label>
-        <label>{t("Улсын код", "Calling code")}<input value={callingCode} onChange={(event) => setCallingCode(event.target.value)} inputMode="tel" placeholder="+976" maxLength={5} required /></label>
+        <label>{t("Улсын код", "Calling code")}<select value={countryIso} onChange={(event) => { const next = callingCodeOptions.find((country) => country[0] === event.target.value); if (!next) return; setCountryIso(next[0]); setCallingCode(next[1]); }}>{callingCodeOptions.map((country) => <option value={country[0]} key={country[0]}>{country[1]} · {lang === "en" ? country[3] : country[2]}</option>)}</select></label>
         <label>{t("Утасны дугаар", "Phone number")}<input value={phone} onChange={(event) => setPhone(event.target.value)} inputMode="tel" autoComplete="tel-national" placeholder={selected?.[0] === "MN" ? "99112233" : ""} maxLength={20} required /></label>
-      </div><small>{t("Дотоодын эхний 0 шаардлагатай эсэхийг тухайн улсын дугаарын дүрмээр оруулна.", "Enter the national number according to that country's dialing rules.")}</small></fieldset>
+      </div><small>{t("Улсын код автоматаар сонгогдоно. Шаардлагатай бол жагсаалтаас солино.", "The calling code is selected automatically. Change it from the list if needed.")}</small></fieldset>
       <div className="account-form-grid">
-        <label>{t("Нууц үг", "Password")}<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={12} maxLength={128} required /><small>{t("12–128 тэмдэгт", "12–128 characters")}</small></label>
-        <label>{t("Нууц үг давтах", "Confirm password")}<input type="password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} autoComplete="new-password" minLength={12} maxLength={128} required /></label>
+        <label>{t("Нууц үг", "Password")}<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={8} maxLength={128} required /><small>{t("8–128 тэмдэгт • том үсэг • тоо • тусгай тэмдэгт", "8–128 characters • uppercase • number • special character")}</small></label>
+        <label>{t("Нууц үг давтах", "Confirm password")}<input type="password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} autoComplete="new-password" minLength={8} maxLength={128} required /></label>
       </div>
       <label className="account-check"><input type="checkbox" checked={terms} onChange={(event) => setTerms(event.target.checked)} required /><span><Link href="/terms" target="_blank">{t("Үйлчилгээний нөхцөл", "Terms of service")}</Link> {t("зөвшөөрч байна.", "accepted.")}</span></label>
       <label className="account-check"><input type="checkbox" checked={privacy} onChange={(event) => setPrivacy(event.target.checked)} required /><span><Link href="/privacy" target="_blank">{t("Нууцлалын бодлого", "Privacy policy")}</Link> {t("зөвшөөрч байна.", "accepted.")}</span></label>

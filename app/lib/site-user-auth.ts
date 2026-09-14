@@ -55,6 +55,15 @@ export function normalizeLocale(value: unknown): "mn" | "en" {
   return value === "en" ? "en" : "mn";
 }
 
+export function validateSitePassword(password: string) {
+  const errors: string[] = [];
+  if (password.length < 8 || password.length > 128) errors.push("Нууц үг 8–128 тэмдэгт байна.");
+  if (!/\p{Lu}/u.test(password)) errors.push("Нууц үг дор хаяж нэг том үсэг агуулна.");
+  if (!/\p{N}/u.test(password)) errors.push("Нууц үг дор хаяж нэг тоо агуулна.");
+  if (!/[^\p{L}\p{N}\s]/u.test(password)) errors.push("Нууц үг дор хаяж нэг тусгай тэмдэгт агуулна.");
+  return errors;
+}
+
 export function validateRegistrationInput(input: {
   fullName?: unknown;
   email?: unknown;
@@ -77,7 +86,7 @@ export function validateRegistrationInput(input: {
   const errors: string[] = [];
   if (fullName.length < 2) errors.push("Нэрээ бүрэн оруулна уу.");
   if (!isValidEmail(email)) errors.push("Зөв и-мэйл хаяг оруулна уу.");
-  if (password.length < 12 || password.length > 128) errors.push("Нууц үг 12–128 тэмдэгт байна.");
+  errors.push(...validateSitePassword(password));
   if (password !== passwordConfirm) errors.push("Нууц үгийн давталт тохирохгүй байна.");
   if (!/^[A-Z]{2}$/.test(phoneCountryIso)) errors.push("Улсаа сонгоно уу.");
   if (!/^\+[1-9]\d{7,14}$/.test(phoneE164)) errors.push("Утасны дугаарыг улсын кодтой зөв оруулна уу.");

@@ -1,16 +1,16 @@
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 import { hasTrustedOrigin } from "../../../lib/admin-security";
-import { digest, newPasswordCredential } from "../../../lib/site-user-auth";
+import { digest, newPasswordCredential, validateSitePassword } from "../../../lib/site-user-auth";
 
 export async function POST(request: Request) {
   if (!hasTrustedOrigin(request)) return NextResponse.json({ error: "Origin mismatch" }, { status: 403 });
   const body = await request.json().catch(() => ({})) as { token?: string; password?: string; passwordConfirm?: string };
   const password = typeof body.password === "string" ? body.password : "";
   if (!body.token || !/^[a-f0-9]{64}$/.test(body.token)) return NextResponse.json({ error: "Сэргээх холбоос буруу байна." }, { status: 400 });
-  if (password.length < 12 || password.length > 128 || password !== body.passwordConfirm) {
-    return NextResponse.json({ error: "Ижил 12–128 тэмдэгттэй нууц үг хоёр удаа оруулна уу." }, { status: 400 });
-  }
+  const passwordErrors = validateSitePassword(password);
+  if (password !== body.passwordConfirm) passwordErrors.push("Нууц үгийн давталт тохирохгүй байна.");
+  if (passwordErrors.length) return NextResponse.json({ error: passwordErrors.join(" ") }, { status: 400 });
   const now = new Date().toISOString();
   const row = await env.DB.prepare(
     "SELECT id,user_id,status,expires_at FROM site_user_tokens WHERE token_hash=? AND purpose='password_reset' LIMIT 1",

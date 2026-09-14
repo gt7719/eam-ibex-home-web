@@ -14,7 +14,7 @@ test("version 51 removes fallback menu triggers before rebuilding managed naviga
 test("version 51 exposes website registration without replacing core or admin sign-in", () => {
   const concept = read("public/concept.html");
   assert.match(concept, /id="webAccountLink" href="\/login"/);
-  assert.match(concept, /id="webRegisterLink" href="\/register"/);
+  assert.match(concept, /id="headerRegisterLink" href="\/register"/);
   assert.match(concept, /href="https:\/\/demo\.ibex\.mn"/);
   assert.match(concept, /href="\/admin\/login"/);
 });
@@ -31,7 +31,10 @@ test("public website users are isolated from administrator and tenant identities
 
 test("registration enforces password, phone and explicit policy consent", () => {
   const auth = read("app/lib/site-user-auth.ts"), route = read("app/api/account/register/route.ts");
-  assert.match(auth, /password\.length < 12 \|\| password\.length > 128/);
+  assert.match(auth, /password\.length < 8 \|\| password\.length > 128/);
+  assert.match(auth, /\\p\{Lu\}/);
+  assert.match(auth, /\\p\{N\}/);
+  assert.match(auth, /\[\^\\p\{L\}\\p\{N\}\\s\]/);
   assert.match(auth, /\^\\\+\[1-9\]\\d\{7,14\}\$/);
   assert.match(auth, /termsAccepted !== true \|\| input\.privacyAccepted !== true/);
   assert.match(route, /marketingEmailOptIn/);
