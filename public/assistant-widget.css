@@ -28,9 +28,22 @@
   background: rgba(219, 39, 119, .09);
 }
 .assistant-launch-icon { width: 30px; height: 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(219, 39, 119, .15); font-size: 11px; font-weight: 900; }
-.assistant-avatar { width: 42px; height: 36px; border-radius: 12px; font-size: 12px; font-weight: 850; }
+.assistant-avatar {
+  display: inline-flex;
+  width: 52px;
+  min-width: 52px;
+  height: 36px;
+  flex-wrap: nowrap;
+  justify-content: center;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: -.02em;
+  white-space: nowrap;
+}
 .assistant-avatar i { color: #f7f2f8; font-style: normal; }
-.assistant-avatar b { color: #f472b6; }
+.assistant-avatar b { color: #f472b6; white-space: nowrap; }
 .assistant-launch-copy, .assistant-head-copy { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; }
 .assistant-launch-copy strong, .assistant-head-copy strong { font-size: 13px; }
 .assistant-launch-copy small, .assistant-head-copy small { margin-top: 3px; color: #a69ead; font-size: 11px; }

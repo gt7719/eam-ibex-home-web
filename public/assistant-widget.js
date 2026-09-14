@@ -6,7 +6,7 @@
   const copy = {
     mn: {
       name: "iBeX Home AI",
-      scope: "Хэрэглэгчийн ба маркетингийн туслах",
+      scope: "iBeX хэрэглэгчийн туслах",
       safe: "iBeX Intelligent AI-аас тусдаа",
       open: "Home AI",
       hint: "24/7 хэрэглэгчийн туслах",
@@ -26,7 +26,7 @@
     },
     en: {
       name: "iBeX Home AI",
-      scope: "Customer & marketing assistant",
+      scope: "iBeX customer assistant",
       safe: "Separate from iBeX Intelligent AI",
       open: "Home AI",
       hint: "24/7 customer assistant",
@@ -68,7 +68,7 @@
     </button>
     <section class="assistant-panel" hidden role="dialog" aria-modal="false">
       <header class="assistant-head">
-        <span class="assistant-avatar"><i>iBe</i><b>X</b></span>
+        <span class="assistant-avatar" aria-label="iBeX"><i>iBe</i><b>X</b></span>
         <span class="assistant-head-copy"><strong></strong><small></small><span class="assistant-safe"><i></i><b></b></span></span>
         <button class="assistant-close" type="button">×</button>
       </header>

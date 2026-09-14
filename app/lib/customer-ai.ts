@@ -7,8 +7,7 @@ export type CustomerAiIntent =
   | "pricing"
   | "demo"
   | "support"
-  | "privacy"
-  | "marketing";
+  | "privacy";
 
 export type CustomerAiHistoryItem = {
   role: "user" | "assistant";
@@ -211,7 +210,7 @@ export function inferCustomerAiIntent(message: string): CustomerAiIntent {
   if (/(privacy|нууцлал|өгөгдөл|data|consent|зөвшөөрөл)/i.test(value)) return "privacy";
   if (/(demo|демо|уулзалт|meeting|турш|contact|холбогд)/i.test(value)) return "demo";
   if (/(price|pricing|үнэ|төлбөр|багц|plan|quote|үнийн санал)/i.test(value)) return "pricing";
-  if (/(marketing|маркетинг|campaign|кампанит|social|сошиал|email|имэйл)/i.test(value)) return "marketing";
+  if (/(marketing|маркетинг|campaign|кампанит|social|сошиал|email|имэйл)/i.test(value)) return "privacy";
   if (/(support|тусламж|алдаа|ажиллахгүй|problem|issue)/i.test(value)) return "support";
   if (/(asset|хөрөнгө|maintenance|засвар|workflow|pm|pdm|module|модуль|ibex)/i.test(value)) return "product";
   return "general";

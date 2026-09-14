@@ -21,6 +21,9 @@ test("assistant UI is bilingual, cites sources and is wired into the public site
   assert.match(html, /assistant-widget\.css/);
   assert.match(html, /assistant-widget\.js/);
   assert.match(widget, /iBeX Home AI/);
+  assert.match(widget, /iBeX хэрэглэгчийн туслах/);
+  assert.match(widget, /iBeX customer assistant/);
+  assert.doesNotMatch(widget, /Хэрэглэгчийн ба маркетингийн туслах|Customer & marketing assistant/);
   assert.match(widget, /iBeX Intelligent AI-аас тусдаа/);
   assert.match(widget, /Separate from iBeX Intelligent AI/);
   assert.match(widget, /assistant-sources/);
@@ -28,6 +31,21 @@ test("assistant UI is bilingual, cites sources and is wired into the public site
   assert.match(widget, /consent: true/);
   assert.match(widget, /get\(["']admin["']\)\s*===\s*["']1["']\)\s*return/);
   assert.doesNotMatch(widget, /PM ба PdM ямар ялгаатай вэ\?|How do PM and PdM differ\?/);
+});
+
+test("Marketing AI is an administrator-only full module instead of a public chat identity", () => {
+  const adminHub = read("app/admin/page.tsx");
+  const permissions = read("app/lib/site-admin.ts");
+  const marketing = read("app/admin/marketing-ai/page.tsx");
+  const customerRoute = read("app/api/assistant/chat/route.ts");
+  assert.match(adminHub, /marketing\.manage/);
+  assert.match(permissions, /"marketing\.manage"/);
+  for (const label of ["Хяналтын самбар", "AI командын төв", "Хэрэглэгч ба Lead", "Кампанит ажил", "Зөвшөөрлийн төв", "Төсөв ба хэрэглээ", "Audit log"]) {
+    assert.match(marketing, new RegExp(label));
+  }
+  assert.match(marketing, /ЗӨВХӨН АДМИН/);
+  assert.match(customerRoute, /public customer assistant/);
+  assert.doesNotMatch(customerRoute, /public customer and marketing assistant/);
 });
 
 test("mobile assistant remains above the embedded admin overlay and inside device safe areas", () => {

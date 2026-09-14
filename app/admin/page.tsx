@@ -18,6 +18,7 @@ const adminSections = [
   { id: "people", permission: "people.manage", mn: "Төслийн баг", en: "Project team", src: "/concept.html?admin=content&embeddedHub=1&section=people" },
   { id: "pricing", permission: "pricing.manage", mn: "Үнэ ба багц", en: "Pricing", src: "/admin/pricing?embedded=1" },
   { id: "knowledge", permission: "knowledge.manage", mn: "AI мэдлэгийн сан", en: "AI knowledge", src: "/admin/assistant?embedded=1" },
+  { id: "marketing", permission: "marketing.manage", mn: "Маркетинг AI", en: "Marketing AI", src: "/admin/marketing-ai?embedded=1" },
   { id: "social", permission: "social.manage", mn: "Мэдээ ба контент", en: "News & content", src: "/admin/social?embedded=1" },
   { id: "accounts", permission: "accounts.manage", mn: "Веб хэрэглэгчид", en: "Website users", src: "/admin/site-users?embedded=1" },
 ] as const;
@@ -28,6 +29,7 @@ const adminPermissions = new Set([
   "people.manage",
   "pricing.manage",
   "knowledge.manage",
+  "marketing.manage",
   "social.manage",
   "accounts.manage",
 ]);

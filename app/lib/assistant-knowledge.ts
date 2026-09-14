@@ -122,7 +122,7 @@ export const defaultKnowledge: KnowledgeEntry[] = [
       "iBeX Home AI нь веб сайтын хэрэглэгчид зориулсан тусдаа OpenAI-д суурилсан туслах. Баталгаажсан нийтэд нээлттэй мэдээллээс бүтээгдэхүүн, багц, демо, тусламж болон нууцлалын асуултад хариулж, шаардлагатай үед iBeX мэргэжилтэнтэй үргэлжлүүлэх санал гаргана. Энэ нь iBeX Hybrid Intelligent AI болон үйлдвэрлэлийн System AI биш.",
     contentEn:
       "iBeX Home AI is a separate OpenAI-powered assistant for website customers. It answers product, plan, demo, support and privacy questions from approved public information and can propose a handoff to an iBeX specialist. It is not iBeX Hybrid Intelligent AI or the industrial System AI.",
-    keywords: ["home", "customer", "marketing", "хэрэглэгч", "туслах", "openai", "demo", "support", "hybrid", "intelligent"],
+    keywords: ["home", "customer", "хэрэглэгч", "туслах", "openai", "demo", "support", "hybrid", "intelligent"],
     sourceLabel: "iBeX Home AI · Approved service boundary",
     sourceUrl: "",
     version: "R1",
@@ -134,14 +134,14 @@ export const defaultKnowledge: KnowledgeEntry[] = [
   {
     id: "kb-home-marketing-policy",
     topic: "marketing",
-    titleMn: "Маркетингийн автоматжуулалтын хамгаалалт",
-    titleEn: "Marketing automation safeguards",
+    titleMn: "Хэрэглэгчийн мэдээлэл дамжуулах ба маркетингийн зөвшөөрөл",
+    titleEn: "Customer handoff and marketing consent",
     contentMn:
-      "Эхний release-д iBeX Home AI нь хэрэглэгчийн зорилгыг таньж, маркетингийн агуулга эсвэл мэргэжилтэнд шилжүүлэх санал гаргаж болно. Гэхдээ имэйл, сошиал нийтлэл, кампанит ажил болон бусад гадагш нөлөөлөх үйлдлийг автоматаар илгээхгүй; админы баталгаажуулалт болон тухайн сувгийн зөвшөөрөл шаардлагатай.",
+      "iBeX Home AI нь зөвхөн хэрэглэгчийн асуултад хариулж, хэрэглэгч өөрөө хүссэн үед бүртгэл эсвэл мэргэжилтэнд шилжүүлэх замыг санал болгоно. Маркетингийн төлөвлөлт, имэйл, сошиал нийтлэл, кампанит ажил болон сувгийн удирдлага нь Home AI-д хамаарахгүй; эдгээр нь тусдаа, зөвхөн админд нээлттэй iBeX Marketing AI модульд байрлана. Хэрэглэгчийн мэдээллийг маркетингийн зорилгоор ашиглахад тухайн сувгийн тусгай зөвшөөрөл шаардлагатай.",
     contentEn:
-      "In the first release, iBeX Home AI may identify customer intent and propose marketing content or a specialist handoff. It does not automatically send email, publish social posts, launch campaigns or perform other external actions; administrator approval and channel consent are required.",
+      "iBeX Home AI only answers customer questions and may offer registration or specialist handoff when the customer asks. Marketing planning, email, social publishing, campaigns and channel operations are outside Home AI and belong to the separate administrator-only iBeX Marketing AI module. Using customer information for marketing requires separate channel consent.",
     keywords: ["маркетинг", "marketing", "campaign", "кампанит", "email", "имэйл", "social", "сошиал", "approval", "баталгаажуулалт"],
-    sourceLabel: "iBeX Home AI · Approved outbound policy",
+    sourceLabel: "iBeX Website · Customer consent boundary",
     sourceUrl: "",
     version: "R1",
     status: "approved",

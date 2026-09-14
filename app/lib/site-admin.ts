@@ -9,6 +9,7 @@ export const ADMIN_PERMISSIONS = [
   "partners.manage",
   "people.manage",
   "knowledge.manage",
+  "marketing.manage",
   "social.manage",
   "accounts.manage",
   "media.upload",
@@ -19,6 +20,7 @@ export const ADMIN_CONTENT_PERMISSIONS = [
   "partners.manage",
   "people.manage",
   "knowledge.manage",
+  "marketing.manage",
   "social.manage",
   "accounts.manage",
 ] as const;
