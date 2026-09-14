@@ -98,6 +98,27 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 - `npm run validate:artifact`: recheck an existing artifact's manifest and ESM `default.fetch` export
 - `npm run db:generate`: generate Drizzle migrations after schema changes
 
+## iBeX Home AI R1
+
+The public Home AI is a customer and marketing assistant, not iBeX Hybrid
+Intelligent AI or the industrial System AI. Its server route reads only approved
+public website knowledge. Raw chat text is not written to D1; D1 stores hashed
+subjects, explicit AI-service consent, aggregate usage and privacy-safe audit
+metadata in the isolated `customer_ai_*` tables.
+
+Configure `OPENAI_API_KEY` and `CUSTOMER_AI_ID_HASH_SALT` as server-side Site
+secrets and explicitly choose `CUSTOMER_AI_MONTHLY_BUDGET_USD`; paid model calls
+stay blocked when the salt or monthly budget is missing. The remaining
+`CUSTOMER_AI_*` values in `.dev.vars.example` control
+model routing, request limits, app-side cost estimates and dynamic fair-share
+budgeting. Also set an OpenAI project spend limit as the authoritative hard
+stop. Never put a real API key in source, a public repository or browser code.
+
+R1 does not send emails, publish social posts, launch campaigns or modify iBeX
+tenant data. Customer handoff is a visible proposal; outbound tools remain
+blocked until a separately approved release adds channel credentials, consent,
+administrator approval and delivery audit.
+
 Use build and validation commands for targeted diagnosis after a remote failure, not as part of the normal checkpoint path.
 
 The timeout defaults can be overridden for a controlled canary with `SITES_INSTALL_TIMEOUT`, `SITES_INSTALL_KILL_AFTER`, `SITES_BUILD_TIMEOUT`, and `SITES_BUILD_KILL_AFTER`. A timeout fails the command; the helpers never retry an unchanged install or build.

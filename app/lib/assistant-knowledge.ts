@@ -114,6 +114,42 @@ export const defaultKnowledge: KnowledgeEntry[] = [
     enabled: true,
   },
   {
+    id: "kb-home-customer-ai",
+    topic: "home-ai",
+    titleMn: "iBeX Home AI — хэрэглэгчийн туслах",
+    titleEn: "iBeX Home AI — customer assistant",
+    contentMn:
+      "iBeX Home AI нь веб сайтын хэрэглэгчид зориулсан тусдаа OpenAI-д суурилсан туслах. Баталгаажсан нийтэд нээлттэй мэдээллээс бүтээгдэхүүн, багц, демо, тусламж болон нууцлалын асуултад хариулж, шаардлагатай үед iBeX мэргэжилтэнтэй үргэлжлүүлэх санал гаргана. Энэ нь iBeX Hybrid Intelligent AI болон үйлдвэрлэлийн System AI биш.",
+    contentEn:
+      "iBeX Home AI is a separate OpenAI-powered assistant for website customers. It answers product, plan, demo, support and privacy questions from approved public information and can propose a handoff to an iBeX specialist. It is not iBeX Hybrid Intelligent AI or the industrial System AI.",
+    keywords: ["home", "customer", "marketing", "хэрэглэгч", "туслах", "openai", "demo", "support", "hybrid", "intelligent"],
+    sourceLabel: "iBeX Home AI · Approved service boundary",
+    sourceUrl: "",
+    version: "R1",
+    status: "approved",
+    visibility: "public",
+    stage: "pilot",
+    enabled: true,
+  },
+  {
+    id: "kb-home-marketing-policy",
+    topic: "marketing",
+    titleMn: "Маркетингийн автоматжуулалтын хамгаалалт",
+    titleEn: "Marketing automation safeguards",
+    contentMn:
+      "Эхний release-д iBeX Home AI нь хэрэглэгчийн зорилгыг таньж, маркетингийн агуулга эсвэл мэргэжилтэнд шилжүүлэх санал гаргаж болно. Гэхдээ имэйл, сошиал нийтлэл, кампанит ажил болон бусад гадагш нөлөөлөх үйлдлийг автоматаар илгээхгүй; админы баталгаажуулалт болон тухайн сувгийн зөвшөөрөл шаардлагатай.",
+    contentEn:
+      "In the first release, iBeX Home AI may identify customer intent and propose marketing content or a specialist handoff. It does not automatically send email, publish social posts, launch campaigns or perform other external actions; administrator approval and channel consent are required.",
+    keywords: ["маркетинг", "marketing", "campaign", "кампанит", "email", "имэйл", "social", "сошиал", "approval", "баталгаажуулалт"],
+    sourceLabel: "iBeX Home AI · Approved outbound policy",
+    sourceUrl: "",
+    version: "R1",
+    status: "approved",
+    visibility: "public",
+    stage: "pilot",
+    enabled: true,
+  },
+  {
     id: "kb-website-assistant-boundary",
     topic: "assistant",
     titleMn: "Сайтын AI туслахын хүрээ",
@@ -166,7 +202,10 @@ export async function readKnowledge() {
   if (!row) return { entries: defaultKnowledge, updatedAt: null };
   try {
     const entries = normalizeKnowledge(JSON.parse(row.value_json));
-    return { entries: entries.length ? entries : defaultKnowledge, updatedAt: row.updated_at };
+    if (!entries.length) return { entries: defaultKnowledge, updatedAt: row.updated_at };
+    const merged = new Map(defaultKnowledge.map((entry) => [entry.id, entry]));
+    for (const entry of entries) merged.set(entry.id, entry);
+    return { entries: [...merged.values()], updatedAt: row.updated_at };
   } catch {
     return { entries: defaultKnowledge, updatedAt: null };
   }

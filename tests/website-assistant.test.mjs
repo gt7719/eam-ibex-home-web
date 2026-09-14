@@ -7,11 +7,12 @@ const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), "
 test("website assistant stays separate from iBeX System AI and live tenant data", () => {
   const knowledge = read("app/lib/assistant-knowledge.ts");
   const route = read("app/api/assistant/chat/route.ts");
+  const customerAi = read("app/lib/customer-ai.ts");
   assert.match(knowledge, /iBeX System AI-аас бүрэн тусдаа/);
   assert.match(knowledge, /PostgreSQL, Directus, байгууллагын tenant өгөгдөл/);
-  assert.match(route, /entry\.status === "approved" && entry\.visibility === "public"/);
-  assert.match(route, /entry\.enabled/);
-  assert.match(route, /Баталгаажсан материалд|баталгаажсан, нийтэд нээлттэй/i);
+  assert.match(customerAi, /entry\.enabled && entry\.status === "approved" && entry\.visibility === "public"/);
+  assert.match(customerAi, /CUSTOMER_AI_DATA_BOUNDARY = "approved-public-website-only"/);
+  assert.match(route, /systemAiAccess: false/);
 });
 
 test("assistant UI is bilingual, cites sources and is wired into the public site", () => {
@@ -19,11 +20,13 @@ test("assistant UI is bilingual, cites sources and is wired into the public site
   const widget = read("public/assistant-widget.js");
   assert.match(html, /assistant-widget\.css/);
   assert.match(html, /assistant-widget\.js/);
-  assert.match(widget, /iBeX мэдээллийн туслах/);
-  assert.match(widget, /iBeX Website Assistant/);
+  assert.match(widget, /iBeX Home AI/);
+  assert.match(widget, /iBeX Intelligent AI-аас тусдаа/);
+  assert.match(widget, /Separate from iBeX Intelligent AI/);
   assert.match(widget, /assistant-sources/);
   assert.match(widget, /\/api\/assistant\/chat/);
-  assert.match(widget, /get\('admin'\)===\s*'1'\)return/);
+  assert.match(widget, /consent: true/);
+  assert.match(widget, /get\(["']admin["']\)\s*===\s*["']1["']\)\s*return/);
   assert.doesNotMatch(widget, /PM ба PdM ямар ялгаатай вэ\?|How do PM and PdM differ\?/);
 });
 

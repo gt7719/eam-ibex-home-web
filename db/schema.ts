@@ -115,6 +115,75 @@ export const aiApprovals = sqliteTable(
   (table) => [index("ai_approvals_tenant_status_idx").on(table.tenantId, table.status)],
 );
 
+// iBeX Home customer/marketing AI data is deliberately isolated from the
+// industrial Hybrid/System AI tables above. These tables contain only hashed
+// subjects, consent state, aggregate usage and privacy-safe audit metadata.
+export const customerAiConsents = sqliteTable(
+  "customer_ai_consents",
+  {
+    subjectHash: text("subject_hash").notNull(),
+    consentType: text("consent_type").notNull(),
+    policyVersion: text("policy_version").notNull(),
+    status: text("status").notNull(),
+    source: text("source").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.subjectHash, table.consentType] }),
+    index("customer_ai_consents_status_idx").on(table.status, table.updatedAt),
+  ],
+);
+
+export const customerAiRateLimits = sqliteTable(
+  "customer_ai_rate_limits",
+  {
+    subjectHash: text("subject_hash").notNull(),
+    scope: text("scope").notNull(),
+    windowKey: text("window_key").notNull(),
+    requestCount: integer("request_count").notNull().default(0),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.subjectHash, table.scope, table.windowKey] }),
+    index("customer_ai_rate_limits_window_idx").on(table.scope, table.windowKey),
+  ],
+);
+
+export const customerAiMonthlyUsage = sqliteTable(
+  "customer_ai_monthly_usage",
+  {
+    subjectHash: text("subject_hash").notNull(),
+    monthKey: text("month_key").notNull(),
+    requestCount: integer("request_count").notNull().default(0),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    estimatedCostUsd: real("estimated_cost_usd").notNull().default(0),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.subjectHash, table.monthKey] }),
+    index("customer_ai_monthly_usage_month_idx").on(table.monthKey),
+  ],
+);
+
+export const customerAiAuditEvents = sqliteTable(
+  "customer_ai_audit_events",
+  {
+    id: text("id").primaryKey(),
+    subjectHash: text("subject_hash").notNull(),
+    channel: text("channel").notNull(),
+    eventType: text("event_type").notNull(),
+    model: text("model"),
+    status: text("status").notNull(),
+    metadataJson: text("metadata_json").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("customer_ai_audit_subject_created_idx").on(table.subjectHash, table.createdAt),
+    index("customer_ai_audit_channel_created_idx").on(table.channel, table.createdAt),
+  ],
+);
+
 // Public website accounts are intentionally separate from both admin_users
 // and the tenant users of the core iBeX product.
 export const siteUsers = sqliteTable(

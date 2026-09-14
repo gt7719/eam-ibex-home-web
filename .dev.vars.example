@@ -5,3 +5,23 @@ EMAIL_FROM=iBeX Account <no-reply@account.ibex.mn>
 EMAIL_REPLY_TO=support@ibex.mn
 TURNSTILE_SITE_KEY=
 TURNSTILE_SECRET_KEY=
+
+# iBeX Home AI (customer/marketing assistant) — server-side only.
+# Never expose OPENAI_API_KEY or CUSTOMER_AI_ID_HASH_SALT to browser code.
+OPENAI_API_KEY=
+CUSTOMER_AI_ID_HASH_SALT=
+CUSTOMER_AI_FAST_MODEL=gpt-5.6-luna
+CUSTOMER_AI_COMPLEX_MODEL=gpt-5.6-terra
+# Required before paid model calls are enabled; choose and approve this value.
+CUSTOMER_AI_MONTHLY_BUDGET_USD=
+CUSTOMER_AI_MIN_FAIR_SHARE_USD=0.25
+CUSTOMER_AI_REQUESTS_PER_MINUTE=6
+CUSTOMER_AI_REQUESTS_PER_DAY=80
+CUSTOMER_AI_MAX_OUTPUT_TOKENS=520
+
+# App-side cost estimates. Review these whenever model pricing changes and set
+# the OpenAI project spend limit as the authoritative hard stop.
+CUSTOMER_AI_FAST_INPUT_USD_PER_MTOK=0.2
+CUSTOMER_AI_FAST_OUTPUT_USD_PER_MTOK=1.2
+CUSTOMER_AI_COMPLEX_INPUT_USD_PER_MTOK=2
+CUSTOMER_AI_COMPLEX_OUTPUT_USD_PER_MTOK=12
