@@ -7,6 +7,7 @@ import { useSiteLanguage } from "../../lib/use-site-language";
 
 export default function AdminLoginPage() {
   const { t } = useSiteLanguage();
+  const [theme, setTheme] = useState<"day" | "night">("night");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -17,6 +18,9 @@ export default function AdminLoginPage() {
   const [setupEligible, setSetupEligible] = useState(false);
 
   useEffect(() => {
+    const appearanceTimer = window.setTimeout(() => {
+      setTheme(document.documentElement.dataset.ibexTheme === "day" ? "day" : "night");
+    }, 0);
     void (async () => {
       try {
         const response = await fetch("/api/admin/session", { cache: "no-store" });
@@ -42,7 +46,20 @@ export default function AdminLoginPage() {
         setChecking(false);
       }
     })();
+    return () => window.clearTimeout(appearanceTimer);
   }, []);
+
+  function toggleTheme() {
+    const next = theme === "day" ? "night" : "day";
+    setTheme(next);
+    document.documentElement.dataset.ibexTheme = next;
+    try {
+      localStorage.setItem("ibex-theme", next);
+      window.postMessage({ type: "ibex-global-appearance", day: next === "day" }, location.origin);
+    } catch {
+      // The selected theme still applies for the current page.
+    }
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -71,9 +88,16 @@ export default function AdminLoginPage() {
   return (
     <main className="admin-auth-page">
       <Link className="admin-auth-brand" href="/" aria-label={t("iBeX нүүр", "iBeX home")}>
-        <Image src="/ibex-main-logo.jpg" alt="iBeX" width={40} height={40} priority />
+        <Image src="/ibex-main-logo.jpg" alt="iBeX" width={48} height={48} priority unoptimized />
         <span>iBeX</span>
       </Link>
+      <div className="admin-auth-controls">
+        <button type="button" onClick={toggleTheme} aria-label={theme === "day" ? t("Шөнийн горим", "Use night mode") : t("Өдрийн горим", "Use day mode")}>
+          <span aria-hidden="true">{theme === "day" ? "☾" : "☀"}</span>
+          {theme === "day" ? t("Шөнө", "Night") : t("Өдөр", "Day")}
+        </button>
+        <Link href="/" aria-label={t("Админ нэвтрэлтийг хааж нүүр хуудас руу буцах", "Close administrator sign-in and return home")} title={t("Хаах", "Close")}>×</Link>
+      </div>
       <section className="admin-auth-card" aria-labelledby="admin-login-title">
         <span className="admin-auth-kicker">WEBSITE CONTENT ADMIN</span>
         <h1 id="admin-login-title">{needsSetup ? t("Үндсэн админ үүсгэх", "Create owner administrator") : t("Админ нэвтрэлт", "Administrator sign in")}</h1>

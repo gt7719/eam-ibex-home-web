@@ -562,3 +562,17 @@ select:focus-visible, textarea:focus-visible {
   .social-media-actions { flex-wrap: wrap; }
   .social-caption-fields { grid-template-columns: 1fr; }
 }
+
+/* Version 54: a clear, current status for the future mobile environment. */
+.mobile-environment-development {
+  margin-top: 0;
+  margin-bottom: 18px;
+  border-color: rgba(255, 209, 102, .4);
+  background: linear-gradient(135deg, rgba(255, 209, 102, .09), rgba(111, 45, 189, .08));
+  box-shadow: 0 16px 46px rgba(0, 0, 0, .18);
+}
+.mobile-environment-development strong { font-size: 15px; }
+html[data-ibex-theme="day"] .mobile-environment-development {
+  border-color: #b89a47;
+  background: linear-gradient(135deg, #fff8e5, #f8f2fb);
+}

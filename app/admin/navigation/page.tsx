@@ -122,6 +122,8 @@ export default function NavigationAdminPage() {
 
   const activeMenus = useMemo(() => draft?.menus.filter((menu) => !menu.archived) || [], [draft]);
   const archivedMenus = useMemo(() => draft?.menus.filter((menu) => menu.archived) || [], [draft]);
+  const totalMenuCount = draft?.menus.length || 0;
+  const atMenuLimit = totalMenuCount >= NAVIGATION_LIMITS.menus;
   const activeMenu = useMemo(
     () => activeMenus.find((menu) => menu.id === activeId) || activeMenus[0],
     [activeId, activeMenus],
@@ -340,11 +342,11 @@ export default function NavigationAdminPage() {
             {localized(menu.labelMn, menu.labelEn)}
           </button>
         ))}
-        <button type="button" className="navigation-add-menu" onClick={addMenu} disabled={draft.menus.length >= NAVIGATION_LIMITS.menus}>＋ {t("Үндсэн цэс", "Top-level menu")}</button>
+        <button type="button" className="navigation-add-menu" onClick={addMenu} disabled={atMenuLimit} title={atMenuLimit ? t(`Цэсийн дээд хязгаар ${NAVIGATION_LIMITS.menus}-д хүрсэн.`, `The menu limit of ${NAVIGATION_LIMITS.menus} has been reached.`) : undefined}>{t("＋ Шинэ үндсэн цэс нэмэх", "＋ Add top-level menu")}</button>
       </nav>
 
       <details className="navigation-menu-manager">
-        <summary>{t("Үндсэн цэсний дараалал ба архив", "Top-level order and archive")} · {activeMenus.length}/{NAVIGATION_LIMITS.menus}</summary>
+        <summary>{t("Үндсэн цэсний дараалал ба архив", "Top-level order and archive")} · {t(`Идэвхтэй ${activeMenus.length} · Нийт ${totalMenuCount}/${NAVIGATION_LIMITS.menus}`, `Active ${activeMenus.length} · Total ${totalMenuCount}/${NAVIGATION_LIMITS.menus}`)}</summary>
         <div className="navigation-menu-manager-list">
           {activeMenus.map((menu, index) => <article key={menu.id}>
             <span>{String(index + 1).padStart(2, "0")}</span><strong>{localized(menu.labelMn, menu.labelEn)}</strong>

@@ -138,3 +138,55 @@
 .navigation-environment-toggle{display:grid;grid-template-columns:auto 42px;grid-template-rows:auto auto;column-gap:10px;align-items:center;flex:0 0 auto;min-width:148px;padding:10px 12px;border:1px solid rgba(57,229,140,.3);border-radius:12px;color:#d7f7e6;background:rgba(57,229,140,.07);cursor:pointer}.navigation-environment-toggle input{position:absolute;width:1px;height:1px;overflow:hidden;opacity:0}.navigation-environment-toggle>span{grid-column:2;grid-row:1/-1;position:relative;width:42px;height:24px;border:1px solid rgba(168,85,247,.32);border-radius:999px;background:rgba(168,85,247,.14);transition:.2s}.navigation-environment-toggle>span:after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#9d91a4;transition:.2s}.navigation-environment-toggle input:checked+span{border-color:#51ca89;background:rgba(57,229,140,.22)}.navigation-environment-toggle input:checked+span:after{left:21px;background:#63e5a3}.navigation-environment-toggle input:focus-visible+span{outline:2px solid #ffd166;outline-offset:3px}.navigation-environment-toggle strong{grid-column:1;grid-row:1/-1;font-size:12px;white-space:nowrap}
 [data-ibex-theme="day"] .navigation-protected-menu{border-color:#73be98;background:linear-gradient(135deg,#edf9f3,#faf7fc);box-shadow:0 16px 40px rgba(54,38,70,.06)}[data-ibex-theme="day"] .navigation-protected-menu h2{color:#30283a}[data-ibex-theme="day"] .navigation-protected-menu p{color:#62566b}[data-ibex-theme="day"] .navigation-environment-toggle{border-color:#68b98f;color:#155f3e;background:#e8f7ef}
 @media(max-width:680px){.navigation-protected-menu{align-items:stretch;flex-direction:column;gap:14px}.navigation-environment-toggle{width:100%;min-height:48px}}
+
+/* Version 54: one readable admin standard across themes and navigation tabs. */
+.admin-auth-page{box-sizing:border-box;height:100dvh;overflow-y:auto}
+.admin-auth-card h1{color:#f5eff8;font-weight:600;line-height:1.08}
+.admin-auth-controls{position:fixed;z-index:5;top:22px;right:28px;display:flex;align-items:center;gap:8px}
+.admin-auth-controls button,.admin-auth-controls a{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 13px;border:1px solid rgba(168,85,247,.35);border-radius:12px;color:#eee7f3;background:rgba(111,45,189,.1);font:700 13px/1 Inter,ui-sans-serif,system-ui;text-decoration:none;cursor:pointer}
+.admin-auth-controls button{gap:7px}.admin-auth-controls button span{font-size:17px}.admin-auth-controls a{width:42px;padding:0;font-size:25px;font-weight:400}
+.admin-auth-controls button:hover,.admin-auth-controls a:hover{border-color:rgba(57,229,140,.55);background:rgba(57,229,140,.08)}
+[data-ibex-theme="day"] .admin-auth-page{color:#2d2434;background:radial-gradient(circle at 20% 15%,rgba(111,45,189,.12),transparent 32%),radial-gradient(circle at 82% 78%,rgba(57,229,140,.08),transparent 30%),#f4f2f7}
+[data-ibex-theme="day"] .admin-auth-brand{color:#2d2434}
+[data-ibex-theme="day"] .admin-auth-card{color:#2d2434;border-color:#cfc1da;background:#fff;box-shadow:0 32px 90px rgba(54,38,70,.14),inset 0 1px #fff}
+[data-ibex-theme="day"] .admin-auth-card h1{color:#2d2434}
+[data-ibex-theme="day"] .admin-auth-card>p{color:#62586a}
+[data-ibex-theme="day"] .admin-auth-card label{color:#554a5e}
+[data-ibex-theme="day"] .admin-auth-card input{color:#2d2434;border-color:#cbbdd6;background:#fff}
+[data-ibex-theme="day"] .admin-auth-links{border-color:#ded3e5}
+[data-ibex-theme="day"] .admin-auth-links a{color:#572777;font-weight:700}
+[data-ibex-theme="day"] .admin-auth-controls button,[data-ibex-theme="day"] .admin-auth-controls a{color:#4d2867;border-color:#bda5cf;background:#f7f1fa}
+.admin-session-bar{border:1px solid rgba(168,85,247,.3);border-radius:18px;margin-bottom:10px}
+.admin-hub-shell{border-radius:24px}
+.navigation-admin-page .navigation-field-grid label,
+.navigation-admin-page .navigation-media-fields>label,
+.navigation-admin-page .navigation-poster-fields>label{
+  color:#aaa0b0;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif!important;
+  font-size:14px!important;
+  font-weight:650!important;
+  line-height:1.4!important;
+  letter-spacing:.035em!important;
+}
+.navigation-admin-page .navigation-field-grid :is(input,textarea,select),
+.navigation-admin-page .navigation-media-fields input,
+.navigation-admin-page .navigation-poster-fields input{
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif!important;
+  font-size:16px!important;
+  font-weight:400!important;
+  line-height:1.5!important;
+  letter-spacing:0!important;
+  text-transform:none!important;
+}
+.navigation-admin-page .navigation-group-card>summary>strong,
+.navigation-admin-page .navigation-item-card>header>strong,
+.navigation-admin-page .navigation-media-section h4{font-family:Inter,ui-sans-serif,system-ui!important;font-size:15px!important;font-weight:700!important;line-height:1.35}
+.navigation-admin-page .navigation-fields-card h3,
+.navigation-admin-page .navigation-groups-head h3{font-size:17px;font-weight:600}
+.navigation-admin-page .navigation-add-menu{min-height:44px!important;padding:0 16px!important;border-color:rgba(57,229,140,.48)!important;color:#c9f8df!important;background:rgba(57,229,140,.11)!important;box-shadow:inset 0 0 0 1px rgba(57,229,140,.05)}
+[data-ibex-theme="day"] .navigation-admin-page .navigation-add-menu{border-color:#3e9d6c!important;color:#145e3d!important;background:#e8f7ef!important;box-shadow:0 5px 16px rgba(31,113,72,.08)}
+[data-ibex-theme="day"] .navigation-admin-page .navigation-add-menu:not(:disabled):hover{border-color:#19764a!important;background:#d9f1e4!important}
+[data-ibex-theme="day"] .navigation-admin-page .navigation-field-grid label,
+[data-ibex-theme="day"] .navigation-admin-page .navigation-media-fields>label,
+[data-ibex-theme="day"] .navigation-admin-page .navigation-poster-fields>label{color:#564b5e}
+@media(max-width:680px){.admin-auth-page{align-content:start;padding:92px 14px 28px}.admin-auth-brand{position:absolute}.admin-auth-controls{position:absolute;top:17px;right:14px}.admin-auth-controls button{width:42px;padding:0;font-size:0}.admin-auth-controls button span{font-size:18px}.admin-session-bar{border-radius:14px;margin-bottom:7px}}
