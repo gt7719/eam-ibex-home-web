@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { defaultKnowledge, readKnowledge, type KnowledgeEntry } from "../../../lib/assistant-knowledge";
 import bookKnowledge from "../../../lib/ibex-book-knowledge.json";
 import { getSiteUserSession } from "../../../lib/site-user-auth";
+import { readHomeAiSettings } from "../../../lib/home-ai-control";
 import {
   CUSTOMER_AI_DATA_BOUNDARY,
   CustomerAiQuotaError,
@@ -176,8 +177,9 @@ export async function POST(request: Request) {
   }
 
   const runtime = env as unknown as CustomerAiRuntimeEnv & { DB: CustomerAiDatabase };
-  const config = customerAiConfig(runtime);
-  if (runtime.OPENAI_API_KEY && (!runtime.CUSTOMER_AI_ID_HASH_SALT?.trim() || !runtime.CUSTOMER_AI_MONTHLY_BUDGET_USD?.trim())) {
+  const { settings: homeAiSettings } = await readHomeAiSettings(runtime.DB);
+  const config = customerAiConfig(runtime, homeAiSettings);
+  if (homeAiSettings.mode === "production" && runtime.OPENAI_HOME_API_KEY && !runtime.HOME_AI_ID_HASH_SALT?.trim()) {
     console.error("customer_ai_required_controls_missing");
     return reply({
       answer: parsed.payload.lang === "en"
@@ -255,10 +257,10 @@ export async function POST(request: Request) {
   let inputTokens = 0;
   let outputTokens = 0;
 
-  if (!guard && sources.length && runtime.OPENAI_API_KEY) {
+  if (!guard && sources.length && homeAiSettings.mode === "production" && runtime.OPENAI_HOME_API_KEY) {
     try {
       const generated = await callOpenAi({
-        apiKey: runtime.OPENAI_API_KEY,
+        apiKey: runtime.OPENAI_HOME_API_KEY,
         model,
         lang: parsed.payload.lang,
         message: parsed.payload.message,
@@ -321,6 +323,7 @@ export async function POST(request: Request) {
       systemAiAccess: false,
       memory: "ephemeral_last_6_messages",
       consent: "recorded",
+      controlMode: homeAiSettings.mode,
     },
     budget: {
       month: budget.month,

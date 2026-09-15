@@ -33,7 +33,7 @@ export type CustomerAiSource = {
 };
 
 export type CustomerAiRuntimeEnv = {
-  OPENAI_API_KEY?: string;
+  OPENAI_HOME_API_KEY?: string;
   CUSTOMER_AI_FAST_MODEL?: string;
   CUSTOMER_AI_COMPLEX_MODEL?: string;
   CUSTOMER_AI_MONTHLY_BUDGET_USD?: string;
@@ -45,12 +45,13 @@ export type CustomerAiRuntimeEnv = {
   CUSTOMER_AI_FAST_OUTPUT_USD_PER_MTOK?: string;
   CUSTOMER_AI_COMPLEX_INPUT_USD_PER_MTOK?: string;
   CUSTOMER_AI_COMPLEX_OUTPUT_USD_PER_MTOK?: string;
-  CUSTOMER_AI_ID_HASH_SALT?: string;
+  HOME_AI_ID_HASH_SALT?: string;
 };
 
 export type CustomerAiPreparedStatement = {
   bind(...values: unknown[]): CustomerAiPreparedStatement;
   first<T = unknown>(): Promise<T | null>;
+  all<T = unknown>(): Promise<{ results?: T[] }>;
   run(): Promise<unknown>;
 };
 
@@ -88,15 +89,23 @@ function boundedNumber(value: string | undefined, fallback: number, minimum: num
   return Number.isFinite(parsed) ? Math.min(maximum, Math.max(minimum, parsed)) : fallback;
 }
 
-export function customerAiConfig(runtime: CustomerAiRuntimeEnv): CustomerAiConfig {
+export function customerAiConfig(runtime: CustomerAiRuntimeEnv, overrides?: Partial<{
+  fastModel: string;
+  complexModel: string;
+  monthlyBudgetUsd: number;
+  minimumFairShareUsd: number;
+  requestsPerMinute: number;
+  requestsPerDay: number;
+  maxOutputTokens: number;
+}>): CustomerAiConfig {
   return {
-    fastModel: runtime.CUSTOMER_AI_FAST_MODEL?.trim() || "gpt-5.6-luna",
-    complexModel: runtime.CUSTOMER_AI_COMPLEX_MODEL?.trim() || "gpt-5.6-terra",
-    monthlyBudgetUsd: boundedNumber(runtime.CUSTOMER_AI_MONTHLY_BUDGET_USD, 5, 1, 1_000_000),
-    minimumFairShareUsd: boundedNumber(runtime.CUSTOMER_AI_MIN_FAIR_SHARE_USD, 0.25, 0.01, 1_000),
-    requestsPerMinute: Math.round(boundedNumber(runtime.CUSTOMER_AI_REQUESTS_PER_MINUTE, 6, 1, 120)),
-    requestsPerDay: Math.round(boundedNumber(runtime.CUSTOMER_AI_REQUESTS_PER_DAY, 80, 1, 10_000)),
-    maxOutputTokens: Math.round(boundedNumber(runtime.CUSTOMER_AI_MAX_OUTPUT_TOKENS, 520, 120, 2_000)),
+    fastModel: overrides?.fastModel || runtime.CUSTOMER_AI_FAST_MODEL?.trim() || "gpt-5.6-luna",
+    complexModel: overrides?.complexModel || runtime.CUSTOMER_AI_COMPLEX_MODEL?.trim() || "gpt-5.6-terra",
+    monthlyBudgetUsd: boundedNumber(String(overrides?.monthlyBudgetUsd ?? runtime.CUSTOMER_AI_MONTHLY_BUDGET_USD ?? ""), 10, 1, 1_000_000),
+    minimumFairShareUsd: boundedNumber(String(overrides?.minimumFairShareUsd ?? runtime.CUSTOMER_AI_MIN_FAIR_SHARE_USD ?? ""), 0.25, 0.01, 1_000),
+    requestsPerMinute: Math.round(boundedNumber(String(overrides?.requestsPerMinute ?? runtime.CUSTOMER_AI_REQUESTS_PER_MINUTE ?? ""), 6, 1, 120)),
+    requestsPerDay: Math.round(boundedNumber(String(overrides?.requestsPerDay ?? runtime.CUSTOMER_AI_REQUESTS_PER_DAY ?? ""), 10, 1, 10_000)),
+    maxOutputTokens: Math.round(boundedNumber(String(overrides?.maxOutputTokens ?? runtime.CUSTOMER_AI_MAX_OUTPUT_TOKENS ?? ""), 520, 120, 2_000)),
     // Rates are estimates used by the application guard. The OpenAI project spend
     // limit remains the authoritative hard stop and these values must be reviewed
     // whenever the configured models or OpenAI pricing change.
@@ -104,7 +113,7 @@ export function customerAiConfig(runtime: CustomerAiRuntimeEnv): CustomerAiConfi
     fastOutputUsdPerMtok: boundedNumber(runtime.CUSTOMER_AI_FAST_OUTPUT_USD_PER_MTOK, 1.2, 0, 1_000),
     complexInputUsdPerMtok: boundedNumber(runtime.CUSTOMER_AI_COMPLEX_INPUT_USD_PER_MTOK, 2, 0, 1_000),
     complexOutputUsdPerMtok: boundedNumber(runtime.CUSTOMER_AI_COMPLEX_OUTPUT_USD_PER_MTOK, 12, 0, 1_000),
-    identitySalt: runtime.CUSTOMER_AI_ID_HASH_SALT?.trim() || "ibex-home-customer-ai-v1",
+    identitySalt: runtime.HOME_AI_ID_HASH_SALT?.trim() || "ibex-home-customer-ai-v1",
   };
 }
 

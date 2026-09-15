@@ -100,19 +100,19 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 
 ## iBeX Home AI R1
 
-The public Home AI is a customer and marketing assistant, not iBeX Hybrid
+The public Home AI is a customer assistant, not a marketing system or iBeX Hybrid
 Intelligent AI or the industrial System AI. Its server route reads only approved
 public website knowledge. Raw chat text is not written to D1; D1 stores hashed
 subjects, explicit AI-service consent, aggregate usage and privacy-safe audit
 metadata in the isolated `customer_ai_*` tables.
 
-Configure `OPENAI_API_KEY` and `CUSTOMER_AI_ID_HASH_SALT` as server-side Site
-secrets and explicitly choose `CUSTOMER_AI_MONTHLY_BUDGET_USD`; paid model calls
-stay blocked when the salt or monthly budget is missing. The remaining
-`CUSTOMER_AI_*` values in `.dev.vars.example` control
-model routing, request limits, app-side cost estimates and dynamic fair-share
-budgeting. Also set an OpenAI project spend limit as the authoritative hard
-stop. Never put a real API key in source, a public repository or browser code.
+Configure `OPENAI_HOME_API_KEY` and `HOME_AI_ID_HASH_SALT` as server-side Site
+secrets. Home AI control stores its mode, model routing, request limits,
+app-side cost guard and dynamic fair-share settings in D1. Marketing AI uses a
+different `OPENAI_MARKETING_API_KEY`; the industrial Intelligent AI uses
+`OPENAI_INTELLIGENT_API_KEY`. Also set an independent OpenAI project spend
+limit for every AI as the authoritative hard stop. Never put a real API key in
+source, a public repository or browser code.
 
 R1 does not send emails, publish social posts, launch campaigns or modify iBeX
 tenant data. Customer handoff is a visible proposal; outbound tools remain

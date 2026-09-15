@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useSiteLanguage } from "../../lib/use-site-language";
+import type { MarketingAiControlSettings } from "../../lib/marketing-ai-control";
 import "./style.css";
 
 type SectionId =
@@ -30,6 +31,20 @@ type ChatMessage = {
   textMn: string;
   textEn: string;
   status?: "draft" | "notice";
+};
+
+type MarketingControl = {
+  settings: MarketingAiControlSettings;
+  revision: string | null;
+  status: { keyConfigured: boolean; emailConnected: boolean; socialConnected: boolean; draftReady: boolean; outboundReady: false; humanApprovalRequired: true };
+  usage: { month: string; requests: number; inputTokens: number; outputTokens: number; estimatedCostUsd: number };
+  audit: Array<{ eventType: string; model: string | null; status: string; createdAt: string }>;
+};
+
+const defaultControlSettings: MarketingAiControlSettings = {
+  mode: "disabled", model: "gpt-5.6-luna", monthlyBudgetUsd: 10, warningBudgetUsd: 5,
+  criticalBudgetUsd: 8, requestsPerMinute: 4, requestsPerDay: 30, maxOutputTokens: 700,
+  humanApprovalRequired: true, outboundEnabled: false,
 };
 
 const sections: Array<{ id: SectionId; code: string; mn: string; en: string }> = [
@@ -164,6 +179,17 @@ export default function MarketingAiPage() {
   const [section, setSection] = useState<SectionId>("dashboard");
   const [command, setCommand] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [control, setControl] = useState<MarketingControl | null>(null);
+  const [controlSettings, setControlSettings] = useState<MarketingAiControlSettings>(defaultControlSettings);
+  const [controlMessage, setControlMessage] = useState(""), [controlError, setControlError] = useState("");
+  const [savingControl, setSavingControl] = useState(false), [running, setRunning] = useState(false);
+
+  const loadControl = useCallback(async () => {
+    const response = await fetch("/api/admin/marketing-ai-control", { cache: "no-store" }).catch(() => null);
+    const payload = response ? await response.json().catch(() => ({})) : {};
+    if (response?.ok) { setControl(payload); setControlSettings(payload.settings); }
+    else if (response?.status !== 401 && response?.status !== 403) setControlError(payload.error || t("Marketing AI тохиргоог ачаалж чадсангүй.", "Could not load Marketing AI settings."));
+  }, [t]);
 
   useEffect(() => {
     fetch("/api/admin/session", { cache: "no-store" })
@@ -178,26 +204,43 @@ export default function MarketingAiPage() {
         setUser(next);
         setAuthorized(canAccess);
         setChecking(false);
+        if (canAccess) void loadControl();
         if (!canAccess) window.location.replace("/admin");
       })
       .catch(() => window.location.replace("/admin/login"));
-  }, []);
+  }, [loadControl]);
 
   const active = sections.find((item) => item.id === section) || sections[0];
   const cards = useMemo(() => section !== "dashboard" && section !== "command" ? areaCards[section] : [], [section]);
 
-  function submitCommand(event: FormEvent) {
+  async function submitCommand(event: FormEvent) {
     event.preventDefault();
     const value = command.trim().slice(0, 1200);
     if (!value) return;
-    const reply = commandReply(value);
     const now = Date.now();
-    setMessages((current) => [
-      ...current,
-      { id: `admin-${now}`, role: "admin", textMn: value, textEn: value },
-      { id: `assistant-${now}`, role: "assistant", status: "draft", ...reply },
-    ]);
+    setMessages((current) => [...current, { id: `admin-${now}`, role: "admin", textMn: value, textEn: value }]);
     setCommand("");
+    if (!control?.status.draftReady || controlSettings.mode === "disabled") {
+      const fallback = commandReply(value);
+      setMessages((current) => [...current, { id: `assistant-${now}`, role: "assistant", status: "draft", ...fallback }]);
+      return;
+    }
+    setRunning(true);
+    const response = await fetch("/api/admin/marketing-ai-run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ command: value, lang }) }).catch(() => null);
+    const payload = response ? await response.json().catch(() => ({})) : {};
+    const text = response?.ok ? String(payload.draft || "") : String(payload.error || t("Marketing AI Draft бэлтгэж чадсангүй.", "Marketing AI could not prepare the draft."));
+    setMessages((current) => [...current, { id: `assistant-${now}`, role: "assistant", status: response?.ok ? "draft" : "notice", textMn: text, textEn: text }]);
+    setRunning(false);
+    if (response?.ok) void loadControl();
+  }
+
+  async function saveControl(event: FormEvent) {
+    event.preventDefault(); setSavingControl(true); setControlMessage(""); setControlError("");
+    const response = await fetch("/api/admin/marketing-ai-control", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ settings: controlSettings, revision: control?.revision ?? null }) }).catch(() => null);
+    const payload = response ? await response.json().catch(() => ({})) : {};
+    if (!response?.ok) setControlError(payload.error || t("Тохиргоог хадгалж чадсангүй.", "Could not save settings."));
+    else { setControlMessage(t("Marketing AI тохиргоог хадгаллаа.", "Marketing AI settings saved.")); await loadControl(); }
+    setSavingControl(false);
   }
 
   if (checking || !authorized) return <main className="marketing-ai-state">{t("Маркетингийн админ эрхийг шалгаж байна…", "Checking marketing administration access…")}</main>;
@@ -218,7 +261,7 @@ export default function MarketingAiPage() {
       </header>
 
       <section className="marketing-ai-guard" aria-label={t("Үйлдлийн хамгаалалт", "Action safeguards")}>
-        <div><strong>{t("Хяналттай суурь горим", "Controlled foundation mode")}</strong><span>{t("OpenAI, email, social болон сурталчилгааны төлбөр холбогдоогүй", "OpenAI, email, social and advertising spend are not connected")}</span></div>
+        <div><strong>{controlSettings.mode === "production" ? t("Production Draft горим", "Production draft mode") : controlSettings.mode === "test" ? t("Test горим", "Test mode") : t("Идэвхгүй горим", "Disabled mode")}</strong><span>{control?.status.keyConfigured ? t("Тусдаа Marketing OpenAI project холбогдсон", "Separate Marketing OpenAI project connected") : t("Marketing OpenAI key хүлээж байна", "Waiting for the Marketing OpenAI key")}</span></div>
         <div className="marketing-ai-locks"><span>{t("Гадагш илгээх", "Outbound")} <b>{t("ХААЛТТАЙ", "LOCKED")}</b></span><span>{t("Хүний баталгаажуулалт", "Human approval")} <b>{t("ЗААВАЛ", "REQUIRED")}</b></span></div>
       </section>
 
@@ -237,7 +280,7 @@ export default function MarketingAiPage() {
               <article><small>{t("Идэвхтэй кампанит ажил", "Active campaigns")}</small><strong>0</strong><span>{t("Суваг холбогдоогүй", "Channels not connected")}</span></article>
               <article><small>{t("Хүлээгдэж буй зөвшөөрөл", "Pending approvals")}</small><strong>0</strong><span>{t("Гадагш үйлдэл хаалттай", "Outbound actions locked")}</span></article>
               <article><small>{t("Холбогдсон суваг", "Connected channels")}</small><strong>1 / 4</strong><span>{t("Зөвхөн iBeX веб суурь", "iBeX website foundation only")}</span></article>
-              <article><small>{t("AI сарын төсөв", "Monthly AI budget")}</small><strong>—</strong><span>{t("Тохируулаагүй · hard stop", "Not configured · hard stop")}</span></article>
+              <article><small>{t("AI сарын төсөв", "Monthly AI budget")}</small><strong>${(control?.usage.estimatedCostUsd || 0).toFixed(4)} / ${controlSettings.monthlyBudgetUsd}</strong><span>{t("App guard · OpenAI hard limit тусдаа", "App guard · separate OpenAI hard limit")}</span></article>
             </div>
             <div className="marketing-ai-dashboard-grid">
               <article className="marketing-ai-pipeline-card">
@@ -246,7 +289,7 @@ export default function MarketingAiPage() {
               </article>
               <article className="marketing-ai-readiness">
                 <div className="marketing-ai-card-head"><div><span>READINESS</span><h3>{t("Холболтын төлөв", "Connection status")}</h3></div></div>
-                <ul><li className="ready"><span>{t("Админ permission", "Admin permission")}</span><b>{t("Бэлэн", "Ready")}</b></li><li className="ready"><span>{t("Зөвшөөрлийн gate", "Approval gate")}</span><b>{t("Бэлэн", "Ready")}</b></li><li><span>OpenAI API</span><b>{t("Холбогдоогүй", "Not connected")}</b></li><li><span>Email / Social</span><b>{t("Холбогдоогүй", "Not connected")}</b></li><li><span>{t("Сарын төсөв", "Monthly budget")}</span><b>{t("Тохируулаагүй", "Not configured")}</b></li></ul>
+                <ul><li className="ready"><span>{t("Админ permission", "Admin permission")}</span><b>{t("Бэлэн", "Ready")}</b></li><li className="ready"><span>{t("Зөвшөөрлийн gate", "Approval gate")}</span><b>{t("Бэлэн", "Ready")}</b></li><li className={control?.status.keyConfigured ? "ready" : ""}><span>OpenAI API</span><b>{control?.status.keyConfigured ? t("Холбогдсон", "Connected") : t("Холбогдоогүй", "Not connected")}</b></li><li className={control?.status.emailConnected && control?.status.socialConnected ? "ready" : ""}><span>Email / Social</span><b>{control?.status.emailConnected || control?.status.socialConnected ? t("Хэсэгчлэн", "Partial") : t("Холбогдоогүй", "Not connected")}</b></li><li className="ready"><span>{t("Сарын app төсөв", "Monthly app budget")}</span><b>${controlSettings.monthlyBudgetUsd}</b></li></ul>
               </article>
             </div>
           </> : null}
@@ -261,13 +304,54 @@ export default function MarketingAiPage() {
                 <div className="marketing-ai-prompts">
                   {[t("Дараагийн сарын контент төлөвлөгөө", "Next month's content plan"), t("Демо хүссэн lead-үүдийн follow-up", "Follow up demo-request leads"), t("Маркетингийн сарын тайлан", "Monthly marketing report")].map((prompt) => <button key={prompt} type="button" onClick={() => setCommand(prompt)}>{prompt}</button>)}
                 </div>
-                <form onSubmit={submitCommand}><textarea value={command} onChange={(event) => setCommand(event.target.value)} maxLength={1200} placeholder={t("Маркетингийн даалгавар бичих…", "Enter a marketing command…")} /><button type="submit" disabled={!command.trim()}>{t("Draft үүсгэх", "Create draft")} ↑</button></form>
+                <form onSubmit={submitCommand}><textarea value={command} onChange={(event) => setCommand(event.target.value)} maxLength={1200} placeholder={t("Маркетингийн даалгавар бичих…", "Enter a marketing command…")} /><button type="submit" disabled={!command.trim() || running}>{running ? t("Бэлтгэж байна…", "Preparing…") : t("Draft үүсгэх", "Create draft")} ↑</button></form>
               </section>
-              <aside className="marketing-ai-command-rules"><span>EXECUTION POLICY</span><h3>{t("Agent-ийн үйлдлийн хязгаар", "Agent action boundary")}</h3><ul><li>{t("Шинжилгээ, төлөвлөгөө, Draft автоматаар бэлтгэж болно", "Analysis, planning and drafts may be prepared automatically")}</li><li>{t("Нийтлэх, илгээх, төсөв зарцуулахад хүн батална", "Publishing, sending and spending require human approval")}</li><li>{t("Нууц үг AI-д өгөхгүй; OAuth эсвэл хязгаарлагдсан token ашиглана", "Never give AI passwords; use OAuth or scoped tokens")}</li><li>{t("Home AI болон tenant өгөгдөлд шууд хандахгүй", "No direct access to Home AI or tenant data")}</li></ul><p>{t("Энэ дэлгэцийн Draft ангилалт session дуусахад хадгалагдахгүй. Байнгын workflow болон OpenAI ажиллагааг дараагийн тохиргоогоор идэвхжүүлнэ.", "Draft classification on this screen is not persisted after the session. Durable workflows and OpenAI execution require the next configuration stage.")}</p></aside>
+              <aside className="marketing-ai-command-rules"><span>EXECUTION POLICY</span><h3>{t("Agent-ийн үйлдлийн хязгаар", "Agent action boundary")}</h3><ul><li>{t("Шинжилгээ, төлөвлөгөө, Draft автоматаар бэлтгэж болно", "Analysis, planning and drafts may be prepared automatically")}</li><li>{t("Нийтлэх, илгээх, төсөв зарцуулахад хүн батална", "Publishing, sending and spending require human approval")}</li><li>{t("Нууц үг AI-д өгөхгүй; OAuth эсвэл хязгаарлагдсан token ашиглана", "Never give AI passwords; use OAuth or scoped tokens")}</li><li>{t("Home AI болон tenant өгөгдөлд шууд хандахгүй", "No direct access to Home AI or tenant data")}</li></ul><p>{control?.status.draftReady ? t("OpenAI нь зөвхөн Draft бэлтгэнэ. Prompt-ийн түүхий агуулгыг audit санд хадгалахгүй, гадагш үйлдэл хийхгүй.", "OpenAI prepares drafts only. Raw prompt content is not stored in audit and no external action is performed.") : t("OpenAI key ороогүй үед зөвхөн дотоод ангилалтын fallback ажиллана.", "Until the OpenAI key is configured, only the local classification fallback is available.")}</p></aside>
             </div>
           </> : null}
 
-          {section !== "dashboard" && section !== "command" ? <>
+          {section === "integrations" ? <>
+            <div className="marketing-ai-section-head"><div><span>12 · MARKETING CONTROL</span><h2>{t("Интеграц ба тохиргоо", "Integrations & settings")}</h2></div><em>{t("Тусгаарласан OpenAI", "Isolated OpenAI")}</em></div>
+            {controlError ? <div className="marketing-ai-control-alert error" role="alert">{controlError}</div> : null}
+            {controlMessage ? <div className="marketing-ai-control-alert success" role="status">{controlMessage}</div> : null}
+            <form className="marketing-ai-control-form" onSubmit={saveControl}>
+              <section>
+                <div className="marketing-ai-card-head"><div><span>OPENAI PROJECT</span><h3>{t("Marketing AI ажиллагаа", "Marketing AI operation")}</h3></div><b className={control?.status.keyConfigured ? "connected" : "waiting"}>{control?.status.keyConfigured ? t("Холбогдсон", "Connected") : t("Key хүлээж байна", "Waiting for key")}</b></div>
+                <div className="marketing-ai-control-fields">
+                  <label>{t("Ажиллах горим", "Operating mode")}<select value={controlSettings.mode} onChange={event => setControlSettings(current => ({ ...current, mode: event.target.value as MarketingAiControlSettings["mode"] }))}><option value="disabled">Disabled</option><option value="test">Test</option><option value="production">Production Draft</option></select></label>
+                  <label>OpenAI model<input value={controlSettings.model} onChange={event => setControlSettings(current => ({ ...current, model: event.target.value }))} /></label>
+                  <label>{t("Max output token", "Max output tokens")}<input type="number" min="120" max="2000" value={controlSettings.maxOutputTokens} onChange={event => setControlSettings(current => ({ ...current, maxOutputTokens: Number(event.target.value) }))} /></label>
+                  <label>{t("Өдрийн хүсэлт", "Daily requests")}<input type="number" min="1" max="1000" value={controlSettings.requestsPerDay} onChange={event => setControlSettings(current => ({ ...current, requestsPerDay: Number(event.target.value) }))} /></label>
+                </div>
+                <p>{t("OPENAI_MARKETING_API_KEY нь Home AI-ийн key-ээс тусдаа Sites secret байна. Утгыг энэ дэлгэцэнд хэзээ ч харуулахгүй.", "OPENAI_MARKETING_API_KEY is a Sites secret separate from the Home AI key. Its value is never shown on this screen.")}</p>
+              </section>
+              <section>
+                <div className="marketing-ai-card-head"><div><span>CHANNEL VAULT</span><h3>{t("Суваг ба үйлдлийн хамгаалалт", "Channels & action safeguards")}</h3></div></div>
+                <ul className="marketing-ai-connection-list">
+                  <li className={control?.status.emailConnected ? "ready" : ""}><span>Email OAuth</span><b>{control?.status.emailConnected ? t("Холбогдсон", "Connected") : t("Холбогдоогүй", "Not connected")}</b></li>
+                  <li className={control?.status.socialConnected ? "ready" : ""}><span>Social OAuth</span><b>{control?.status.socialConnected ? t("Холбогдсон", "Connected") : t("Холбогдоогүй", "Not connected")}</b></li>
+                  <li className="locked"><span>{t("Гадагш илгээх", "Outbound execution")}</span><b>{t("ХААЛТТАЙ", "LOCKED")}</b></li>
+                  <li className="ready"><span>{t("Хүний баталгаажуулалт", "Human approval")}</span><b>{t("ЗААВАЛ", "REQUIRED")}</b></li>
+                </ul>
+                <p>{t("OpenAI холбогдсон ч email/social илгээхгүй. OAuth, хэрэглэгчийн сувгийн зөвшөөрөл, батлагдсан workflow болон delivery audit тусдаа бэлэн болсны дараа дараагийн хувилбараар нээнэ.", "Connecting OpenAI does not enable email or social sending. Outbound remains locked until OAuth, channel consent, an approved workflow and delivery audit are implemented separately.")}</p>
+              </section>
+              <footer><span>{t("Эхлээд Test горимд Draft шалгаад, дараа Production Draft-ийг идэвхжүүлнэ.", "Validate drafts in Test mode before enabling Production Draft.")}</span><button type="submit" disabled={savingControl}>{savingControl ? t("Хадгалж байна…", "Saving…") : t("Тохиргоо хадгалах", "Save settings")}</button></footer>
+            </form>
+          </> : null}
+
+          {section === "budget" ? <>
+            <div className="marketing-ai-section-head"><div><span>09 · COST CONTROL</span><h2>{t("Төсөв ба хэрэглээ", "Budget & usage")}</h2></div><em>{control?.usage.month}</em></div>
+            <div className="marketing-ai-stats"><article><small>{t("AI хүсэлт", "AI requests")}</small><strong>{control?.usage.requests || 0}</strong><span>{t("Энэ сарын Draft", "Drafts this month")}</span></article><article><small>{t("Оролтын token", "Input tokens")}</small><strong>{control?.usage.inputTokens || 0}</strong><span>{t("Нийлбэр", "Aggregate")}</span></article><article><small>{t("Гаралтын token", "Output tokens")}</small><strong>{control?.usage.outputTokens || 0}</strong><span>{t("Нийлбэр", "Aggregate")}</span></article><article><small>{t("Тооцоолсон зардал", "Estimated cost")}</small><strong>${(control?.usage.estimatedCostUsd || 0).toFixed(4)}</strong><span>{t("OpenAI Billing эцсийн дүн", "OpenAI Billing is authoritative")}</span></article></div>
+            <section className="marketing-ai-budget-settings"><label>{t("Сарын app limit", "Monthly app limit")}<input type="number" min="1" step="0.5" value={controlSettings.monthlyBudgetUsd} onChange={event => setControlSettings(current => ({ ...current, monthlyBudgetUsd: Number(event.target.value) }))} /></label><label>{t("Анхааруулга", "Warning")}<input type="number" min="0.01" step="0.5" value={controlSettings.warningBudgetUsd} onChange={event => setControlSettings(current => ({ ...current, warningBudgetUsd: Number(event.target.value) }))} /></label><label>Critical<input type="number" min="0.01" step="0.5" value={controlSettings.criticalBudgetUsd} onChange={event => setControlSettings(current => ({ ...current, criticalBudgetUsd: Number(event.target.value) }))} /></label><label>{t("Минутын хүсэлт", "Requests per minute")}<input type="number" min="1" max="60" value={controlSettings.requestsPerMinute} onChange={event => setControlSettings(current => ({ ...current, requestsPerMinute: Number(event.target.value) }))} /></label></section>
+            <section className="marketing-ai-empty-state"><strong>{t("Хоёр давхар hard stop", "Two-layer hard stop")}</strong><p>{t("Сайтын app guard хүсэлтийг түрүүлж зогсооно. OpenAI Marketing project-ийн hard limit нь эцсийн төлбөрийн хамгаалалт байна. Энд харагдах зардал нь token-д суурилсан дотоод тооцоо юм.", "The site app guard stops requests first. The OpenAI Marketing project hard limit remains the final billing safeguard. Cost shown here is an internal token-based estimate.")}</p></section>
+          </> : null}
+
+          {section === "audit" ? <>
+            <div className="marketing-ai-section-head"><div><span>13 · GOVERNANCE</span><h2>Audit log</h2></div><em>{t("Prompt агуулгагүй", "No prompt content")}</em></div>
+            <div className="marketing-ai-audit-list">{control?.audit.length ? control.audit.map((row, index) => <article key={`${row.createdAt}-${index}`}><span><b>{row.status}</b>{row.eventType}</span><small>{row.model || "local"} · {new Date(row.createdAt).toLocaleString()}</small></article>) : <section className="marketing-ai-empty-state"><strong>{t("Audit event бүртгэгдээгүй", "No audit events")}</strong><p>{t("OpenAI Draft үүсгэсний дараа model, төлөв, token, зардлын metadata энд харагдана. Түүхий prompt хадгалахгүй.", "After an OpenAI draft is created, model, status, token and cost metadata appears here. Raw prompts are not stored.")}</p></section>}</div>
+          </> : null}
+
+          {section !== "dashboard" && section !== "command" && section !== "integrations" && section !== "budget" && section !== "audit" ? <>
             <div className="marketing-ai-section-head"><div><span>{active.code} · MARKETING CONTROL</span><h2>{t(active.mn, active.en)}</h2></div><em>{t("Архитектурын суурь", "Architecture foundation")}</em></div>
             <div className="marketing-ai-area-grid">{cards.map((card) => <article key={card.titleEn}><span>{t(card.stateMn, card.stateEn)}</span><h3>{t(card.titleMn, card.titleEn)}</h3><p>{t(card.bodyMn, card.bodyEn)}</p></article>)}</div>
             <section className="marketing-ai-empty-state"><strong>{t("Бодит ажиллагаа одоогоор идэвхгүй", "Live operation is currently disabled")}</strong><p>{t("Энэ хэсгийн бүтэц, эрх болон хамгаалалтын хүрээг бэлтгэсэн. Холбогдох өгөгдлийн эх үүсвэр, API/OAuth эрх, батлагдсан төсөв болон workflow-ийн дараа бодит үйлдлийг үе шаттай идэвхжүүлнэ.", "The structure, permissions and safeguards are prepared. Live actions will be enabled in stages only after data sources, API/OAuth authorization, an approved budget and workflows are configured.")}</p></section>

@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useSiteLanguage } from "../../lib/use-site-language";
 
-type Area = { id: "home" | "marketing"; permission: string; mn: string; en: string; src: string };
+type Area = { id: "home-control" | "home" | "marketing"; permission: string; mn: string; en: string; src: string };
 const areas: Area[] = [
+  { id: "home-control", permission: "knowledge.manage", mn: "Home AI удирдлага", en: "Home AI control", src: "/admin/home-ai?embedded=1" },
   { id: "home", permission: "knowledge.manage", mn: "Home AI мэдлэгийн сан", en: "Home AI knowledge", src: "/admin/assistant?embedded=1" },
   { id: "marketing", permission: "marketing.manage", mn: "Маркетинг AI", en: "Marketing AI", src: "/admin/marketing-ai?embedded=1" },
 ];

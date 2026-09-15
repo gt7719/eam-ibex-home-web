@@ -140,7 +140,7 @@ export async function POST(request: Request) {
   const model = selectModel(scenario);
   const approvalRequired = requiresAdminApproval(action);
   const context = { tenant: AGENTIC_TENANT, asset: "PUMP-101 / M-101", analytics, engineering, sources, action, approvalRequired };
-  const apiKey = (env as unknown as { OPENAI_API_KEY?: string }).OPENAI_API_KEY;
+  const apiKey = (env as unknown as { OPENAI_INTELLIGENT_API_KEY?: string }).OPENAI_INTELLIGENT_API_KEY;
   let answer = previewAnswer(lang, analytics, approvalRequired);
   let openaiStatus: "not_configured" | "completed" | "fallback_preview" = "not_configured";
   if (apiKey) {

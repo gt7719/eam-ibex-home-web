@@ -11,8 +11,8 @@ test("Home AI uses the server-side Responses API with stateless structured outpu
   assert.match(route, /safety_identifier: input\.subjectHash/);
   assert.match(route, /type: "json_schema"/);
   assert.match(route, /additionalProperties: false/);
-  assert.match(route, /CUSTOMER_AI_ID_HASH_SALT/);
-  assert.match(route, /CUSTOMER_AI_MONTHLY_BUDGET_USD/);
+  assert.match(route, /HOME_AI_ID_HASH_SALT/);
+  assert.match(route, /homeAiSettings/);
   assert.doesNotMatch(read("public/assistant-widget.js"), /OPENAI_API_KEY/);
 });
 

@@ -199,6 +199,54 @@ export const customerAiAuditEvents = sqliteTable(
   ],
 );
 
+// Administrator-only Marketing AI uses its own namespace and OpenAI project.
+// It never shares usage, rate-limit or audit rows with Home AI or System AI.
+export const marketingAiRateLimits = sqliteTable(
+  "marketing_ai_rate_limits",
+  {
+    subjectHash: text("subject_hash").notNull(),
+    scope: text("scope").notNull(),
+    windowKey: text("window_key").notNull(),
+    requestCount: integer("request_count").notNull().default(0),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.subjectHash, table.scope, table.windowKey] }),
+    index("marketing_ai_rate_limits_window_idx").on(table.scope, table.windowKey),
+  ],
+);
+
+export const marketingAiMonthlyUsage = sqliteTable(
+  "marketing_ai_monthly_usage",
+  {
+    subjectHash: text("subject_hash").notNull(),
+    monthKey: text("month_key").notNull(),
+    requestCount: integer("request_count").notNull().default(0),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    estimatedCostUsd: real("estimated_cost_usd").notNull().default(0),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.subjectHash, table.monthKey] }),
+    index("marketing_ai_monthly_usage_month_idx").on(table.monthKey),
+  ],
+);
+
+export const marketingAiAuditEvents = sqliteTable(
+  "marketing_ai_audit_events",
+  {
+    id: text("id").primaryKey(),
+    adminId: text("admin_id").notNull(),
+    eventType: text("event_type").notNull(),
+    model: text("model"),
+    status: text("status").notNull(),
+    metadataJson: text("metadata_json").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("marketing_ai_audit_created_idx").on(table.createdAt)],
+);
+
 // Public website accounts are intentionally separate from both admin_users
 // and the tenant users of the core iBeX product.
 export const siteUsers = sqliteTable(
