@@ -4,7 +4,7 @@ import { defaultLaunchOffer, validateLaunchOffer, type LaunchOffer } from "./lau
 const OFFER_KEY = "launchOffer";
 export async function readLaunchOffer() {
   const row = await env.DB.prepare("SELECT value_json FROM site_content WHERE key = ?").bind(OFFER_KEY).first<{value_json: string}>();
-  if (!row) return { offer: { ...defaultLaunchOffer, planIds: [] }, revision: 0, raw: null };
+  if (!row) return { offer: structuredClone(defaultLaunchOffer), revision: 0, raw: null };
   const state = JSON.parse(row.value_json);
   if (!Number.isSafeInteger(state.revision) || state.revision < 0) throw new Error("Invalid offer revision");
   return { offer: validateLaunchOffer(state.offer), revision: state.revision as number, raw: row.value_json };

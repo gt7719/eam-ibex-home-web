@@ -107,7 +107,9 @@ test("launch offer requires login and pricing permission", { concurrency: false 
   const allowed = createDatabase({ permissions: ["pricing.manage"] });
   const response = await dispatch(allowed, adminRequest("/api/admin/launch-offer", "GET"));
   assert.equal(response.status, 200);
-  assert.equal((await response.json()).offer.enabled, false);
+  const payload = await response.json();
+  assert.equal(payload.offer.schema, 2);
+  assert.equal(payload.offer.plans.every(plan => !plan.bonusEnabled && !plan.discountEnabled), true);
   assert.equal((await dispatch(allowed, adminRequest("/api/admin/launch-offer", "PUT", { revision: 0, offer: {} }))).status, 400);
 });
 

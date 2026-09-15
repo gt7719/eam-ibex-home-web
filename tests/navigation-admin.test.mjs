@@ -41,7 +41,10 @@ test("one admin hub tab contains five sub-tabs and preserves existing sections",
   const hub = read("app/admin/page.tsx"), editor = read("app/admin/navigation/page.tsx"), css = read("app/post-v30-admin.css");
   assert.equal((hub.match(/id: "navigation"/g) || []).length, 1);
   for (const id of ["product", "solution", "industry", "ai", "intro"]) assert.match(read("app/lib/navigation.ts"), new RegExp(`"${id}"`));
-  for (const existing of ["partners", "people", "pricing", "knowledge", "social"]) assert.match(hub, new RegExp(`id: "${existing}"`));
+  for (const existing of ["partners", "people", "pricing", "ai", "social"]) assert.match(hub, new RegExp(`id: "${existing}"`));
+  const aiHub = read("app/admin/ai/page.tsx");
+  assert.match(aiHub, /Home AI мэдлэгийн сан/);
+  assert.match(aiHub, /Маркетинг AI/);
   assert.match(editor, /Ноорог хадгалах/);
   assert.match(editor, /Нийтлэх/);
   assert.match(editor, /Урьдчилан харах/);

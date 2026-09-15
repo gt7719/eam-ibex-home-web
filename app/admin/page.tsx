@@ -17,8 +17,7 @@ const adminSections = [
   { id: "partners", permission: "partners.manage", mn: "Хамтрагч байгууллага", en: "Partner organizations", src: "/concept.html?admin=content&embeddedHub=1&section=partners" },
   { id: "people", permission: "people.manage", mn: "Төслийн баг", en: "Project team", src: "/concept.html?admin=content&embeddedHub=1&section=people" },
   { id: "pricing", permission: "pricing.manage", mn: "Үнэ ба багц", en: "Pricing", src: "/admin/pricing?embedded=1" },
-  { id: "knowledge", permission: "knowledge.manage", mn: "AI мэдлэгийн сан", en: "AI knowledge", src: "/admin/assistant?embedded=1" },
-  { id: "marketing", permission: "marketing.manage", mn: "Маркетинг AI", en: "Marketing AI", src: "/admin/marketing-ai?embedded=1" },
+  { id: "ai", permission: "ai.manage", mn: "AI удирдлага", en: "AI management", src: "/admin/ai?embedded=1" },
   { id: "social", permission: "social.manage", mn: "Мэдээ ба контент", en: "News & content", src: "/admin/social?embedded=1" },
   { id: "accounts", permission: "accounts.manage", mn: "Веб хэрэглэгчид", en: "Website users", src: "/admin/site-users?embedded=1" },
 ] as const;
@@ -30,6 +29,7 @@ const adminPermissions = new Set([
   "pricing.manage",
   "knowledge.manage",
   "marketing.manage",
+  "ai.manage",
   "social.manage",
   "accounts.manage",
 ]);
@@ -101,7 +101,9 @@ export default function AdminPage() {
   const hasWorkspaceAccess = (user?.permissions || []).some((permission) =>
     adminPermissions.has(permission),
   );
-  const allowedSections = adminSections.filter((item) => (user?.permissions || []).includes(item.permission));
+  const allowedSections = adminSections.filter((item) => item.id === "ai"
+    ? (user?.permissions || []).some(permission => permission === "knowledge.manage" || permission === "marketing.manage")
+    : (user?.permissions || []).includes(item.permission));
   const activeSection = allowedSections.find((item) => item.id === section) || allowedSections[0];
   const ui = lang === "en"
     ? { users: "Admin users", home: "Home", logout: "Log out", empty: "You do not have permission to manage a content area." }

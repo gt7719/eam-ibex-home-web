@@ -80,7 +80,7 @@ function paymentMethodMarkup(en) {
 }
 
 const postV30DetailRenderer = renderDetailContent;
-renderDetailContent = function (key, focusGroup = -1) {
+const renderLegacyPostV30Pricing = function (key, focusGroup = -1) {
   if (key !== "pricing") {
     postV30DetailRenderer(key, focusGroup);
     updateDetailTopSafety();
@@ -125,6 +125,16 @@ renderDetailContent = function (key, focusGroup = -1) {
   if (selectedPaymentPlan !== null) {
     updatePaymentSummary();
     updatePaymentAction();
+  }
+  updateDetailTopSafety();
+};
+
+renderDetailContent = function (key, focusGroup = -1) {
+  postV30DetailRenderer(key, focusGroup);
+  if (key === "pricing") {
+    const methods = document.querySelector("#detailContent .payment-methods");
+    if (methods) methods.innerHTML = paymentMethodMarkup(currentLang === "en");
+    if (selectedPaymentPlan !== null) updatePaymentAction();
   }
   updateDetailTopSafety();
 };

@@ -2,76 +2,54 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useSiteLanguage } from "../../lib/use-site-language";
-import { calculateOfferEndDate, defaultLaunchOffer, launchOfferText, type LaunchOffer } from "../../lib/launch-offer-model";
-import { tierNames } from "../../../public/package-model.mjs";
+import { defaultLaunchOffer, launchOfferText, type LaunchOffer, type PlanOffer } from "../../lib/launch-offer-model";
 
 export default function LaunchOfferEditor() {
   const { t } = useSiteLanguage();
-  const [offer, setOffer] = useState<LaunchOffer>({ ...defaultLaunchOffer, planIds: [] });
-  const [revision, setRevision] = useState(0);
+  const [offer, setOffer] = useState<LaunchOffer>(() => structuredClone(defaultLaunchOffer));
+  const [active, setActive] = useState("free"), [revision, setRevision] = useState(0);
   const [ready, setReady] = useState(false), [saving, setSaving] = useState(false);
-  const [error, setError] = useState(""), [message, setMessage] = useState("");
-  const [savedSnapshot, setSavedSnapshot] = useState("");
+  const [error, setError] = useState(""), [message, setMessage] = useState(""), [savedSnapshot, setSavedSnapshot] = useState("");
   const load = useCallback(async () => {
     try {
       const response = await fetch("/api/admin/launch-offer", { cache: "no-store" });
       if (response.status === 401) { window.location.replace("/admin/login"); return; }
       if (response.status === 403) { window.location.replace("/admin"); return; }
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Урамшууллыг уншиж чадсангүй. / Could not load offer.");
+      const data = await response.json(); if (!response.ok) throw new Error(data.error);
       setOffer(data.offer); setRevision(data.revision); setSavedSnapshot(JSON.stringify(data.offer)); setReady(true);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "Холболтоо шалгана уу. / Check your connection."); }
-  }, []);
-  // load only updates state after the network request settles.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+    } catch (reason) { setError(reason instanceof Error ? reason.message : t("Холболтоо шалгана уу.", "Check your connection.")); }
+  }, [t]);
   useEffect(() => { void load(); }, [load]);
   const dirty = Boolean(savedSnapshot && JSON.stringify(offer) !== savedSnapshot);
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent("ibex-launch-dirty", { detail: dirty }));
-  }, [dirty]);
-  function update<K extends keyof LaunchOffer>(key: K, value: LaunchOffer[K]) {
-    setOffer(current => {
-      const next = { ...current, [key]: value };
-      if (key === "startDate" || key === "durationValue" || key === "durationUnit")
-        next.endDate = calculateOfferEndDate(next.startDate, next.durationValue, next.durationUnit);
-      return next;
-    }); setMessage("");
+  useEffect(() => { window.dispatchEvent(new CustomEvent("ibex-launch-dirty", { detail: dirty })); }, [dirty]);
+  const plan = offer.plans.find(row => row.planId === active) || offer.plans[0];
+  function update<K extends keyof PlanOffer>(key: K, value: PlanOffer[K]) {
+    setOffer(current => ({ ...current, plans: current.plans.map(row => row.planId === active ? { ...row, [key]: value } : row) })); setMessage("");
   }
   async function save(event: FormEvent) {
     event.preventDefault(); setSaving(true); setError(""); setMessage("");
     try {
       const response = await fetch("/api/admin/launch-offer", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ offer, revision }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || t("Хадгалж чадсангүй.", "Could not save."));
-      setOffer(data.offer); setRevision(data.revision); setSavedSnapshot(JSON.stringify(data.offer));
-      setMessage(t("Урамшууллыг хадгаллаа.", "Offer saved."));
+      const data = await response.json(); if (!response.ok) throw new Error(data.error || t("Хадгалж чадсангүй.", "Could not save."));
+      setOffer(data.offer); setRevision(data.revision); setSavedSnapshot(JSON.stringify(data.offer)); setMessage(t("Багцын урамшууллыг хадгаллаа.", "Plan offers saved."));
       window.parent.postMessage({ type: "ibex-launch-offer-updated" }, window.location.origin);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : t("Холболтоо шалган дахин оролдоно уу.", "Check your connection and retry.")); }
-    finally { setSaving(false); }
+    } catch (reason) { setError(reason instanceof Error ? reason.message : t("Дахин оролдоно уу.", "Please retry.")); } finally { setSaving(false); }
   }
+  if (!plan) return null;
   return <form className="pricing-admin-section launch-offer-editor" onSubmit={save}>
-    <div className="pricing-admin-section-head"><span className="admin-step">02</span><h2>{t("Урамшуулал", "Offer")}</h2><p>{t("Үнэ хэсэгт харуулах урамшууллын нэр, агуулга, хугацааг тохируулна. Хугацаа дуусахад автоматаар харагдахаа болино.", "Configure the name, content and duration of the offer shown in Pricing. It is hidden automatically when it expires.")}</p></div>
-    {error && <div className="knowledge-alert error" role="alert">{error} <button type="button" disabled={saving} onClick={() => { setReady(false); setError(""); setMessage(""); void load(); }}>{t("Тохиргоог дахин ачаалах", "Reload settings")}</button></div>}
-    {message && <div className="knowledge-alert success" role="status">{message}</div>}
-    {!ready && !error && <p className="admin-users-empty">{t("Тохиргоог уншиж байна…", "Loading settings…")}</p>}
+    <div className="pricing-admin-section-head"><span className="admin-step">02</span><h2>{t("Багц тус бүрийн урамшуулал", "Per-plan offers")}</h2><p>{t("Үнэгүй хугацаа болон үнийн хөнгөлөлтийг тусад нь удирдана. Хоёуланг хэрэглэх бол давхардуулахыг ил тод зөвшөөрнө.", "Manage free duration and price discounts separately. Explicitly allow stacking when both apply.")}</p></div>
+    {error && <div className="knowledge-alert error" role="alert">{error} <button type="button" onClick={() => void load()}>{t("Дахин ачаалах", "Reload")}</button></div>}{message && <div className="knowledge-alert success" role="status">{message}</div>}
+    <div className="offer-plan-tabs" role="tablist">{offer.plans.map(row => <button type="button" role="tab" aria-selected={row.planId === active} className={row.planId === active ? "active" : ""} key={row.planId} onClick={() => setActive(row.planId)}>{row.planId[0].toUpperCase() + row.planId.slice(1)}{row.bonusEnabled || row.discountEnabled ? " ✓" : ""}</button>)}</div>
     <fieldset className="launch-offer-fields" disabled={!ready || saving}>
-      <label>{t("Урамшууллын нэр", "Offer name")} · MN<input maxLength={100} required value={offer.nameMn} onChange={event => update("nameMn", event.target.value)} /></label>
-      <label>Offer name · EN<input maxLength={100} required value={offer.nameEn} onChange={event => update("nameEn", event.target.value)} /></label>
-      <label>{t("Хугацааны тодотгол", "Duration qualifier")} · MN<input maxLength={40} value={offer.qualifierMn} placeholder="Эхний" onChange={event => update("qualifierMn", event.target.value)} /></label>
-      <label>Duration qualifier · EN<input maxLength={40} value={offer.qualifierEn} placeholder="First" onChange={event => update("qualifierEn", event.target.value)} /></label>
-      <label>{t("Хамаарах багц", "Applicable plans")}<select value={offer.scope} onChange={event => update("scope", event.target.value as LaunchOffer["scope"])}><option value="all">{t("Бүх багц", "All plans")}</option><option value="selected">{t("Сонгосон багц", "Selected plans")}</option></select></label>
-      {offer.scope === "selected" && <fieldset className="offer-plan-selection wide"><legend>{t("Багц сонгох", "Select plans")}</legend>{tierNames.map((name: string) => <label key={name}><input type="checkbox" checked={offer.planIds.includes(name.toLowerCase())} onChange={event => update("planIds", event.target.checked ? [...offer.planIds, name.toLowerCase()] : offer.planIds.filter(id => id !== name.toLowerCase()))} />{name}</label>)}</fieldset>}
-      <label>{t("Эхлэх огноо", "Start date")}<input type="date" required={offer.enabled} value={offer.startDate} onChange={event => update("startDate", event.target.value)} /></label>
-      <div className="offer-duration-field"><span>{t("Урамшууллын хугацаа", "Offer duration")}</span><div><input type="number" min="1" max={offer.durationUnit === "day" ? 3650 : offer.durationUnit === "month" ? 120 : 10} step="1" required value={Number.isFinite(offer.durationValue) ? offer.durationValue : ""} onChange={event => update("durationValue", event.target.value === "" ? NaN : Number(event.target.value))} /><select value={offer.durationUnit} onChange={event => update("durationUnit", event.target.value as LaunchOffer["durationUnit"])}><option value="day">{t("Өдөр", "Day(s)")}</option><option value="month">{t("Сар", "Month(s)")}</option><option value="year">{t("Жил", "Year(s)")}</option></select></div></div>
-      <label>{t("Дуусах огноо · автоматаар", "End date · automatic")}<input type="date" readOnly value={offer.endDate} /></label>
-      <p className="wide offer-hint">{t("Эхлэх огноо болон өдөр, сар, жилийн хугацаанаас дуусах огноо автоматаар тооцогдоно. Улаанбаатарын цагаар дуусах өдрийг дуустал хүчинтэй.", "The end date is calculated automatically from the start date and duration in days, months or years, through the end of that day in Ulaanbaatar time.")}</p>
-      <label>{t("Урамшууллын текст", "Offer text")} · MN<textarea maxLength={240} rows={3} value={offer.textMn} placeholder="{name} — {qualifier} {duration} үнэгүй" onChange={event => update("textMn", event.target.value)} /></label>
-      <label>Offer text · EN<textarea maxLength={240} rows={3} value={offer.textEn} placeholder="{name} — {qualifier} {duration} free" onChange={event => update("textEn", event.target.value)} /></label>
-      <p className="wide offer-hint">{t("Хоосон үлдээвэл текст автоматаар үүснэ. {name}, {qualifier}, {duration} нь дээрх нэр, тодотгол, сонгосон өдөр/сар/жилээр солигдоно.", "Leave blank for automatic text. {name}, {qualifier} and {duration} insert the configured name, qualifier and selected day/month/year duration.")}</p>
-      <label className="offer-checkbox"><input type="checkbox" checked={offer.enabled} onChange={event => update("enabled", event.target.checked)} />{t("Идэвхтэй", "Active")}</label>
-      <p className="offer-hint">{t("Идэвхтэй гэж хадгалмагц зар шууд харагдана. Эхлэх хугацаа болоогүй бол эхлэх огноог хамт харуулна.", "Saving as active shows the announcement immediately, including the start date for upcoming offers.")}</p>
-      <div className="wide offer-text-preview"><span>{t("Текстийн урьдчилсан харагдац", "Text preview")}</span><p lang="mn">{launchOfferText(offer, "mn")}</p><p lang="en">{launchOfferText(offer, "en")}</p></div>
+      <label>{t("Саналын нэр", "Offer name")} · MN<input maxLength={100} value={plan.nameMn} onChange={e => update("nameMn", e.target.value)} /></label>
+      <label>Offer name · EN<input maxLength={100} value={plan.nameEn} onChange={e => update("nameEn", e.target.value)} /></label>
+      <section className="offer-benefit-card wide"><label className="offer-checkbox"><input type="checkbox" checked={plan.bonusEnabled} onChange={e => update("bonusEnabled", e.target.checked)} />{t("Үнэгүй хугацааны урамшуулал", "Free-duration bonus")}</label><div className="offer-duration-row"><label>{t("Хугацаа", "Duration")}<input type="number" min="1" max={plan.bonusUnit === "day" ? 3650 : plan.bonusUnit === "month" ? 120 : 10} value={plan.bonusValue} onChange={e => update("bonusValue", Number(e.target.value))} /></label><label>{t("Нэгж", "Unit")}<select value={plan.bonusUnit} onChange={e => update("bonusUnit", e.target.value as PlanOffer["bonusUnit"])}><option value="day">{t("Өдөр", "Days")}</option><option value="month">{t("Сар", "Months")}</option><option value="year">{t("Жил", "Years")}</option></select></label></div></section>
+      <section className="offer-benefit-card wide"><label className="offer-checkbox"><input type="checkbox" disabled={plan.planId === "free"} checked={plan.discountEnabled} onChange={e => update("discountEnabled", e.target.checked)} />{t("Үнийн хөнгөлөлт", "Price discount")}{plan.planId === "free" ? <small>{t("Free багцад хэрэглэхгүй", "Not available for Free")}</small> : null}</label><div className="offer-duration-row"><label>{t("Төрөл", "Type")}<select value={plan.discountType} onChange={e => update("discountType", e.target.value as PlanOffer["discountType"])}><option value="percent">%</option><option value="fixed">{t("Тогтмол MNT", "Fixed MNT")}</option><option value="special">{t("Тусгай үнэ", "Special price")}</option></select></label><label>{plan.discountType === "special" ? t("Тусгай үнэ · MNT", "Special price · MNT") : t("Хөнгөлөлтийн утга", "Discount value")}<input type="number" min="0" max="1000000000" value={plan.discountType === "special" ? (plan.specialPriceMnt ?? "") : plan.discountValue} onChange={e => plan.discountType === "special" ? update("specialPriceMnt", e.target.value === "" ? null : Number(e.target.value)) : update("discountValue", Number(e.target.value))} /></label></div></section>
+      <label>{t("Эхлэх огноо", "Start date")}<input type="date" value={plan.startDate} onChange={e => update("startDate", e.target.value)} /></label><label>{t("Дуусах огноо", "End date")}<input type="date" value={plan.endDate} onChange={e => update("endDate", e.target.value)} /></label>
+      <label className="offer-checkbox wide"><input type="checkbox" disabled={!plan.bonusEnabled || !plan.discountEnabled} checked={plan.combineBenefits} onChange={e => update("combineBenefits", e.target.checked)} />{t("Хугацааны бонус ба үнийн хөнгөлөлтийг давхар хэрэглэх", "Stack duration bonus and price discount")}</label>
+      <label>{t("Тусгай текст", "Custom text")} · MN<textarea maxLength={240} rows={2} value={plan.textMn} onChange={e => update("textMn", e.target.value)} /></label><label>Custom text · EN<textarea maxLength={240} rows={2} value={plan.textEn} onChange={e => update("textEn", e.target.value)} /></label>
+      <div className="wide offer-text-preview"><span>{t("Урьдчилсан харагдац", "Preview")}</span><p>{launchOfferText(plan, "mn") || "—"}</p><p>{launchOfferText(plan, "en") || "—"}</p></div>
     </fieldset>
-    <div className="payment-admin-actions"><span>{t("Өөрчлөлт хадгалсны дараа үйлчилнэ.", "Changes take effect after saving.")}</span><button type="submit" disabled={!ready || saving}>{saving ? t("Хадгалж байна…", "Saving…") : t("Урамшуулал хадгалах", "Save offer")}</button></div>
+    <div className="payment-admin-actions"><span>{t("Нэг багцад тус бүр нэг идэвхтэй хугацааны бонус, нэг үнийн хөнгөлөлт байна.", "Each plan has at most one active duration bonus and one price discount.")}</span><button type="submit" disabled={!ready || saving}>{saving ? t("Хадгалж байна…", "Saving…") : t("Бүх урамшуулал хадгалах", "Save all offers")}</button></div>
   </form>;
 }

@@ -47,6 +47,12 @@ const sections: Array<{ id: SectionId; code: string; mn: string; en: string }> =
   { id: "integrations", code: "12", mn: "Интеграц ба тохиргоо", en: "Integrations & settings" },
   { id: "audit", code: "13", mn: "Audit log", en: "Audit log" },
 ];
+const sectionGroups = [
+  { mn: "Ерөнхий", en: "Overview", ids: ["dashboard", "command"] },
+  { mn: "Маркетингийн ажиллагаа", en: "Marketing operations", ids: ["leads", "content", "campaigns", "channels"] },
+  { mn: "Хяналт", en: "Governance", ids: ["automation", "approvals", "budget", "analytics"] },
+  { mn: "Систем", en: "System", ids: ["knowledge", "integrations", "audit"] },
+] as const;
 
 const initialMessages: ChatMessage[] = [
   {
@@ -220,7 +226,7 @@ export default function MarketingAiPage() {
       <div className="marketing-ai-workspace">
         <aside className="marketing-ai-sidebar">
           <nav aria-label={t("Маркетинг AI цэс", "Marketing AI menu")}>
-            {sections.map((item) => <button key={item.id} type="button" className={item.id === section ? "active" : ""} onClick={() => setSection(item.id)}><small>{item.code}</small><span>{t(item.mn, item.en)}</span></button>)}
+            {sectionGroups.map(group => <section className="marketing-ai-nav-group" key={group.en}><h3>{t(group.mn, group.en)}</h3>{sections.filter(item => (group.ids as readonly string[]).includes(item.id)).map((item) => <button key={item.id} type="button" className={item.id === section ? "active" : ""} onClick={() => setSection(item.id)}><small>{item.code}</small><span>{t(item.mn, item.en)}</span></button>)}</section>)}
           </nav>
           <footer><i /><span>{t("Бодит илгээлт идэвхгүй", "Live sending disabled")}</span></footer>
         </aside>
