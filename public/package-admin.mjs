@@ -1,4 +1,4 @@
-import {annualMnt,features,formatMnt,normalizeConfig,tierNames,validateConfig} from './package-model.mjs';
+import {features,formatMnt,normalizeConfig,tierNames,validateConfig} from './package-model.mjs';
 let lang='mn';try{lang=localStorage.getItem('ibex-lang')==='en'?'en':'mn';document.body.classList.toggle('day',localStorage.getItem('ibex-theme')==='day');}catch{}
 const t=(mn,en)=>lang==='en'?en:mn,el=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function syncStoredAppearance(){try{lang=localStorage.getItem('ibex-lang')==='en'?'en':'mn';document.body.classList.toggle('day',localStorage.getItem('ibex-theme')==='day');render();}catch{}}

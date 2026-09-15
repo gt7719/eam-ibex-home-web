@@ -303,7 +303,13 @@ export async function POST(request: Request) {
 
   return reply({
     answer,
-    sources: guard ? [] : sources.map(({ excerpt: _excerpt, id: _id, ...source }) => source),
+    sources: guard ? [] : sources.map((source) => ({
+      title: source.title,
+      label: source.label,
+      url: source.url,
+      version: source.version,
+      stage: source.stage,
+    })),
     grounded: !guard && sources.length > 0,
     mode,
     intent,

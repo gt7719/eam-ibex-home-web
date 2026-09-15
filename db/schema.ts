@@ -100,6 +100,21 @@ export const aiAuditEvents = sqliteTable(
   (table) => [index("ai_audit_tenant_created_idx").on(table.tenantId, table.createdAt)],
 );
 
+export const aiRateLimits = sqliteTable(
+  "ai_rate_limits",
+  {
+    subjectHash: text("subject_hash").notNull(),
+    scope: text("scope").notNull(),
+    windowKey: text("window_key").notNull(),
+    requestCount: integer("request_count").notNull().default(0),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.subjectHash, table.scope, table.windowKey] }),
+    index("ai_rate_limits_window_idx").on(table.scope, table.windowKey),
+  ],
+);
+
 export const aiApprovals = sqliteTable(
   "ai_approvals",
   {

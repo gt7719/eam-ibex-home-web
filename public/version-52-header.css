@@ -1,9 +1,9 @@
 /* Version 53: the protected environment entry shares the established mega menu. */
 .environment-wrap[hidden]{display:none!important}
-.header-register{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 14px;border:1px solid rgba(57,229,140,.42);border-radius:12px;color:#c8f8df;background:rgba(57,229,140,.07);font-family:Manrope,Inter,ui-sans-serif,system-ui,sans-serif;font-size:11px;text-decoration:none;white-space:nowrap}
+.header-register{display:inline-flex;align-items:center;justify-content:center;width:168px;min-height:44px;padding:0 18px;border:1px solid rgba(57,229,140,.42);border-radius:12px;color:#c8f8df;background:rgba(57,229,140,.07);font-family:Manrope,Inter,ui-sans-serif,system-ui,sans-serif;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap}
 .header-register:hover,.header-register:focus-visible{border-color:rgba(57,229,140,.75);color:#fff;background:rgba(57,229,140,.14);outline:none}
 .header-register[hidden]{display:none}
 body.theme-day .header-register{border-color:#439f70;color:#176d45;background:#eef9f3}
 body.theme-day .header-register:hover,body.theme-day .header-register:focus-visible{border-color:#247e54;color:#0f4e32;background:#e2f5ea}
-@media(min-width:921px) and (max-width:1300px){.header-register{min-height:34px;padding:0 8px;font-size:9px}}
+@media(min-width:921px) and (max-width:1300px){.header-register{width:144px;min-height:40px;padding:0 12px;font-size:12px}}
 @media(max-width:920px){.header-register{width:100%;min-height:44px;margin-top:4px;font-size:13px}}

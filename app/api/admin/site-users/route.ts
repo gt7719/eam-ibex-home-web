@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 import { hasTrustedOrigin } from "../../../lib/admin-security";
 import { getAdminSession, hasAdminPermission } from "../../../lib/site-admin";
-import { maskPhone } from "../../../lib/site-user-auth";
+import { maskPhone, purgeExpiredSiteUsers } from "../../../lib/site-user-auth";
 
 async function authorized() {
   const user = await getAdminSession();
@@ -11,6 +11,7 @@ async function authorized() {
 
 export async function GET() {
   if (!await authorized()) return NextResponse.json({ error: "Веб хэрэглэгч удирдах эрхгүй байна." }, { status: 403 });
+  await purgeExpiredSiteUsers().catch((error) => console.error("site_user_retention_cleanup_failed", error));
   const rows = await env.DB.prepare(
     `SELECT id,full_name,email,phone_e164,phone_country_iso,account_status,email_status,email_verified_at,
      phone_status,last_login_at,deletion_requested_at,created_at,updated_at

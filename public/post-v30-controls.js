@@ -80,60 +80,30 @@ function paymentMethodMarkup(en) {
 }
 
 const postV30DetailRenderer = renderDetailContent;
-const renderLegacyPostV30Pricing = function (key, focusGroup = -1) {
-  if (key !== "pricing") {
-    postV30DetailRenderer(key, focusGroup);
-    updateDetailTopSafety();
-    return;
-  }
-  currentDetailView = "index";
-  currentDetailFocus = focusGroup;
-  currentResourceSelection = null;
-  currentFlowStep = null;
-  const d = (currentLang === "en" ? headerMenusEN : headerMenus)[key],
-    en = currentLang === "en",
-    plans = pricingPlans.filter((plan) => plan.enabled);
-  syncDetailNavigation();
-  document.getElementById("detailKicker").textContent = d.k;
-  document.getElementById("detailTitle").textContent = d.t;
-  document.getElementById("detailIntro").textContent = d.i;
-  document.getElementById("detailContent").classList.remove("reading-detail");
-  document.getElementById("detailContent").innerHTML =
-    `<div class="billing-switch" role="group" aria-label="${en ? "Billing period" : "Төлбөрийн хугацаа"}"><button type="button" data-billing="monthly" class="${billingPeriod === "monthly" ? "active" : ""}">${en ? "Monthly" : "Сараар"}</button><button type="button" data-billing="annual" class="${billingPeriod === "annual" ? "active" : ""}">${en ? "Annually" : "Жилээр"}</button></div><div class="detail-pricing">${plans
-      .map((p, planIndex) => {
-        const price = planPrice(p, en),
-          descriptions = planRows(p.descriptions, en),
-          scopes = planRows(p.scopes, en),
-          canChoose = p.id === "custom" || p.monthlyMnt !== null,
-          label =
-            p.id === "custom"
-              ? en
-                ? "REQUEST A QUOTE"
-                : "ҮНИЙН САНАЛ АВАХ"
-              : p.id === "free"
-                ? en
-                  ? "START FREE"
-                  : "ҮНЭГҮЙ ЭХЛҮҮЛЭХ"
-                : en
-                  ? "BUY"
-                  : "BUY · ХУДАЛДАН АВАХ";
-        return `<article class="detail-plan ${p.featured ? "featured" : ""}" data-detail-plan="${planIndex}"><h3>${esc(p.name)}${p.featured ? `<span class="plan-badge">${en ? "RECOMMENDED" : "САНАЛ БОЛГОХ"}</span>` : ""}</h3><div class="plan-price">${esc(price)}${p.id !== "custom" && p.monthlyMnt !== null ? `<small> / ${billingPeriod === "annual" ? (en ? "year" : "жил") : en ? "month" : "сар"}</small>` : ""}</div>${billingPeriod === "annual" && p.annualDiscountPercent ? `<div class="plan-summary">${en ? "Annual discount" : "Жилийн хямдрал"}: ${p.annualDiscountPercent}%</div>` : ""}${descriptions.length ? `<div class="plan-section"><span class="plan-section-title">${en ? "Description" : "Тайлбар"}</span>${planList(descriptions)}</div>` : ""}${planMeta(p, en)}${scopes.length ? `<div class="plan-section plan-scope"><span class="plan-section-title">${en ? "Scope" : "Хамрах хүрээ"}</span>${planList(scopes)}</div>` : ""}<button type="button" class="plan-select" data-choose-plan="${planIndex}" ${canChoose ? "" : "disabled"}>${label}</button></article>`;
-      })
-      .join(
-        "",
-      )}</div><section class="payment-panel" id="paymentPanel" ${selectedPaymentPlan === null ? "hidden" : ""}><div class="payment-panel-head"><div><small>SECURE CHECKOUT</small><h3>${en ? "Choose a payment method" : "Төлбөрийн хэлбэрээ сонгоно уу"}</h3></div><span>⌾ ${en ? "Bank protected" : "Банкны хамгаалалттай"}</span></div><p id="paymentSummary"></p><div class="payment-methods">${paymentMethodMarkup(en)}</div><p class="payment-status" id="paymentStatus">${en ? "Select Card, QR, bank app, transfer or another enabled method." : "Card, QR, банкны апп, дансны шилжүүлэг эсвэл идэвхтэй бусад хэлбэрээс сонгоно."}</p><div class="payment-detail" id="paymentDetail" aria-live="polite"></div><a class="payment-confirm" id="paymentConfirm" aria-disabled="true">${en ? "Choose a payment method" : "Төлбөрийн хэлбэр сонгоно уу"}</a></section><article class="continuous-article pricing-guide"><h3>${en ? "Choose your plan" : "Багцаа сонгох"}</h3><p>${en ? "Prices are shown in MNT. Choose monthly or annual billing, then review the final amount before continuing." : "Үнийг MNT-ээр харуулна. Сар эсвэл жилийн төлөлтөө сонгож, үргэлжлүүлэхийн өмнө эцсийн дүнгээ хянана."}</p></article>`;
-  if (selectedPaymentPlan !== null) {
-    updatePaymentSummary();
-    updatePaymentAction();
-  }
-  updateDetailTopSafety();
-};
-
 renderDetailContent = function (key, focusGroup = -1) {
   postV30DetailRenderer(key, focusGroup);
   if (key === "pricing") {
     const methods = document.querySelector("#detailContent .payment-methods");
     if (methods) methods.innerHTML = paymentMethodMarkup(currentLang === "en");
+    const panel = document.getElementById("paymentPanel"),
+      status = panel?.querySelector(".payment-status"),
+      oldConfirm = panel?.querySelector(".payment-confirm");
+    if (status) status.id = "paymentStatus";
+    if (panel && !document.getElementById("paymentDetail")) {
+      const detail = document.createElement("div");
+      detail.id = "paymentDetail";
+      detail.className = "payment-detail";
+      detail.setAttribute("aria-live", "polite");
+      oldConfirm?.before(detail);
+    }
+    if (oldConfirm && oldConfirm.tagName !== "A") {
+      const confirm = document.createElement("a");
+      confirm.id = "paymentConfirm";
+      confirm.className = "payment-confirm";
+      confirm.setAttribute("aria-disabled", "true");
+      confirm.textContent = currentLang === "en" ? "Choose a payment method" : "Төлбөрийн хэлбэр сонгоно уу";
+      oldConfirm.replaceWith(confirm);
+    } else if (oldConfirm) oldConfirm.id = "paymentConfirm";
     if (selectedPaymentPlan !== null) updatePaymentAction();
   }
   updateDetailTopSafety();

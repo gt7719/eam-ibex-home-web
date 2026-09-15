@@ -5,21 +5,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AccountAlert, AccountShell } from "../components/account-shell";
 import { TurnstileField } from "../components/turnstile-field";
 import { useSiteLanguage } from "../lib/use-site-language";
-
-const callingCodeOptions = [
-  ["MN", "+976", "Монгол", "Mongolia"], ["CN", "+86", "Хятад", "China"], ["RU", "+7", "Орос", "Russia"],
-  ["KR", "+82", "БНСУ", "South Korea"], ["JP", "+81", "Япон", "Japan"], ["US", "+1", "АНУ", "United States"],
-  ["CA", "+1", "Канад", "Canada"], ["AU", "+61", "Австрали", "Australia"], ["NZ", "+64", "Шинэ Зеланд", "New Zealand"],
-  ["GB", "+44", "Их Британи", "United Kingdom"], ["DE", "+49", "Герман", "Germany"], ["FR", "+33", "Франц", "France"], ["IT", "+39", "Итали", "Italy"], ["ES", "+34", "Испани", "Spain"],
-  ["SG", "+65", "Сингапур", "Singapore"], ["AE", "+971", "АНЭУ", "United Arab Emirates"], ["KZ", "+7", "Казахстан", "Kazakhstan"],
-  ["KG", "+996", "Кыргызстан", "Kyrgyzstan"], ["TR", "+90", "Турк", "Türkiye"], ["IN", "+91", "Энэтхэг", "India"],
-  ["VN", "+84", "Вьетнам", "Vietnam"], ["TH", "+66", "Тайланд", "Thailand"], ["MY", "+60", "Малайз", "Malaysia"], ["ID", "+62", "Индонез", "Indonesia"],
-  ["PH", "+63", "Филиппин", "Philippines"], ["HK", "+852", "Хонконг", "Hong Kong"], ["TW", "+886", "Тайвань", "Taiwan"], ["QA", "+974", "Катар", "Qatar"],
-  ["SA", "+966", "Саудын Араб", "Saudi Arabia"], ["CH", "+41", "Швейцар", "Switzerland"], ["SE", "+46", "Швед", "Sweden"], ["NO", "+47", "Норвеги", "Norway"],
-  ["FI", "+358", "Финланд", "Finland"], ["DK", "+45", "Дани", "Denmark"], ["NL", "+31", "Нидерланд", "Netherlands"], ["BE", "+32", "Бельги", "Belgium"],
-  ["AT", "+43", "Австри", "Austria"], ["PL", "+48", "Польш", "Poland"], ["CZ", "+420", "Чех", "Czechia"], ["UA", "+380", "Украин", "Ukraine"],
-  ["BR", "+55", "Бразил", "Brazil"], ["MX", "+52", "Мексик", "Mexico"],
-] as const;
+import { callingCodeOptions } from "../lib/calling-codes";
 
 export default function RegisterPage() {
   const { lang, t } = useSiteLanguage();
@@ -85,8 +71,8 @@ export default function RegisterPage() {
         <label>{t("Нууц үг", "Password")}<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={8} maxLength={128} required /><small>{t("8–128 тэмдэгт • том үсэг • тоо • тусгай тэмдэгт", "8–128 characters • uppercase • number • special character")}</small></label>
         <label>{t("Нууц үг давтах", "Confirm password")}<input type="password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} autoComplete="new-password" minLength={8} maxLength={128} required /></label>
       </div>
-      <label className="account-check"><input type="checkbox" checked={terms} onChange={(event) => setTerms(event.target.checked)} required /><span><Link href="/terms" target="_blank">{t("Үйлчилгээний нөхцөл", "Terms of service")}</Link> {t("зөвшөөрч байна.", "accepted.")}</span></label>
-      <label className="account-check"><input type="checkbox" checked={privacy} onChange={(event) => setPrivacy(event.target.checked)} required /><span><Link href="/privacy" target="_blank">{t("Нууцлалын бодлого", "Privacy policy")}</Link> {t("зөвшөөрч байна.", "accepted.")}</span></label>
+      <label className="account-check"><input type="checkbox" checked={terms} onChange={(event) => setTerms(event.target.checked)} required /><span><Link href="/terms" target="_blank" rel="noopener noreferrer">{t("Үйлчилгээний нөхцөл", "Terms of service")}</Link> {t("зөвшөөрч байна.", "accepted.")}</span></label>
+      <label className="account-check"><input type="checkbox" checked={privacy} onChange={(event) => setPrivacy(event.target.checked)} required /><span><Link href="/privacy" target="_blank" rel="noopener noreferrer">{t("Нууцлалын бодлого", "Privacy policy")}</Link> {t("зөвшөөрч байна.", "accepted.")}</span></label>
       <div className="account-optional"><strong>{t("Сонголттой зөвшөөрөл", "Optional consent")}</strong><label className="account-check"><input type="checkbox" checked={marketingEmail} onChange={(event) => setMarketingEmail(event.target.checked)} /><span>{t("Имэйлээр бүтээгдэхүүний мэдээлэл авах", "Receive product updates by email")}</span></label><label className="account-check"><input type="checkbox" checked={marketingSms} onChange={(event) => setMarketingSms(event.target.checked)} /><span>{t("Цаашид SMS мэдээлэл авах", "Receive future SMS updates")}</span></label></div>
       <label className="account-honeypot" aria-hidden="true">Website<input tabIndex={-1} autoComplete="off" value={website} onChange={(event) => setWebsite(event.target.value)} /></label>
       <TurnstileField onToken={setTurnstileToken} onReadyChange={setSecurityReady} />

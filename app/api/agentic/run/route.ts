@@ -26,13 +26,9 @@ const allowedKeys = new Set(["question", "scenario", "action", "lang"]);
 const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
 async function readSpend(monthKey: string) {
-  try {
-    const row = await env.DB.prepare("SELECT cost_usd FROM ai_monthly_usage WHERE tenant_id = ? AND month_key = ?")
-      .bind(AGENTIC_TENANT, monthKey).first<{ cost_usd: number }>();
-    return Number(row?.cost_usd || 0);
-  } catch {
-    return 0;
-  }
+  const row = await env.DB.prepare("SELECT cost_usd FROM ai_monthly_usage WHERE tenant_id = ? AND month_key = ?")
+    .bind(AGENTIC_TENANT, monthKey).first<{ cost_usd: number }>();
+  return Number(row?.cost_usd || 0);
 }
 
 async function recordAudit(event: Record<string, unknown>, costUsd = 0) {
@@ -45,9 +41,35 @@ async function recordAudit(event: Record<string, unknown>, costUsd = 0) {
       env.DB.prepare("INSERT INTO ai_monthly_usage (tenant_id, month_key, request_count, cost_usd, updated_at) VALUES (?, ?, 1, ?, ?) ON CONFLICT(tenant_id, month_key) DO UPDATE SET request_count = request_count + 1, cost_usd = cost_usd + excluded.cost_usd, updated_at = excluded.updated_at")
         .bind(AGENTIC_TENANT, monthKey, costUsd, now),
     ]);
+    return true;
   } catch (error) {
     console.error("agentic_audit_storage_unavailable", error instanceof Error ? error.message : "unknown");
+    return false;
   }
+}
+
+async function requestSubject(request: Request) {
+  const ip = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const agent = request.headers.get("user-agent")?.slice(0, 160) || "unknown";
+  const data = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${AGENTIC_TENANT}|${ip}|${agent}`));
+  return Array.from(new Uint8Array(data), (part) => part.toString(16).padStart(2, "0")).join("");
+}
+
+async function enforceRequestLimit(request: Request, now = new Date()) {
+  const subjectHash = await requestSubject(request);
+  const minuteKey = now.toISOString().slice(0, 16);
+  const dayKey = now.toISOString().slice(0, 10);
+  const staleCutoff = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString();
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO ai_rate_limits (subject_hash,scope,window_key,request_count,updated_at) VALUES (?,'minute',?,1,?) ON CONFLICT(subject_hash,scope,window_key) DO UPDATE SET request_count=request_count+1,updated_at=excluded.updated_at").bind(subjectHash, minuteKey, now.toISOString()),
+    env.DB.prepare("INSERT INTO ai_rate_limits (subject_hash,scope,window_key,request_count,updated_at) VALUES (?,'day',?,1,?) ON CONFLICT(subject_hash,scope,window_key) DO UPDATE SET request_count=request_count+1,updated_at=excluded.updated_at").bind(subjectHash, dayKey, now.toISOString()),
+    env.DB.prepare("DELETE FROM ai_rate_limits WHERE updated_at < ?").bind(staleCutoff),
+  ]);
+  const [minute, day] = await Promise.all([
+    env.DB.prepare("SELECT request_count FROM ai_rate_limits WHERE subject_hash=? AND scope='minute' AND window_key=? LIMIT 1").bind(subjectHash, minuteKey).first<{ request_count: number }>(),
+    env.DB.prepare("SELECT request_count FROM ai_rate_limits WHERE subject_hash=? AND scope='day' AND window_key=? LIMIT 1").bind(subjectHash, dayKey).first<{ request_count: number }>(),
+  ]);
+  return Number(minute?.request_count || 0) <= 8 && Number(day?.request_count || 0) <= 60;
 }
 
 function previewAnswer(lang: SiteLang, analytics: ReturnType<typeof runIndustrialAnalytics>, approvalRequired: boolean) {
@@ -91,7 +113,15 @@ export async function POST(request: Request) {
   if (question.length < 3 || !scenarioIds.has(scenario) || !actionIds.has(action)) return reply({ error: lang === "en" ? "Select a valid scenario and enter a question." : "Зөв сценар сонгож, асуултаа оруулна уу." }, 400);
 
   const monthKey = currentMonthKey();
-  const spentBefore = await readSpend(monthKey);
+  let spentBefore = 0;
+  try {
+    const allowed = await enforceRequestLimit(request);
+    if (!allowed) return reply({ error: lang === "en" ? "Too many requests. Please wait before retrying." : "Хэт олон хүсэлт илэрлээ. Түр хүлээгээд дахин оролдоно уу." }, 429);
+    spentBefore = await readSpend(monthKey);
+  } catch (error) {
+    console.error("agentic_budget_guard_unavailable", error instanceof Error ? error.message : "unknown");
+    return reply({ error: lang === "en" ? "AI safety controls are temporarily unavailable." : "AI хамгаалалтын хяналт түр ажиллахгүй байна." }, 503);
+  }
   const criticalRequest = scenario !== "complex";
   if (spentBefore >= MONTHLY_BUDGET_USD || (spentBefore >= BUDGET_CRITICAL_USD && !criticalRequest)) {
     await recordAudit({ eventType: "llm.request", status: "budget_blocked", model: selectModel(scenario), tool: null, scenario });
@@ -130,9 +160,10 @@ export async function POST(request: Request) {
         .bind(approvalId, AGENTIC_TENANT, action, AGENTIC_USER, question.slice(0, 400), new Date().toISOString()).run();
     } catch (error) {
       console.error("agentic_approval_storage_unavailable", error instanceof Error ? error.message : "unknown");
+      return reply({ error: lang === "en" ? "The approval queue is temporarily unavailable." : "Баталгаажуулалтын дараалал түр ажиллахгүй байна." }, 503);
     }
   }
-  await recordAudit({ eventType: "agentic.run", status: "completed", model, tool: "industrial_analytics,ibex_engineering,approved_rag", scenario, action, approvalRequired, openaiStatus }, costUsd);
+  const auditRecorded = await recordAudit({ eventType: "agentic.run", status: "completed", model, tool: "industrial_analytics,ibex_engineering,approved_rag", scenario, action, approvalRequired, openaiStatus }, costUsd);
   const spentAfter = Number((spentBefore + costUsd).toFixed(6));
   return reply({
     mode: "shadow",
@@ -147,6 +178,6 @@ export async function POST(request: Request) {
     action: { type: action, status: approvalRequired ? "pending_admin_approval" : "proposal_only", approvalRequired, approvalId, executed: false },
     controls: { schema: "validated", permission: "demo.engineer:read+propose", tenantIsolation: "server_owned", automaticSafetyAction: false },
     budget: { month: monthKey, spentUsd: spentAfter, limitUsd: MONTHLY_BUDGET_USD, warningUsd: BUDGET_WARNING_USD, criticalUsd: BUDGET_CRITICAL_USD, policy: spentAfter >= BUDGET_CRITICAL_USD ? "critical_only" : spentAfter >= BUDGET_WARNING_USD ? "warning" : "normal" },
-    audit: { recorded: true, llm: true, tools: true },
+    audit: { recorded: auditRecorded, llm: true, tools: true },
   });
 }

@@ -25,6 +25,17 @@ function matchesSignature(type: string, bytes: Uint8Array) {
   return false;
 }
 
+async function cleanupOrphanedMedia(now = new Date()) {
+  const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const rows = await env.DB.prepare(
+    "SELECT id,object_key FROM media_assets WHERE created_at < ? AND NOT EXISTS (SELECT 1 FROM site_content WHERE instr(value_json, '/api/media/' || media_assets.id) > 0) ORDER BY created_at ASC LIMIT 20",
+  ).bind(cutoff).all<{ id: string; object_key: string }>();
+  for (const row of rows.results || []) {
+    await env.BUCKET.delete(row.object_key);
+    await env.DB.prepare("DELETE FROM media_assets WHERE id=?").bind(row.id).run();
+  }
+}
+
 export async function POST(request: Request) {
   if (!hasTrustedOrigin(request)) return NextResponse.json({ error: "Origin mismatch" }, { status: 403 });
   const user = await getAdminSession();
@@ -32,6 +43,7 @@ export async function POST(request: Request) {
   if (!hasAdminPermission(user, "media.upload")) {
     return NextResponse.json({ error: "Медиа файл байршуулах эрх олгогдоогүй байна." }, { status: 403 });
   }
+  await cleanupOrphanedMedia().catch((error) => console.error("media_orphan_cleanup_failed", error));
   const form = await request.formData();
   const file = form.get("file");
   if (!(file instanceof File)) {
@@ -50,17 +62,23 @@ export async function POST(request: Request) {
   const id = crypto.randomUUID();
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g, "-").slice(-120) || "upload";
   const objectKey = `site-media/${id}/${safeName}`;
-  await env.BUCKET.put(objectKey, file.stream(), {
-    httpMetadata: { contentType: file.type, cacheControl: "public, max-age=31536000, immutable" },
-    customMetadata: { uploadedBy: user.id, originalName: file.name },
-  });
-  await env.DB.prepare(
-    `INSERT INTO media_assets
-     (id, object_key, filename, content_type, size_bytes, created_by, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  )
-    .bind(id, objectKey, file.name, file.type, file.size, user.id, new Date().toISOString())
-    .run();
+  try {
+    await env.BUCKET.put(objectKey, file.stream(), {
+      httpMetadata: { contentType: file.type, cacheControl: "public, max-age=31536000, immutable" },
+      customMetadata: { uploadedBy: user.id, originalName: file.name },
+    });
+    await env.DB.prepare(
+      `INSERT INTO media_assets
+       (id, object_key, filename, content_type, size_bytes, created_by, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
+      .bind(id, objectKey, file.name, file.type, file.size, user.id, new Date().toISOString())
+      .run();
+  } catch (error) {
+    await env.BUCKET.delete(objectKey).catch(() => undefined);
+    console.error("media_upload_storage_failed", error);
+    return NextResponse.json({ error: "Файлыг найдвартай хадгалж чадсангүй. Дахин оролдоно уу." }, { status: 503 });
+  }
   return NextResponse.json({ id, url: `/api/media/${id}`, filename: file.name, contentType: file.type });
 }
 

@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { cookies } from "next/headers";
 import { hashPassword, isValidEmail, verifyPassword } from "./site-admin";
+import { callingCodeForIso } from "./calling-codes";
 
 export const SITE_USER_SESSION_COOKIE = "ibex_user_session";
 export const SITE_USER_SESSION_MAX_AGE = 60 * 60 * 24 * 30;
@@ -89,6 +90,8 @@ export function validateRegistrationInput(input: {
   errors.push(...validateSitePassword(password));
   if (password !== passwordConfirm) errors.push("Нууц үгийн давталт тохирохгүй байна.");
   if (!/^[A-Z]{2}$/.test(phoneCountryIso)) errors.push("Улсаа сонгоно уу.");
+  const expectedCallingCode = callingCodeForIso(phoneCountryIso);
+  if (!expectedCallingCode || expectedCallingCode !== `+${callingDigits}`) errors.push("Улсын код сонгосон улстай тохирохгүй байна.");
   if (!/^\+[1-9]\d{7,14}$/.test(phoneE164)) errors.push("Утасны дугаарыг улсын кодтой зөв оруулна уу.");
   if (input.termsAccepted !== true || input.privacyAccepted !== true) errors.push("Үйлчилгээний нөхцөл болон нууцлалын бодлогыг зөвшөөрнө үү.");
   return { valid: errors.length === 0, errors, fullName, email, password, phoneCountryIso, phoneCallingCode: `+${callingDigits}`, phoneE164 };
@@ -217,4 +220,24 @@ export async function recordActionFailure(key: string, maxAttempts = 5, windowMi
 
 export async function clearActionFailures(key: string) {
   await env.DB.prepare("DELETE FROM site_user_login_attempts WHERE attempt_key=?").bind(key).run();
+}
+
+export async function purgeExpiredSiteUsers(now = new Date()) {
+  const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const rows = await env.DB.prepare(
+    "SELECT id FROM site_users WHERE account_status='deletion_requested' AND deletion_requested_at IS NOT NULL AND deletion_requested_at <= ? LIMIT 50",
+  ).bind(cutoff).all<{ id: string }>();
+  const ids = (rows.results || []).map((row) => row.id).filter(Boolean);
+  for (const id of ids) {
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM site_user_sessions WHERE user_id=?").bind(id),
+      env.DB.prepare("DELETE FROM site_user_tokens WHERE user_id=?").bind(id),
+      env.DB.prepare("DELETE FROM site_user_consents WHERE user_id=?").bind(id),
+      env.DB.prepare("DELETE FROM auth_delivery_events WHERE user_id=?").bind(id),
+      env.DB.prepare("DELETE FROM site_user_sms_verifications WHERE user_id=?").bind(id),
+      env.DB.prepare("DELETE FROM site_user_access_requests WHERE user_id=?").bind(id),
+      env.DB.prepare("DELETE FROM site_users WHERE id=? AND account_status='deletion_requested'").bind(id),
+    ]);
+  }
+  return ids.length;
 }

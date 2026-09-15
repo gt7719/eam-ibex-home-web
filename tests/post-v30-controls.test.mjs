@@ -5,13 +5,13 @@ import test from "node:test";
 const read = (path) =>
   readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("public pricing has persistent BUY actions and MNT monthly/annual checkout", () => {
-  const script = read("public/post-v30-controls.js"),
+test("public pricing has persistent plan actions and custom MNT duration checkout", () => {
+  const script = read("public/concept.html"),
     style = read("public/post-v30.css");
-  assert.match(script, /BUY · ХУДАЛДАН АВАХ/);
-  assert.match(script, /Сараар/);
-  assert.match(script, /Жилээр/);
-  assert.match(script, /Үнийг MNT-ээр харуулна/);
+  assert.match(script, /Багц сонгох/);
+  assert.match(script, /Хугацааны утга/);
+  assert.match(script, /Хугацааны нэгж/);
+  assert.match(script, /Зөвшөөрөгдөх хязгаар/);
   assert.match(style, /\.detail-plan>\.plan-select\{flex:0 0 auto/);
   assert.match(style, /\.detail-plan>\.plan-scope\{flex:1/);
 });
@@ -22,7 +22,7 @@ test("checkout offers card QR bank app transfer and other methods without invent
     assert.match(script, new RegExp(`id:\\s*["']${id}["']`));
   assert.match(script, /БАНКНЫ ХОЛБООС ТОХИРУУЛААГҮЙ/);
   assert.match(script, /method\.checkoutUrl/);
-  assert.match(script, /id="paymentDetail"/);
+  assert.match(script, /detail\.id = "paymentDetail"/);
   assert.match(script, /payment-hosted-frame/);
   assert.match(
     script,

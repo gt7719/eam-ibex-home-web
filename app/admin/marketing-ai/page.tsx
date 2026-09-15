@@ -159,14 +159,13 @@ export default function MarketingAiPage() {
   const { lang, t } = useSiteLanguage();
   const [checking, setChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
-  const [embedded, setEmbedded] = useState(false);
+  const [embedded] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("embedded") === "1");
   const [user, setUser] = useState<SessionUser | null>(null);
   const [section, setSection] = useState<SectionId>("dashboard");
   const [command, setCommand] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
 
   useEffect(() => {
-    setEmbedded(new URLSearchParams(window.location.search).get("embedded") === "1");
     fetch("/api/admin/session", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) {

@@ -610,3 +610,124 @@ html[data-ibex-theme="day"] .mobile-environment-development {
 [data-ibex-theme="day"] .offer-benefit-card { background:#faf8fc; }
 @media(max-width:1100px){.admin-invite-card{grid-template-columns:1fr}.admin-user-card{grid-template-columns:44px minmax(0,1fr) auto}.admin-managed-permissions{grid-column:2/-1}.admin-invite-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.ai-admin-page{padding:10px}.ai-admin-head h1{font-size:25px}.admin-invite-fields,.offer-duration-row,.offer-benefit-card{grid-template-columns:1fr}.admin-user-card{grid-template-columns:40px minmax(0,1fr)}.admin-managed-permissions,.admin-user-actions,.admin-protected-rights{grid-column:1/-1}.admin-users-header{grid-template-columns:1fr}.admin-owner-chip{min-width:0}}
+
+/* v58: audited admin layout, contrast, control spacing and responsive overflow. */
+.admin-hub-tabs {
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  overflow: visible;
+  gap: 8px;
+}
+.admin-hub-tabs button {
+  min-height: 44px;
+  border-bottom: 1px solid var(--admin-border);
+  border-radius: 11px;
+  white-space: normal;
+}
+.admin-ai-workspace {
+  display: flex;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--admin-text);
+  background: var(--admin-page);
+}
+.admin-ai-workspace > header { flex: 0 0 auto; padding: 22px 24px 14px; }
+.admin-ai-workspace > header h2 { margin: 5px 0; font-size: clamp(28px, 3vw, 42px); letter-spacing: -.045em; }
+.admin-ai-workspace > header p { margin: 0; color: var(--admin-muted); font-size: 14px; line-height: 1.55; }
+.admin-ai-workspace .ai-admin-tabs {
+  margin: 0 24px;
+  border-color: var(--admin-border);
+  background: var(--admin-surface);
+}
+.admin-ai-workspace .ai-admin-tabs button { color: var(--admin-muted); background: var(--admin-surface-soft); }
+.admin-ai-workspace .ai-admin-tabs button.active { color: var(--admin-action); background: var(--admin-action-bg); }
+.admin-ai-workspace .ai-admin-frame { border-color: var(--admin-border); background: var(--admin-surface); }
+
+.payment-admin-card .wide { grid-column: 1 / -1; }
+.payment-admin-title label,
+.bank-app-enabled,
+.offer-checkbox,
+.admin-permission-option,
+.admin-managed-permissions label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+}
+:is(.payment-admin-title label,.bank-app-enabled,.offer-checkbox,.admin-permission-option,.admin-managed-permissions label) input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin: 0;
+}
+.offer-checkbox small { margin-left: 0; }
+.offer-benefit-card { grid-template-columns: minmax(300px, .9fr) minmax(0, 1.6fr); align-items: stretch; }
+.offer-benefit-card > .offer-checkbox { align-self: stretch; padding: 4px 8px; }
+
+.bank-app-row {
+  grid-template-columns: 86px minmax(180px, .8fr) repeat(2, minmax(180px, 1fr));
+  grid-template-areas:
+    "order image nameMn nameEn"
+    "order image url url"
+    "order image enabled delete";
+  align-items: start;
+}
+.bank-app-order { grid-area: order; align-self: start; flex-wrap: wrap; }
+.bank-app-image { grid-area: image; }
+.bank-app-name-mn { grid-area: nameMn; }
+.bank-app-name-en { grid-area: nameEn; }
+.bank-app-url { grid-area: url; }
+.bank-app-enabled { grid-area: enabled; align-self: center !important; }
+.bank-app-delete { grid-area: delete; justify-self: end; align-self: center; }
+.bank-app-image input[type="file"], .payment-media-editor input[type="file"] { width: 100%; color: var(--admin-muted); font-size: 12px; }
+.bank-app-image input[type="file"]::file-selector-button,
+.payment-media-editor input[type="file"]::file-selector-button {
+  min-height: 36px;
+  margin-right: 8px;
+  padding: 0 12px;
+  border: 1px solid #84c5a6;
+  border-radius: 9px;
+  color: var(--admin-action);
+  background: var(--admin-action-bg);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-users-page { overflow-x: hidden; }
+.admin-users-header,.admin-invite-card,.admin-users-list { box-sizing: border-box; }
+.admin-owner-chip { max-width: 100%; }
+.admin-user-card { grid-template-columns: 44px minmax(180px, .75fr) minmax(300px, 1.25fr) minmax(140px, auto); }
+.admin-permission-option small,.admin-user-copy p,.admin-managed-permissions label { color: var(--admin-muted); line-height: 1.45; }
+
+html[data-ibex-theme="day"] .ai-admin-tabs button { color: #584d61; border-color: #cfc2da; background: #f5f0f8; }
+html[data-ibex-theme="day"] .ai-admin-tabs button.active { color: #125c3b; border-color: #66ac87; background: #e5f5ec; }
+html[data-ibex-theme="day"] :is(.payment-admin-card input,.payment-admin-card select,.launch-offer-fields input,.launch-offer-fields select,.launch-offer-fields textarea) {
+  color: #2d2434;
+  border-color: #cfc2da;
+  background: #fff;
+}
+
+@media (max-width: 1250px) {
+  .bank-app-row {
+    grid-template-columns: 76px minmax(160px, .7fr) minmax(180px, 1fr);
+    grid-template-areas:
+      "order image nameMn"
+      "order image nameEn"
+      "order url url"
+      "order enabled delete";
+  }
+  .admin-user-card { grid-template-columns: 44px minmax(0, 1fr) minmax(140px, auto); }
+  .admin-managed-permissions { grid-column: 2 / -1; }
+}
+@media (max-width: 760px) {
+  .admin-ai-workspace > header { padding: 18px 14px 12px; }
+  .admin-ai-workspace .ai-admin-tabs { margin: 0 12px; }
+  .bank-app-row {
+    grid-template-columns: 1fr;
+    grid-template-areas: "order" "image" "nameMn" "nameEn" "url" "enabled" "delete";
+  }
+  .bank-app-delete { justify-self: stretch; }
+  .offer-benefit-card { grid-template-columns: 1fr; }
+}
