@@ -154,8 +154,32 @@ export async function PATCH(request: Request) {
         },
         { status: 409 },
       );
+    const now = new Date().toISOString();
+    const reconciled = await env.DB.prepare(
+      `UPDATE site_users
+       SET email_verification_required=?,
+           phone_verification_required=?,
+           account_status=CASE
+             WHEN (?=0 OR email_status='verified')
+              AND (?=0 OR phone_status='verified') THEN 'active'
+             WHEN ?=1 AND email_status<>'verified' THEN 'pending'
+             ELSE 'limited'
+           END,
+           updated_at=?
+       WHERE account_status IN ('pending','limited')`,
+    )
+      .bind(
+        policy.emailRequired ? 1 : 0,
+        policy.phoneRequired ? 1 : 0,
+        policy.emailRequired ? 1 : 0,
+        policy.phoneRequired ? 1 : 0,
+        policy.emailRequired ? 1 : 0,
+        now,
+      )
+      .run();
     return NextResponse.json({
       updated: true,
+      reconciledUsers: Number(reconciled.meta?.changes || 0),
       verificationPolicy: { ...policy, revision: saved },
     });
   }

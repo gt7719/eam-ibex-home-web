@@ -237,10 +237,11 @@ export default function AdminSiteUsersPage() {
       setPolicy(payload.verificationPolicy);
       setMessage(
         t(
-          "Шинэ бүртгэлийн баталгаажуулалтын бодлого хадгалагдлаа.",
-          "Verification policy for new registrations has been saved.",
+          `Бодлого хадгалагдаж, хүлээгдэж буй болон хязгаарлагдмал ${Number(payload.reconciledUsers || 0)} хэрэглэгчийн баталгаажуулалтын төлөв шинэчлэгдлээ.`,
+          `The policy was saved and ${Number(payload.reconciledUsers || 0)} pending or limited account(s) were updated.`,
         ),
       );
+      await load();
     }
     setWorking("");
   }
@@ -327,8 +328,8 @@ export default function AdminSiteUsersPage() {
           </h2>
           <p>
             {t(
-              "Энэ тохиргоо нь системийн хэмжээнд үйлчилнэ. Шинээр бүртгэгдэх болон идэвхжээгүй хэрэглэгчийн бүртгэлд хадгалагдана; аль хэдийн идэвхтэй хэрэглэгчийн эрхийг буцаан хаахгүй.",
-              "This system-wide setting is stored on new and not-yet-active registrations. It does not revoke already active accounts.",
+              "Энэ тохиргоо нь системийн хэмжээнд үйлчилнэ. Шинэ, хүлээгдэж буй болон хязгаарлагдмал бүртгэлд шууд хэрэгжинэ; аль хэдийн идэвхтэй хэрэглэгчийн эрхийг буцаан хаахгүй.",
+              "This system-wide setting immediately applies to new, pending and limited registrations. It does not revoke already active accounts.",
             )}
           </p>
         </div>
