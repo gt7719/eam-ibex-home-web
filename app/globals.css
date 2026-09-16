@@ -842,6 +842,10 @@ html[data-ibex-theme="day"] .mobile-preview-close { border-color: #bca7ca; color
 .admin-ai-workspace .ai-admin-tabs button { min-height:38px; font-size:12px; }
 .admin-ai-workspace > .ai-admin-frame { flex:1 1 auto; min-height:0; height:auto; margin-top:8px; }
 @media(max-width:760px){.admin-hub-page{padding:8px}.admin-hub-page .admin-session-bar{min-height:56px}.admin-hub-shell.admin-hub-single > .admin-hub-tabs{padding:8px}.admin-ai-workspace > header{padding:12px 14px 6px}.admin-ai-workspace .ai-admin-tabs{margin:0 12px}}
+/* Version 63: remove duplicate AI heading so the selected workspace begins directly below its tabs. */
+.admin-ai-workspace .ai-admin-tabs { min-height:56px; margin:0 20px; padding:8px; border-radius:16px 16px 0 0; }
+.admin-ai-workspace > .ai-admin-frame { margin-top:0; border-radius:0 0 18px 18px; }
+@media(max-width:760px){.admin-ai-workspace .ai-admin-tabs{margin:0 12px}}
 @media(max-width:520px) {
   .mobile-preview-header {
     min-height: calc(50px + env(safe-area-inset-top));

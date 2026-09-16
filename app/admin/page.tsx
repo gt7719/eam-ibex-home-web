@@ -144,7 +144,6 @@ export default function AdminPage() {
             </nav>
             <div id="admin-section-panel" className="admin-hub-content" role="tabpanel" aria-labelledby={activeSection ? `admin-tab-${activeSection.id}` : undefined}>
               {activeSection?.id === "ai" && activeAiArea ? <div className="admin-ai-workspace">
-                <header><span>AI MANAGEMENT</span><h2>{lang === "en" ? "AI management" : "AI удирдлага"}</h2><p>{lang === "en" ? "Home AI knowledge and Marketing AI remain separate by permission and data." : "Home AI мэдлэг болон Marketing AI нь эрх, өгөгдлөөрөө тусгаарлагдсан хэвээр нэг цэгээс удирдагдана."}</p></header>
                 <nav className="ai-admin-tabs" role="tablist" aria-label={lang === "en" ? "AI administration areas" : "AI удирдлагын хэсгүүд"}>{allowedAiAreas.map((item) => <button id={`admin-ai-tab-${item.id}`} aria-controls="admin-ai-panel" key={item.id} type="button" role="tab" aria-selected={item.id === activeAiArea.id} className={item.id === activeAiArea.id ? "active" : ""} onClick={() => changeAiArea(item.id)}>{lang === "en" ? item.en : item.mn}</button>)}</nav>
                 <iframe className="ai-admin-frame" id="admin-ai-panel" role="tabpanel" aria-labelledby={`admin-ai-tab-${activeAiArea.id}`} key={activeAiArea.id} src={activeAiArea.src} title={lang === "en" ? activeAiArea.en : activeAiArea.mn} />
               </div> : activeSection ? <iframe key={activeSection.id} src={activeSection.src} title={lang === "en" ? activeSection.en : activeSection.mn} /> : null}
