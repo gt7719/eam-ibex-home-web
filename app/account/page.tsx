@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AccountAlert, AccountShell } from "../components/account-shell";
+import { HomeAiDrawer } from "../components/home-ai-drawer";
 import { useSiteLanguage } from "../lib/use-site-language";
 
 type AccountUser = {
@@ -31,18 +32,6 @@ type AccountUser = {
     complete: boolean;
   };
 };
-type Plan = {
-  id: string;
-  name: string;
-  users: number | null;
-  assets: number | null;
-  monthlyMnt: number | null;
-  minPaidMonths: number;
-  maxPaidMonths: number;
-  allowMonths: boolean;
-  allowYears: boolean;
-  stepMonths: number;
-};
 type Subscription = {
   id: string;
   organizationName: string;
@@ -52,12 +41,22 @@ type Subscription = {
   baseAmountMnt: number | null;
   discountAmountMnt: number;
   finalAmountMnt: number | null;
+  plan?: {
+    users?: number | null;
+    assets?: number | null;
+    monthlyMnt?: number | null;
+    assignedModules?: string[];
+  } | null;
   promotion: {
     nameMn?: string;
     nameEn?: string;
     textMn?: string;
     textEn?: string;
     bonusMonths?: number;
+    discountEnabled?: boolean;
+    discountType?: string;
+    discountValue?: number;
+    specialPriceMnt?: number | null;
   } | null;
   paymentStatus: string;
   subscriptionStatus: string;
@@ -65,12 +64,13 @@ type Subscription = {
   endsAt: string | null;
   coreWorkspaceUrl: string | null;
   provisioningStatus: string;
+  coreTenantId?: string | null;
+  provisionedAt?: string | null;
   createdAt: string;
 };
 type AccountPayload = {
   user: AccountUser;
   subscription: Subscription | null;
-  catalog: { plans: Plan[] };
 };
 
 const statusLabel: Record<string, [string, string]> = {
@@ -120,10 +120,6 @@ export default function AccountPage() {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [organizationName, setOrganizationName] = useState("");
-  const [planId, setPlanId] = useState("plus");
-  const [durationValue, setDurationValue] = useState("12");
-  const [durationUnit, setDurationUnit] = useState<"month" | "year">("month");
   const [fullName, setFullName] = useState("");
   const [profileFile, setProfileFile] = useState<File | null>(null);
   const [phoneCode, setPhoneCode] = useState("");
@@ -148,45 +144,19 @@ export default function AccountPage() {
       setLoading(false);
       return;
     }
-    const next = payload as AccountPayload,
-      query = new URLSearchParams(window.location.search);
+    const next = payload as AccountPayload;
     setData(next);
-    setOrganizationName(
-      (current) => current || next.subscription?.organizationName || "",
-    );
     setFullName(next.user.fullName);
-    const requestedPlan = query.get("plan"),
-      requestedDuration = query.get("duration"),
-      requestedUnit = query.get("unit");
-    if (
-      requestedPlan &&
-      next.catalog.plans.some((plan) => plan.id === requestedPlan)
-    )
-      setPlanId(requestedPlan);
-    else if (next.subscription?.planId) setPlanId(next.subscription.planId);
-    if (requestedDuration && /^\d{1,3}$/.test(requestedDuration))
-      setDurationValue(requestedDuration);
-    if (requestedUnit === "month" || requestedUnit === "year")
-      setDurationUnit(requestedUnit);
     setTab(safeTab());
     setLoading(false);
   }, [t]);
   useEffect(() => {
     void load();
   }, [load]);
-  const selectedPlan = useMemo(
-    () =>
-      data?.catalog.plans.find((plan) => plan.id === planId) ||
-      data?.catalog.plans[0],
-    [data, planId],
-  );
+  const [homeAiOpen, setHomeAiOpen] = useState(false);
   useEffect(() => {
-    if (!selectedPlan) return;
-    if (durationUnit === "year" && !selectedPlan.allowYears)
-      setDurationUnit("month");
-    if (durationUnit === "month" && !selectedPlan.allowMonths)
-      setDurationUnit("year");
-  }, [selectedPlan, durationUnit]);
+    setHomeAiOpen(new URLSearchParams(window.location.search).get("home_ai") === "1");
+  }, []);
 
   function go(next: string) {
     setTab(next);
@@ -195,6 +165,18 @@ export default function AccountPage() {
       ? url.searchParams.delete("tab")
       : url.searchParams.set("tab", next);
     window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+  }
+  function openHomeAi() {
+    const url = new URL(window.location.href);
+    url.searchParams.set("home_ai", "1");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+    setHomeAiOpen(true);
+  }
+  function closeHomeAi() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("home_ai");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+    setHomeAiOpen(false);
   }
   async function logout() {
     await fetch("/api/account/logout", { method: "POST" });
@@ -328,39 +310,6 @@ export default function AccountPage() {
     }
     setWorking(false);
   }
-  async function saveSubscription(event: FormEvent) {
-    event.preventDefault();
-    setWorking(true);
-    setError("");
-    setMessage("");
-    const response = await fetch("/api/account/subscription", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        organizationName,
-        planId,
-        durationValue: Number(durationValue),
-        durationUnit,
-      }),
-    }).catch(() => null);
-    const payload = response ? await response.json().catch(() => ({})) : {};
-    if (!response?.ok)
-      setError(
-        payload.error ||
-          t("Хүсэлтийг хадгалж чадсангүй.", "Could not save your request."),
-      );
-    else {
-      setMessage(
-        t(
-          "Багцын хүсэлт хадгалагдлаа. Төлбөр баталгаажсаны дараа iBeX eAM тенант бэлтгэгдэнэ.",
-          "Your plan request is saved. The iBeX eAM tenant will be prepared after payment confirmation.",
-        ),
-      );
-      await load();
-    }
-    setWorking(false);
-  }
-
   const subscription = data?.subscription || null;
   const remaining = subscription?.endsAt
     ? Math.max(
@@ -411,7 +360,7 @@ export default function AccountPage() {
             >
               {t("Миний багц", "My plan")}
             </button>
-            <Link href="/account/home-ai">Home AI</Link>
+            <button type="button" onClick={openHomeAi}>Home AI</button>
             <button
               type="button"
               className={tab === "security" ? "active" : ""}
@@ -491,7 +440,7 @@ export default function AccountPage() {
                           "Тенант бэлтгэгдэж байна",
                           "Tenant preparation in progress",
                         )
-                      : t("Багц сонгох", "Choose a plan")}
+                      : t("Багцын мэдээлэл", "Plan information")}
                   </button>
                 )}
               </div>
@@ -543,118 +492,18 @@ export default function AccountPage() {
                   </div>
                 ) : null}
               </div>
-              {subscription ? (
-                <div className="my-package-summary">
-                  <span>{subscription.planName}</span>
-                  <strong>
-                    {money(subscription.finalAmountMnt, locale, isEnglish)}
-                  </strong>
-                  <small>
-                    {subscription.durationMonths} {t("сар", "month(s)")} ·{" "}
-                    {subscription.discountAmountMnt
-                      ? t("Урамшуулал тооцогдсон", "Promotion applied")
-                      : t("Стандарт үнэ", "Standard price")}
-                  </small>
+              {subscription ? <>
+                <div className="my-package-summary"><span>{subscription.planName}</span><strong>{money(subscription.finalAmountMnt, locale, isEnglish)}</strong><small>{subscription.durationMonths} {t("сар", "month(s)")} · {subscription.discountAmountMnt ? t("Урамшуулал тооцогдсон", "Promotion applied") : t("Стандарт үнэ", "Standard price")}</small></div>
+                <div className="my-package-details">
+                  <article><small>{t("Байгууллага", "Organization")}</small><strong>{subscription.organizationName}</strong><span>{t("Хүсэлт", "Request")} · {dateText(subscription.createdAt, locale)}</span></article>
+                  <article><small>{t("Хугацаа", "Term")}</small><strong>{subscription.durationMonths} {t("сар", "month(s)")}</strong><span>{dateText(subscription.startsAt, locale)} — {dateText(subscription.endsAt, locale)}</span></article>
+                  <article><small>{t("Төлбөр", "Payment")}</small><strong>{t(statusLabel[subscription.paymentStatus]?.[0] || subscription.paymentStatus, statusLabel[subscription.paymentStatus]?.[1] || subscription.paymentStatus)}</strong><span>{t("Суурь дүн", "Base amount")}: {money(subscription.baseAmountMnt, locale, isEnglish)} · {t("Хөнгөлөлт", "Discount")}: {money(subscription.discountAmountMnt, locale, isEnglish)}</span></article>
+                  <article><small>iBeX eAM</small><strong>{t(statusLabel[subscription.subscriptionStatus]?.[0] || subscription.subscriptionStatus, statusLabel[subscription.subscriptionStatus]?.[1] || subscription.subscriptionStatus)}</strong><span>{subscription.provisioningStatus || t("Бэлтгэгдээгүй", "Not provisioned")}{subscription.coreTenantId ? ` · ${subscription.coreTenantId}` : ""}</span></article>
+                  <article className="my-package-detail-wide"><small>{t("Багцын хязгаар ба модуль", "Plan limits and modules")}</small><strong>{t("Хэрэглэгч", "Users")}: {subscription.plan?.users ?? "—"} · {t("Хөрөнгө", "Assets")}: {subscription.plan?.assets ?? "—"}</strong><span>{subscription.plan?.assignedModules?.length ? subscription.plan.assignedModules.join(" · ") : t("Модулийн snapshot байхгүй", "No module snapshot")}</span></article>
+                  <article className="my-package-detail-wide"><small>{t("Авсан урамшуулал", "Applied promotion")}</small><strong>{subscription.promotion ? (isEnglish ? subscription.promotion.nameEn || subscription.promotion.textEn : subscription.promotion.nameMn || subscription.promotion.textMn) : t("Урамшуулалгүй", "No promotion")}</strong><span>{subscription.promotion?.bonusMonths ? t(`${subscription.promotion.bonusMonths} сарын үнэгүй хугацаа`, `${subscription.promotion.bonusMonths} free month(s)`) : subscription.discountAmountMnt ? t("Үнийн хөнгөлөлт тооцогдсон", "Price discount applied") : t("Стандарт нөхцөл", "Standard terms")}</span></article>
                 </div>
-              ) : null}
-              <form
-                className="account-form my-package-form"
-                onSubmit={saveSubscription}
-              >
-                <label>
-                  {t("Байгууллагын нэр", "Organization name")}
-                  <input
-                    value={organizationName}
-                    onChange={(event) =>
-                      setOrganizationName(event.target.value)
-                    }
-                    required
-                    maxLength={160}
-                    placeholder={t("Тенантын нэр", "Tenant name")}
-                  />
-                </label>
-                <label>
-                  {t("Багц", "Plan")}
-                  <select
-                    value={planId}
-                    onChange={(event) => setPlanId(event.target.value)}
-                  >
-                    {data.catalog.plans.map((plan) => (
-                      <option key={plan.id} value={plan.id}>
-                        {plan.name}
-                        {plan.monthlyMnt === null
-                          ? ` · ${t("Тохиролцоно", "Custom")}`
-                          : ` · ${money(plan.monthlyMnt, locale, isEnglish)}/${t("сар", "month")}`}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div className="my-package-duration">
-                  <label>
-                    {t("Хугацаа", "Duration")}
-                    <input
-                      type="number"
-                      min={
-                        durationUnit === "year"
-                          ? Math.ceil((selectedPlan?.minPaidMonths || 1) / 12)
-                          : selectedPlan?.minPaidMonths || 1
-                      }
-                      max={
-                        durationUnit === "year"
-                          ? Math.floor((selectedPlan?.maxPaidMonths || 12) / 12)
-                          : selectedPlan?.maxPaidMonths || 120
-                      }
-                      value={durationValue}
-                      onChange={(event) => setDurationValue(event.target.value)}
-                      required
-                    />
-                  </label>
-                  <label>
-                    {t("Нэгж", "Unit")}
-                    <select
-                      value={durationUnit}
-                      onChange={(event) =>
-                        setDurationUnit(event.target.value as "month" | "year")
-                      }
-                    >
-                      <option
-                        value="month"
-                        disabled={!selectedPlan?.allowMonths}
-                      >
-                        {t("Сар", "Month")}
-                      </option>
-                      <option value="year" disabled={!selectedPlan?.allowYears}>
-                        {t("Жил", "Year")}
-                      </option>
-                    </select>
-                  </label>
-                  <small>
-                    {selectedPlan
-                      ? t(
-                          `Админ тохируулсан хязгаар: ${selectedPlan.minPaidMonths}–${selectedPlan.maxPaidMonths} сар.`,
-                          `Administrator limit: ${selectedPlan.minPaidMonths}–${selectedPlan.maxPaidMonths} months.`,
-                        )
-                      : ""}
-                  </small>
-                </div>
-                <button
-                  className="account-submit"
-                  type="submit"
-                  disabled={working}
-                >
-                  {working
-                    ? t("Хадгалж байна…", "Saving…")
-                    : selectedPlan?.monthlyMnt === null
-                      ? t("Үнийн санал хүсэх", "Request a quote")
-                      : t("Багцын хүсэлтийг батлах", "Confirm plan request")}
-                </button>
-              </form>
-              <p className="my-package-boundary">
-                {t(
-                  "Төлбөр баталгаажаагүй үед iBeX eAM ажлын орчин нээгдэхгүй. Төлбөр болон баталгаажуулалтыг зөвхөн Home Web удирдана.",
-                  "The iBeX eAM workspace stays closed until payment is confirmed. Only Home Web manages payment and confirmation.",
-                )}
-              </p>
+                <p className="my-package-boundary">{t("Энэ хэсэг нь сонгосон багцын мэдээллийг зөвхөн харуулна. Багцын шинэ сонголтыг Үнэ ба багц хэсгээс хийнэ.", "This area only displays the selected plan. Make a new plan selection from Pricing.")}</p>
+              </> : <div className="my-package-empty"><strong>{t("Багц сонголт байхгүй", "No plan selected")}</strong></div>}
             </section>
           ) : null}
           {tab === "security" ? (
@@ -914,6 +763,7 @@ export default function AccountPage() {
           ) : null}
         </>
       ) : null}
+      <HomeAiDrawer open={homeAiOpen} onClose={closeHomeAi} />
     </AccountShell>
   );
 }
