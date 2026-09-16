@@ -9,7 +9,10 @@ test('plan offers keep duration bonuses and price discounts independent', () => 
   assert.equal(active.plans.length, 1);
   assert.equal(active.plans[0].planId, 'go');
   assert.match(active.plans[0].badgeMn, /6 сар үнэгүй \+ 15% хөнгөлөлт/);
-  assert.equal(publicLaunchOffer(offer, offerDate('2027-09-11')).plans.length, 0);
+  const ended = publicLaunchOffer(offer, offerDate('2027-09-11')).plans;
+  assert.equal(ended.length, 1);
+  assert.equal(ended[0].pricingActive, false);
+  assert.equal(ended[0].displayState, 'ended');
 });
 
 test('free never receives a price discount and invalid ranges are rejected', () => {

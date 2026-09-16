@@ -106,7 +106,9 @@ export function launchOfferText(offer: PlanOffer, lang: "mn" | "en") {
 export function publicLaunchOffer(offer: LaunchOffer, now = Date.now()) {
   return { schema: 2, plans: offer.plans.flatMap(plan => {
     const startsAt = offerDate(plan.startDate), expiresAt = offerDate(plan.endDate) + 86_400_000;
-    if ((!plan.bonusEnabled && !plan.discountEnabled) || !Number.isFinite(startsAt) || !Number.isFinite(expiresAt) || now < startsAt || now >= expiresAt) return [];
-    return [{ ...plan, badgeMn: launchOfferText(plan, "mn"), badgeEn: launchOfferText(plan, "en"), startsAt, expiresAt }];
+    if ((!plan.bonusEnabled && !plan.discountEnabled) || !Number.isFinite(startsAt) || !Number.isFinite(expiresAt)) return [];
+    const pricingActive = now >= startsAt && now < expiresAt;
+    const displayState = pricingActive ? "active" : now < startsAt ? "scheduled" : "ended";
+    return [{ ...plan, badgeMn: launchOfferText(plan, "mn"), badgeEn: launchOfferText(plan, "en"), startsAt, expiresAt, pricingActive, displayState }];
   }) };
 }

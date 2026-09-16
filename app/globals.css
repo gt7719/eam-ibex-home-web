@@ -828,6 +828,20 @@ html[data-ibex-theme="day"] .mobile-preview-page { color: #30283a; background: #
 html[data-ibex-theme="day"] .mobile-preview-header { border-color: #dfd4e7; background: rgba(255, 255, 255, .97); }
 html[data-ibex-theme="day"] .mobile-preview-heading span { color: #176d45; }
 html[data-ibex-theme="day"] .mobile-preview-close { border-color: #bca7ca; color: #51266c; background: #f6effa; }
+/* Version 62: compact shared admin chrome; every section keeps a full-height working pane. */
+.admin-hub-page { grid-template-rows:auto minmax(0,1fr); padding:16px clamp(12px,2vw,28px) 18px; gap:10px; }
+.admin-hub-page .admin-session-bar { min-height:64px; margin:0; padding:10px 14px; border-radius:18px; }
+.admin-hub-shell.admin-hub-single { min-height:0; height:100%; grid-template-rows:auto minmax(0,1fr); }
+.admin-hub-shell.admin-hub-single > .admin-hub-tabs { gap:8px; padding:10px 14px; }
+.admin-hub-shell.admin-hub-single > .admin-hub-tabs button { min-height:40px; }
+.admin-hub-shell.admin-hub-single > .admin-hub-content { min-height:0; height:auto; }
+.admin-ai-workspace > header { padding:14px 20px 8px; }
+.admin-ai-workspace > header h2 { margin:2px 0 4px; font-size:clamp(26px,2.3vw,34px); }
+.admin-ai-workspace > header p { max-width:920px; font-size:12px; line-height:1.45; }
+.admin-ai-workspace .ai-admin-tabs { min-height:54px; margin:0 20px; padding:8px; }
+.admin-ai-workspace .ai-admin-tabs button { min-height:38px; font-size:12px; }
+.admin-ai-workspace > .ai-admin-frame { flex:1 1 auto; min-height:0; height:auto; margin-top:8px; }
+@media(max-width:760px){.admin-hub-page{padding:8px}.admin-hub-page .admin-session-bar{min-height:56px}.admin-hub-shell.admin-hub-single > .admin-hub-tabs{padding:8px}.admin-ai-workspace > header{padding:12px 14px 6px}.admin-ai-workspace .ai-admin-tabs{margin:0 12px}}
 @media(max-width:520px) {
   .mobile-preview-header {
     min-height: calc(50px + env(safe-area-inset-top));

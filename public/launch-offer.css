@@ -39,6 +39,15 @@ body.theme-day .launch-offer-badge { border-color:#e9b6ed; background:#fae8ff; c
 .pricing-offer-panel strong { color:#f1edf4; font-size:13px; line-height:1.4; }
 .pricing-offer-panel p { margin:0; color:#aaa1b1; font-size:12px; line-height:1.5; }
 .pricing-offer-panel small { color:#7ea7d5; font-size:11px; }
+.pricing-offer-panel .pricing-offer-state { font-weight:800; }
+.pricing-offer-panel .pricing-offer-state.active { color:#72df9e; }
+.pricing-offer-panel .pricing-offer-state.scheduled { color:#efc865; }
+.detail-plan .plan-duration-total { display:grid; gap:3px; margin:12px 0 0; padding:10px 11px; border:1px solid rgba(126,167,213,.2); border-radius:10px; background:rgba(64,142,255,.045); }
+.detail-plan .plan-duration-total span { color:#7ea7d5; font-size:11px; font-weight:750; }
+.detail-plan .plan-duration-total strong { color:#f1edf4; font-size:17px; }
+.detail-plan .plan-duration-total small { color:#72df9e; font-size:10px; font-weight:800; }
+body.theme-day .detail-plan .plan-duration-total { border-color:#bfd5ef; background:#f4f9ff; }
+body.theme-day .detail-plan .plan-duration-total strong { color:#2d2434; }
 body.theme-day .pricing-offer-panel { border-color:#bfd5ef; background:linear-gradient(145deg,#f2f8ff,#f8f4ff); }
 body.theme-day .pricing-offer-panel strong { color:#2d2434; }
 body.theme-day .pricing-offer-panel p { color:#675d70; }
