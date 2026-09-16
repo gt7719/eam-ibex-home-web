@@ -27,7 +27,9 @@ export async function POST(request: Request) {
     const attempt = await recordActionFailure(key, 5, 15);
     return NextResponse.json({ error: attempt.locked ? "Олон буруу оролдлого илэрлээ. 15 минутын дараа дахин оролдоно уу." : "Нэвтрэх мэдээлэл буруу байна." }, { status: attempt.locked ? 429 : 401 });
   }
-  if (user.email_status !== "verified") return NextResponse.json({ error: "Эхлээд и-мэйлээ баталгаажуулна уу.", code: "email_unverified" }, { status: 403 });
+  if (user.email_verification_required && user.email_status !== "verified") {
+    return NextResponse.json({ error: "Эхлээд и-мэйлээ баталгаажуулна уу.", code: "email_unverified" }, { status: 403 });
+  }
   if (user.locked_until && user.locked_until > new Date().toISOString()) return NextResponse.json({ error: "Бүртгэл түр түгжигдсэн байна." }, { status: 423 });
   if (!["active", "limited"].includes(user.account_status)) return NextResponse.json({ error: "Бүртгэл идэвхгүй байна. support@ibex.mn хаягтай холбогдоно уу." }, { status: 403 });
   await clearActionFailures(key);

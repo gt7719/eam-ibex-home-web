@@ -1,5 +1,13 @@
 import { sql } from "drizzle-orm";
-import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import {
+  index,
+  integer,
+  primaryKey,
+  real,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 export const adminUsers = sqliteTable(
   "admin_users",
@@ -12,7 +20,9 @@ export const adminUsers = sqliteTable(
     role: text("role").notNull().default("editor"),
     permissionsJson: text("permissions_json")
       .notNull()
-      .default('["pricing.manage","partners.manage","people.manage","knowledge.manage","media.upload"]'),
+      .default(
+        '["pricing.manage","partners.manage","people.manage","knowledge.manage","media.upload"]',
+      ),
     status: text("status").notNull().default("active"),
     lastAccess: text("last_access"),
     createdAt: text("created_at").notNull(),
@@ -97,7 +107,9 @@ export const aiAuditEvents = sqliteTable(
     metadataJson: text("metadata_json").notNull(),
     createdAt: text("created_at").notNull(),
   },
-  (table) => [index("ai_audit_tenant_created_idx").on(table.tenantId, table.createdAt)],
+  (table) => [
+    index("ai_audit_tenant_created_idx").on(table.tenantId, table.createdAt),
+  ],
 );
 
 export const aiRateLimits = sqliteTable(
@@ -127,7 +139,9 @@ export const aiApprovals = sqliteTable(
     createdAt: text("created_at").notNull(),
     decidedAt: text("decided_at"),
   },
-  (table) => [index("ai_approvals_tenant_status_idx").on(table.tenantId, table.status)],
+  (table) => [
+    index("ai_approvals_tenant_status_idx").on(table.tenantId, table.status),
+  ],
 );
 
 // iBeX Home customer/marketing AI data is deliberately isolated from the
@@ -160,7 +174,10 @@ export const customerAiRateLimits = sqliteTable(
   },
   (table) => [
     primaryKey({ columns: [table.subjectHash, table.scope, table.windowKey] }),
-    index("customer_ai_rate_limits_window_idx").on(table.scope, table.windowKey),
+    index("customer_ai_rate_limits_window_idx").on(
+      table.scope,
+      table.windowKey,
+    ),
   ],
 );
 
@@ -194,8 +211,14 @@ export const customerAiAuditEvents = sqliteTable(
     createdAt: text("created_at").notNull(),
   },
   (table) => [
-    index("customer_ai_audit_subject_created_idx").on(table.subjectHash, table.createdAt),
-    index("customer_ai_audit_channel_created_idx").on(table.channel, table.createdAt),
+    index("customer_ai_audit_subject_created_idx").on(
+      table.subjectHash,
+      table.createdAt,
+    ),
+    index("customer_ai_audit_channel_created_idx").on(
+      table.channel,
+      table.createdAt,
+    ),
   ],
 );
 
@@ -212,7 +235,10 @@ export const marketingAiRateLimits = sqliteTable(
   },
   (table) => [
     primaryKey({ columns: [table.subjectHash, table.scope, table.windowKey] }),
-    index("marketing_ai_rate_limits_window_idx").on(table.scope, table.windowKey),
+    index("marketing_ai_rate_limits_window_idx").on(
+      table.scope,
+      table.windowKey,
+    ),
   ],
 );
 
@@ -265,14 +291,32 @@ export const siteUsers = sqliteTable(
     emailVerifiedAt: text("email_verified_at"),
     phoneStatus: text("phone_status").notNull().default("unverified"),
     phoneVerifiedAt: text("phone_verified_at"),
+    // These flags are a snapshot of the system-wide policy at registration.
+    // They are not user-configurable overrides.
+    emailVerificationRequired: integer("email_verification_required", {
+      mode: "boolean",
+    })
+      .notNull()
+      .default(true),
+    phoneVerificationRequired: integer("phone_verification_required", {
+      mode: "boolean",
+    })
+      .notNull()
+      .default(false),
     locale: text("locale").notNull().default("mn"),
     termsVersion: text("terms_version").notNull(),
     privacyVersion: text("privacy_version").notNull(),
     termsAcceptedAt: text("terms_accepted_at").notNull(),
     privacyAcceptedAt: text("privacy_accepted_at").notNull(),
-    marketingEmailOptIn: integer("marketing_email_opt_in", { mode: "boolean" }).notNull().default(false),
-    marketingSmsOptIn: integer("marketing_sms_opt_in", { mode: "boolean" }).notNull().default(false),
-    securitySmsEnabled: integer("security_sms_enabled", { mode: "boolean" }).notNull().default(true),
+    marketingEmailOptIn: integer("marketing_email_opt_in", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    marketingSmsOptIn: integer("marketing_sms_opt_in", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    securitySmsEnabled: integer("security_sms_enabled", { mode: "boolean" })
+      .notNull()
+      .default(true),
     lastLoginAt: text("last_login_at"),
     lockedUntil: text("locked_until"),
     deletionRequestedAt: text("deletion_requested_at"),
@@ -285,6 +329,26 @@ export const siteUsers = sqliteTable(
     uniqueIndex("site_users_verified_phone_unique")
       .on(table.phoneE164)
       .where(sql`${table.phoneStatus} = 'verified'`),
+  ],
+);
+
+// Profile photos are private Home Web account data. They intentionally use a
+// separate table and private delivery route rather than the public site media
+// library, and are never included in eAM provisioning payloads.
+export const siteUserProfileImages = sqliteTable(
+  "site_user_profile_images",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull().unique(),
+    objectKey: text("object_key").notNull().unique(),
+    filename: text("filename").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("site_user_profile_images_updated_idx").on(table.updatedAt),
   ],
 );
 
@@ -319,7 +383,11 @@ export const siteUserTokens = sqliteTable(
     createdAt: text("created_at").notNull(),
   },
   (table) => [
-    index("site_user_tokens_user_purpose_idx").on(table.userId, table.purpose, table.status),
+    index("site_user_tokens_user_purpose_idx").on(
+      table.userId,
+      table.purpose,
+      table.status,
+    ),
     index("site_user_tokens_expiry_idx").on(table.expiresAt),
   ],
 );
@@ -333,7 +401,9 @@ export const siteUserLoginAttempts = sqliteTable(
     lockedUntil: text("locked_until"),
     updatedAt: text("updated_at").notNull(),
   },
-  (table) => [index("site_user_login_attempts_updated_idx").on(table.updatedAt)],
+  (table) => [
+    index("site_user_login_attempts_updated_idx").on(table.updatedAt),
+  ],
 );
 
 export const siteUserConsents = sqliteTable(
@@ -347,7 +417,13 @@ export const siteUserConsents = sqliteTable(
     source: text("source").notNull().default("registration"),
     createdAt: text("created_at").notNull(),
   },
-  (table) => [index("site_user_consents_user_type_idx").on(table.userId, table.consentType, table.createdAt)],
+  (table) => [
+    index("site_user_consents_user_type_idx").on(
+      table.userId,
+      table.consentType,
+      table.createdAt,
+    ),
+  ],
 );
 
 export const authDeliveryEvents = sqliteTable(
@@ -367,7 +443,10 @@ export const authDeliveryEvents = sqliteTable(
     updatedAt: text("updated_at").notNull(),
   },
   (table) => [
-    index("auth_delivery_events_user_status_idx").on(table.userId, table.status),
+    index("auth_delivery_events_user_status_idx").on(
+      table.userId,
+      table.status,
+    ),
     index("auth_delivery_events_created_idx").on(table.createdAt),
   ],
 );
@@ -387,7 +466,9 @@ export const siteUserSmsVerifications = sqliteTable(
     createdAt: text("created_at").notNull(),
     verifiedAt: text("verified_at"),
   },
-  (table) => [index("site_user_sms_user_status_idx").on(table.userId, table.status)],
+  (table) => [
+    index("site_user_sms_user_status_idx").on(table.userId, table.status),
+  ],
 );
 
 export const siteUserAccessRequests = sqliteTable(
@@ -404,7 +485,12 @@ export const siteUserAccessRequests = sqliteTable(
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
-  (table) => [index("site_user_access_requests_user_status_idx").on(table.userId, table.status)],
+  (table) => [
+    index("site_user_access_requests_user_status_idx").on(
+      table.userId,
+      table.status,
+    ),
+  ],
 );
 
 // Home Web is the commercial source of truth. These records deliberately do
@@ -425,21 +511,31 @@ export const siteUserSubscriptions = sqliteTable(
     finalAmountMnt: integer("final_amount_mnt"),
     promotionSnapshotJson: text("promotion_snapshot_json"),
     paymentStatus: text("payment_status").notNull().default("pending"),
-    subscriptionStatus: text("subscription_status").notNull().default("payment_pending"),
+    subscriptionStatus: text("subscription_status")
+      .notNull()
+      .default("payment_pending"),
     startsAt: text("starts_at"),
     endsAt: text("ends_at"),
     coreTenantId: text("core_tenant_id"),
     coreTenantAdminId: text("core_tenant_admin_id"),
     coreWorkspaceUrl: text("core_workspace_url"),
-    provisioningStatus: text("provisioning_status").notNull().default("not_requested"),
+    provisioningStatus: text("provisioning_status")
+      .notNull()
+      .default("not_requested"),
     lastProvisioningAttemptAt: text("last_provisioning_attempt_at"),
     provisionedAt: text("provisioned_at"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
   (table) => [
-    index("site_user_subscriptions_user_created_idx").on(table.userId, table.createdAt),
-    index("site_user_subscriptions_status_idx").on(table.subscriptionStatus, table.provisioningStatus),
+    index("site_user_subscriptions_user_created_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    index("site_user_subscriptions_status_idx").on(
+      table.subscriptionStatus,
+      table.provisioningStatus,
+    ),
     index("site_user_subscriptions_end_idx").on(table.endsAt),
   ],
 );
@@ -457,8 +553,14 @@ export const siteUserSubscriptionEvents = sqliteTable(
     createdAt: text("created_at").notNull(),
   },
   (table) => [
-    index("site_user_subscription_events_subscription_idx").on(table.subscriptionId, table.createdAt),
-    index("site_user_subscription_events_user_idx").on(table.userId, table.createdAt),
+    index("site_user_subscription_events_subscription_idx").on(
+      table.subscriptionId,
+      table.createdAt,
+    ),
+    index("site_user_subscription_events_user_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
   ],
 );
 
@@ -477,7 +579,13 @@ export const siteUserProvisioningOutbox = sqliteTable(
     updatedAt: text("updated_at").notNull(),
   },
   (table) => [
-    index("site_user_provisioning_outbox_subscription_idx").on(table.subscriptionId, table.createdAt),
-    index("site_user_provisioning_outbox_status_idx").on(table.status, table.updatedAt),
+    index("site_user_provisioning_outbox_subscription_idx").on(
+      table.subscriptionId,
+      table.createdAt,
+    ),
+    index("site_user_provisioning_outbox_status_idx").on(
+      table.status,
+      table.updatedAt,
+    ),
   ],
 );

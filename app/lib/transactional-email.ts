@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { maskEmail } from "./site-user-auth";
+import { maskEmail, maskPhone } from "./site-user-auth";
 
 type EmailTemplate = "verify_email" | "password_reset";
 
@@ -8,19 +8,125 @@ type RuntimeEmailEnv = {
   EMAIL_FROM?: string;
   EMAIL_REPLY_TO?: string;
   TURNSTILE_SECRET_KEY?: string;
+  IBEX_SMS_DELIVERY_URL?: string;
+  IBEX_SMS_DELIVERY_TOKEN?: string;
+  IBEX_SMS_FROM?: string;
 };
 
 function runtimeEnv() {
   return env as unknown as RuntimeEmailEnv & { DB: D1Database };
 }
 
-function htmlEscape(value: string) {
-  return value.replace(/[&<>'"]/g, (character) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;",
-  })[character] || character);
+export async function sendAccountSms(input: {
+  userId: string;
+  phoneE164: string;
+  locale: "mn" | "en";
+  code: string;
+}) {
+  const runtime = runtimeEnv();
+  const eventId = crypto.randomUUID();
+  const now = new Date().toISOString();
+  const url = runtime.IBEX_SMS_DELIVERY_URL?.trim();
+  const token = runtime.IBEX_SMS_DELIVERY_TOKEN?.trim();
+  let validUrl: URL | null = null;
+  try {
+    validUrl = url ? new URL(url) : null;
+  } catch {
+    validUrl = null;
+  }
+  const configured = Boolean(validUrl?.protocol === "https:" && token);
+  await runtime.DB.prepare(
+    `INSERT INTO auth_delivery_events
+     (id,user_id,channel,template,recipient_masked,provider,status,attempt_count,created_at,updated_at)
+     VALUES (?,?,'sms','verify_phone',?,?, 'queued',0,?,?)`,
+  )
+    .bind(
+      eventId,
+      input.userId,
+      maskPhone(input.phoneE164),
+      configured ? "configured_connector" : "unconfigured",
+      now,
+      now,
+    )
+    .run();
+  if (!configured || !validUrl) {
+    await runtime.DB.prepare(
+      "UPDATE auth_delivery_events SET status='failed',error_code='provider_not_configured',attempt_count=1,updated_at=? WHERE id=?",
+    )
+      .bind(new Date().toISOString(), eventId)
+      .run();
+    return { sent: false, reason: "provider_not_configured" as const };
+  }
+  const message =
+    input.locale === "en"
+      ? `Your iBeX verification code is ${input.code}. It expires in 10 minutes.`
+      : `Таны iBeX баталгаажуулах код: ${input.code}. Код 10 минутын хугацаанд хүчинтэй.`;
+  try {
+    const response = await fetch(validUrl.toString(), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to: input.phoneE164,
+        from: runtime.IBEX_SMS_FROM || "iBeX",
+        message,
+        template: "verify_phone",
+      }),
+    });
+    const payload = (await response.json().catch(() => ({}))) as {
+      id?: string;
+      messageId?: string;
+    };
+    if (!response.ok) {
+      await runtime.DB.prepare(
+        "UPDATE auth_delivery_events SET status='failed',error_code=?,attempt_count=1,updated_at=? WHERE id=?",
+      )
+        .bind(`provider_${response.status}`, new Date().toISOString(), eventId)
+        .run();
+      return { sent: false, reason: "provider_error" as const };
+    }
+    await runtime.DB.prepare(
+      "UPDATE auth_delivery_events SET status='sent',provider_message_id=?,attempt_count=1,updated_at=? WHERE id=?",
+    )
+      .bind(
+        payload.id || payload.messageId || null,
+        new Date().toISOString(),
+        eventId,
+      )
+      .run();
+    return { sent: true, reason: null };
+  } catch {
+    await runtime.DB.prepare(
+      "UPDATE auth_delivery_events SET status='failed',error_code='network_error',attempt_count=1,updated_at=? WHERE id=?",
+    )
+      .bind(new Date().toISOString(), eventId)
+      .run();
+    return { sent: false, reason: "network_error" as const };
+  }
 }
 
-function emailCopy(template: EmailTemplate, locale: "mn" | "en", name: string, actionUrl: string) {
+function htmlEscape(value: string) {
+  return value.replace(
+    /[&<>'"]/g,
+    (character) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#39;",
+        '"': "&quot;",
+      })[character] || character,
+  );
+}
+
+function emailCopy(
+  template: EmailTemplate,
+  locale: "mn" | "en",
+  name: string,
+  actionUrl: string,
+) {
   const safeName = htmlEscape(name);
   const safeUrl = htmlEscape(actionUrl);
   if (template === "password_reset") {
@@ -65,16 +171,33 @@ export async function sendAccountEmail(input: {
     `INSERT INTO auth_delivery_events
      (id,user_id,channel,template,recipient_masked,provider,status,attempt_count,created_at,updated_at)
      VALUES (?,?, 'email', ?, ?, ?, 'queued', 0, ?, ?)`,
-  ).bind(eventId, input.userId, input.template, maskEmail(input.email), provider, now, now).run();
+  )
+    .bind(
+      eventId,
+      input.userId,
+      input.template,
+      maskEmail(input.email),
+      provider,
+      now,
+      now,
+    )
+    .run();
 
   if (!runtime.RESEND_API_KEY) {
     await runtime.DB.prepare(
       "UPDATE auth_delivery_events SET status='failed',error_code='provider_not_configured',attempt_count=1,updated_at=? WHERE id=?",
-    ).bind(new Date().toISOString(), eventId).run();
+    )
+      .bind(new Date().toISOString(), eventId)
+      .run();
     return { sent: false, reason: "provider_not_configured" as const };
   }
 
-  const copy = emailCopy(input.template, input.locale, input.name, input.actionUrl);
+  const copy = emailCopy(
+    input.template,
+    input.locale,
+    input.name,
+    input.actionUrl,
+  );
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -91,37 +214,53 @@ export async function sendAccountEmail(input: {
         html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:28px;color:#2d2434">${copy.html}<hr style="border:0;border-top:1px solid #ddd;margin:28px 0"><small>iBeX • Enterprise Asset Management</small></div>`,
       }),
     });
-    const payload = await response.json().catch(() => ({})) as { id?: string; name?: string };
+    const payload = (await response.json().catch(() => ({}))) as {
+      id?: string;
+      name?: string;
+    };
     if (!response.ok) {
       await runtime.DB.prepare(
         "UPDATE auth_delivery_events SET status='failed',error_code=?,attempt_count=1,updated_at=? WHERE id=?",
-      ).bind(`provider_${response.status}`, new Date().toISOString(), eventId).run();
+      )
+        .bind(`provider_${response.status}`, new Date().toISOString(), eventId)
+        .run();
       return { sent: false, reason: "provider_error" as const };
     }
     await runtime.DB.prepare(
       "UPDATE auth_delivery_events SET status='sent',provider_message_id=?,attempt_count=1,updated_at=? WHERE id=?",
-    ).bind(payload.id || null, new Date().toISOString(), eventId).run();
+    )
+      .bind(payload.id || null, new Date().toISOString(), eventId)
+      .run();
     return { sent: true, reason: null };
   } catch {
     await runtime.DB.prepare(
       "UPDATE auth_delivery_events SET status='failed',error_code='network_error',attempt_count=1,updated_at=? WHERE id=?",
-    ).bind(new Date().toISOString(), eventId).run();
+    )
+      .bind(new Date().toISOString(), eventId)
+      .run();
     return { sent: false, reason: "network_error" as const };
   }
 }
 
-export async function verifyTurnstile(request: Request, responseToken: unknown) {
+export async function verifyTurnstile(
+  request: Request,
+  responseToken: unknown,
+) {
   const runtime = runtimeEnv();
   if (!runtime.TURNSTILE_SECRET_KEY) return { ok: true, configured: false };
-  if (typeof responseToken !== "string" || !responseToken) return { ok: false, configured: true };
+  if (typeof responseToken !== "string" || !responseToken)
+    return { ok: false, configured: true };
   const form = new FormData();
   form.set("secret", runtime.TURNSTILE_SECRET_KEY);
   form.set("response", responseToken);
   const ip = request.headers.get("cf-connecting-ip");
   if (ip) form.set("remoteip", ip);
   try {
-    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body: form });
-    const payload = await response.json() as { success?: boolean };
+    const response = await fetch(
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      { method: "POST", body: form },
+    );
+    const payload = (await response.json()) as { success?: boolean };
     return { ok: response.ok && payload.success === true, configured: true };
   } catch {
     return { ok: false, configured: true };
