@@ -13,8 +13,13 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [unverified, setUnverified] = useState(false);
 
+  function returnTo() {
+    const value = new URLSearchParams(window.location.search).get("return_to") || "/account";
+    return /^\/account(?:[/?].*)?$/.test(value) ? value : "/account";
+  }
+
   useEffect(() => {
-    fetch("/api/account/session", { cache: "no-store" }).then((response) => { if (response.ok) window.location.replace("/account"); }).catch(() => {});
+    fetch("/api/account/session", { cache: "no-store" }).then((response) => { if (response.ok) window.location.replace(returnTo()); }).catch(() => {});
   }, []);
 
   async function submit(event: FormEvent) {
@@ -22,7 +27,7 @@ export default function LoginPage() {
     setWorking(true); setError(""); setUnverified(false);
     const response = await fetch("/api/account/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
-    if (response?.ok) { window.location.replace("/account"); return; }
+    if (response?.ok) { window.location.replace(returnTo()); return; }
     setError(payload.error || t("Сервертэй холбогдож чадсангүй.", "Could not connect to the server."));
     setUnverified(payload.code === "email_unverified");
     setWorking(false);

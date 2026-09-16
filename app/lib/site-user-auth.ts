@@ -236,6 +236,9 @@ export async function purgeExpiredSiteUsers(now = new Date()) {
       env.DB.prepare("DELETE FROM auth_delivery_events WHERE user_id=?").bind(id),
       env.DB.prepare("DELETE FROM site_user_sms_verifications WHERE user_id=?").bind(id),
       env.DB.prepare("DELETE FROM site_user_access_requests WHERE user_id=?").bind(id),
+      env.DB.prepare("DELETE FROM site_user_subscription_events WHERE user_id=?").bind(id),
+      env.DB.prepare("DELETE FROM site_user_provisioning_outbox WHERE subscription_id IN (SELECT id FROM site_user_subscriptions WHERE user_id=?)").bind(id),
+      env.DB.prepare("DELETE FROM site_user_subscriptions WHERE user_id=?").bind(id),
       env.DB.prepare("DELETE FROM site_users WHERE id=? AND account_status='deletion_requested'").bind(id),
     ]);
   }

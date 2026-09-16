@@ -406,3 +406,78 @@ export const siteUserAccessRequests = sqliteTable(
   },
   (table) => [index("site_user_access_requests_user_status_idx").on(table.userId, table.status)],
 );
+
+// Home Web is the commercial source of truth. These records deliberately do
+// not belong to the core eAM tenant database: the core product receives only
+// the confirmed provisioning payload it needs to open an operational tenant.
+export const siteUserSubscriptions = sqliteTable(
+  "site_user_subscriptions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    organizationName: text("organization_name").notNull(),
+    planId: text("plan_id").notNull(),
+    planName: text("plan_name").notNull(),
+    planSnapshotJson: text("plan_snapshot_json").notNull(),
+    durationMonths: integer("duration_months").notNull(),
+    baseAmountMnt: integer("base_amount_mnt"),
+    discountAmountMnt: integer("discount_amount_mnt").notNull().default(0),
+    finalAmountMnt: integer("final_amount_mnt"),
+    promotionSnapshotJson: text("promotion_snapshot_json"),
+    paymentStatus: text("payment_status").notNull().default("pending"),
+    subscriptionStatus: text("subscription_status").notNull().default("payment_pending"),
+    startsAt: text("starts_at"),
+    endsAt: text("ends_at"),
+    coreTenantId: text("core_tenant_id"),
+    coreTenantAdminId: text("core_tenant_admin_id"),
+    coreWorkspaceUrl: text("core_workspace_url"),
+    provisioningStatus: text("provisioning_status").notNull().default("not_requested"),
+    lastProvisioningAttemptAt: text("last_provisioning_attempt_at"),
+    provisionedAt: text("provisioned_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("site_user_subscriptions_user_created_idx").on(table.userId, table.createdAt),
+    index("site_user_subscriptions_status_idx").on(table.subscriptionStatus, table.provisioningStatus),
+    index("site_user_subscriptions_end_idx").on(table.endsAt),
+  ],
+);
+
+export const siteUserSubscriptionEvents = sqliteTable(
+  "site_user_subscription_events",
+  {
+    id: text("id").primaryKey(),
+    subscriptionId: text("subscription_id").notNull(),
+    userId: text("user_id").notNull(),
+    eventType: text("event_type").notNull(),
+    actorType: text("actor_type").notNull(),
+    actorId: text("actor_id"),
+    payloadJson: text("payload_json").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("site_user_subscription_events_subscription_idx").on(table.subscriptionId, table.createdAt),
+    index("site_user_subscription_events_user_idx").on(table.userId, table.createdAt),
+  ],
+);
+
+export const siteUserProvisioningOutbox = sqliteTable(
+  "site_user_provisioning_outbox",
+  {
+    id: text("id").primaryKey(),
+    subscriptionId: text("subscription_id").notNull(),
+    status: text("status").notNull().default("pending"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    payloadJson: text("payload_json").notNull(),
+    responseJson: text("response_json"),
+    lastAttemptAt: text("last_attempt_at"),
+    deliveredAt: text("delivered_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("site_user_provisioning_outbox_subscription_idx").on(table.subscriptionId, table.createdAt),
+    index("site_user_provisioning_outbox_status_idx").on(table.status, table.updatedAt),
+  ],
+);
