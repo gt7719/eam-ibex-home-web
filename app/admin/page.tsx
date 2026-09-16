@@ -23,6 +23,7 @@ const adminSections = [
 ] as const;
 
 const aiAreas = [
+  { id: "home-control", permission: "knowledge.manage", mn: "Home AI удирдлага", en: "Home AI control", src: "/admin/home-ai?embedded=1" },
   { id: "home", permission: "knowledge.manage", mn: "Home AI мэдлэгийн сан", en: "Home AI knowledge", src: "/admin/assistant?embedded=1" },
   { id: "marketing", permission: "marketing.manage", mn: "Marketing AI", en: "Marketing AI", src: "/admin/marketing-ai?embedded=1" },
 ] as const;
@@ -52,7 +53,7 @@ export default function AdminPage() {
   const [checking, setChecking] = useState(true);
   const [lang, setLang] = useState<Lang>("mn");
   const [section, setSection] = useState<string>("partners");
-  const [aiArea, setAiArea] = useState<string>("home");
+  const [aiArea, setAiArea] = useState<string>("home-control");
   const [iframeDirty, setIframeDirty] = useState(false);
 
   useEffect(() => {

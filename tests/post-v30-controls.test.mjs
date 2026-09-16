@@ -5,13 +5,14 @@ import test from "node:test";
 const read = (path) =>
   readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("public pricing has persistent plan actions and custom MNT duration checkout", () => {
+test("public pricing has persistent plan actions and constrained duration dropdowns", () => {
   const script = read("public/concept.html"),
     style = read("public/post-v30.css");
   assert.match(script, /Багц сонгох/);
-  assert.match(script, /Хугацааны утга/);
+  assert.match(script, /id="billingDuration"/);
+  assert.match(script, /durationOptionMarkup/);
   assert.match(script, /Хугацааны нэгж/);
-  assert.match(script, /Зөвшөөрөгдөх хязгаар/);
+  assert.match(script, /Сонгох хязгаар/);
   assert.match(style, /\.detail-plan>\.plan-select\{flex:0 0 auto/);
   assert.match(style, /\.detail-plan>\.plan-scope\{flex:1/);
 });

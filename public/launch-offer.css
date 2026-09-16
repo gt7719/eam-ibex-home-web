@@ -13,3 +13,42 @@
   overflow-wrap: anywhere;
 }
 body.theme-day .launch-offer-badge { border-color:#e9b6ed; background:#fae8ff; color:#86198f; }
+
+.duration-picker {
+  grid-template-columns: minmax(150px, 220px) minmax(150px, 220px) minmax(300px, 1fr);
+  align-items: stretch;
+}
+.duration-picker > label { align-self: end; }
+.duration-picker > small { grid-column: 1 / 3; align-self: start; }
+.pricing-offer-panel {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  display: grid;
+  align-content: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 15px 17px;
+  border: 1px solid rgba(64,142,255,.34);
+  border-radius: 13px;
+  background: linear-gradient(145deg,rgba(28,83,153,.11),rgba(111,45,189,.065));
+}
+.pricing-offer-panel.empty { border-style: dashed; }
+.pricing-offer-kicker { color:#93c5fd; font-size:10px; font-weight:850; letter-spacing:.13em; }
+.pricing-offer-panel article { display:grid; gap:5px; }
+.pricing-offer-panel article + article { padding-top:9px; border-top:1px solid rgba(64,142,255,.16); }
+.pricing-offer-panel strong { color:#f1edf4; font-size:13px; line-height:1.4; }
+.pricing-offer-panel p { margin:0; color:#aaa1b1; font-size:12px; line-height:1.5; }
+.pricing-offer-panel small { color:#7ea7d5; font-size:11px; }
+body.theme-day .pricing-offer-panel { border-color:#bfd5ef; background:linear-gradient(145deg,#f2f8ff,#f8f4ff); }
+body.theme-day .pricing-offer-panel strong { color:#2d2434; }
+body.theme-day .pricing-offer-panel p { color:#675d70; }
+body.theme-day .pricing-offer-kicker,body.theme-day .pricing-offer-panel small { color:#315b8d; }
+@media(max-width:920px){
+  .duration-picker { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .duration-picker > small { grid-column:1 / -1; }
+  .pricing-offer-panel { grid-column:1 / -1; grid-row:auto; }
+}
+@media(max-width:680px){
+  .duration-picker { grid-template-columns:1fr; }
+  .duration-picker > small,.pricing-offer-panel { grid-column:auto; }
+}

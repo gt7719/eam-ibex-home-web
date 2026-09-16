@@ -733,6 +733,35 @@ html[data-ibex-theme="day"] :is(.payment-admin-card input,.payment-admin-card se
 }
 
 /* v60: isolated iBeX Mobile v5 integration. */
+
+/* v61: every administrator section keeps its navigation while only the body scrolls. */
+.admin-hub-shell.admin-hub-single {
+  position: relative;
+  grid-template-rows: auto minmax(0, 1fr);
+  isolation: isolate;
+}
+.admin-hub-shell.admin-hub-single > .admin-hub-tabs {
+  position: relative;
+  z-index: 20;
+  flex: 0 0 auto;
+}
+.admin-hub-shell.admin-hub-single > .admin-hub-content {
+  position: relative;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.admin-hub-shell.admin-hub-single > .admin-hub-content > iframe,
+.admin-hub-shell.admin-hub-single .admin-ai-workspace > .ai-admin-frame {
+  min-height: 0;
+  height: 100%;
+}
+.admin-ai-workspace > header,
+.admin-ai-workspace > .ai-admin-tabs {
+  position: relative;
+  z-index: 10;
+  flex: 0 0 auto;
+}
 .mobile-preview-page {
   position: fixed;
   inset: 0;

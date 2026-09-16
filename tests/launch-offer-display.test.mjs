@@ -11,10 +11,12 @@ test('public offers render only as plan-specific badges with automatic expiry', 
   assert.doesNotMatch(script, /launch-offer-banner/);
 });
 
-test('pricing uses custom duration input and administrator-defined plan limits', () => {
+test('pricing uses dropdown duration choices and administrator-defined plan limits', () => {
   const html = fs.readFileSync(new URL('../public/concept.html', import.meta.url), 'utf8');
   assert.match(html, /id="billingDuration"/);
   assert.match(html, /id="billingUnit"/);
+  assert.match(html, /durationOptionMarkup/);
+  assert.match(html, /Math\.min\(12,max\)/);
   assert.match(html, /minPaidMonths/);
   assert.match(html, /maxPaidMonths/);
   assert.match(html, /Total service duration|Нийт үйлчилгээний хугацаа/);

@@ -5,6 +5,21 @@ function activePlanOffer(planId) {
   const now = Date.now() + launchOfferClockOffset;
   return launchOffer?.plans?.find(row => row.planId === planId && now >= row.startsAt && now < row.expiresAt) || null;
 }
+function offerPeriod(offer, en) {
+  const locale = en ? 'en-US' : 'mn-MN', format = new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'Asia/Ulaanbaatar' });
+  return `${format.format(new Date(offer.startsAt))} — ${format.format(new Date(offer.expiresAt - 1))}`;
+}
+function renderPricingOfferPanel() {
+  const panel = document.getElementById('pricingOfferPanel');
+  if (!panel) return;
+  const en = currentLang === 'en', plans = pricingPlans.filter(plan => plan.enabled), selected = selectedPaymentPlan === null ? null : plans[selectedPaymentPlan];
+  const rows = selected ? [activePlanOffer(selected.id)].filter(Boolean) : launchOffer.plans.filter(row => activePlanOffer(row.planId));
+  panel.classList.toggle('empty', rows.length === 0);
+  panel.innerHTML = `<span class="pricing-offer-kicker">${en ? 'CURRENT OFFERS' : 'ИДЭВХТЭЙ УРАМШУУЛАЛ'}</span>${rows.length ? rows.map(offer => {
+    const plan = plans.find(row => row.id === offer.planId), name = en ? offer.nameEn : offer.nameMn, detail = en ? offer.badgeEn : offer.badgeMn, custom = en ? offer.textEn : offer.textMn;
+    return `<article><strong>${esc(plan?.name || offer.planId)} · ${esc(name)}</strong><p>${esc(custom || detail)}</p><small>${esc(offerPeriod(offer, en))}</small></article>`;
+  }).join('') : `<p>${en ? 'There is no active administrator-configured offer for this selection.' : 'Энэ сонголтод админаас тохируулсан идэвхтэй урамшуулал одоогоор байхгүй.'}</p>`}`;
+}
 function renderLaunchOffer() {
   document.querySelectorAll('.launch-offer-badge').forEach(node => node.remove());
   clearTimeout(launchOfferExpiryTimer);
@@ -20,6 +35,7 @@ function renderLaunchOffer() {
       nextExpiry = Math.min(nextExpiry, offer.expiresAt);
     });
   }
+  renderPricingOfferPanel();
   if (Number.isFinite(nextExpiry)) launchOfferExpiryTimer = setTimeout(renderLaunchOffer, Math.min(2147483647, Math.max(1, nextExpiry - Date.now() - launchOfferClockOffset)));
 }
 async function refreshLaunchOffer() {
