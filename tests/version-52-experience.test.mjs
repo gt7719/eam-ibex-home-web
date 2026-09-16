@@ -57,11 +57,12 @@ test("protected iBeX environment menu separates web and mobile routes", () => {
   assert.match(modal, /globalThis\.openOrganization=openOrganization/);
 });
 
-test("mobile environment route is truthful about its version 52 foundation boundary", () => {
-  const page = read("app/mobile/page.tsx");
-  assert.match(page, /Хүсэлт үүсгэх/);
-  assert.match(page, /Оноосон ажил гүйцэтгэх/);
-  assert.match(page, /Хүсэлтийн явц хянах/);
-  assert.match(page, /мобайл үйлдлүүд идэвхжээгүй/);
-  assert.match(page, /href="\/organization"/);
+test("mobile environment route keeps the approved preview capabilities and boundary", () => {
+  const page = read("app/mobile/page.tsx"), preview = read("public/mobile-preview/app.js");
+  assert.match(preview, /createRequest:'Хүсэлт үүсгэх'/);
+  assert.match(preview, /openWorks:'Нээлттэй ажлууд'/);
+  assert.match(preview, /requestProgress:'Хүсэлтийн явц'/);
+  assert.doesNotMatch(preview, /fetch\(/);
+  assert.match(page, /Туршилтын орчин/);
+  assert.match(page, /href="\/"/);
 });

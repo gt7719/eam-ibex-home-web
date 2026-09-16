@@ -57,7 +57,10 @@ export default function HomeAiControlPage() {
     setLoading(false);
   }, [t]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
   const budgetPercent = useMemo(() => Math.min(100, Math.max(0, ((payload?.usage.estimatedCostUsd || 0) / Math.max(1, settings.monthlyBudgetUsd)) * 100)), [payload, settings.monthlyBudgetUsd]);
   const updateNumber = (key: keyof HomeAiControlSettings, value: string) => setSettings(current => ({ ...current, [key]: Number(value) }));
 

@@ -11,18 +11,18 @@ test("version 54 lays out protected environments as extensible peer cards with s
   assert.match(concept, /\{t:'Веб орчин',items:\[\['iBeX веб орчин'/);
   assert.match(concept, /\{t:'Мобайл орчин',items:\[\['iBeX мобайл орчин'/);
   assert.match(concept, /status:'active'/);
-  assert.match(concept, /status:'development'/);
+  assert.match(concept, /status:'preview'/);
   assert.match(adapter, /configuredEnvironmentStatus/);
   assert.match(adapter, /ОДОО АШИГЛАЖ БАЙНА/);
-  assert.match(adapter, /ХӨГЖҮҮЛЭГДЭЖ БАЙНА/);
+  assert.match(adapter, /ТУРШИЛТЫН ОРЧИН/);
 });
 
-test("version 54 labels the mobile environment as in development with safe exits", () => {
+test("mobile environment exposes the approved interactive preview with a safe exit", () => {
   const page = read("app/mobile/page.tsx");
-  assert.match(page, /iBeX мобайл орчин хөгжүүлэгдэж байна/);
-  assert.match(page, /мобайл үйлдлүүд идэвхжээгүй/);
+  assert.match(page, /iBeX Mobile/);
+  assert.match(page, /Туршилтын орчин/);
   assert.match(page, /Нүүр хуудас руу буцах/);
-  assert.match(page, /iBeX веб орчинд нэвтрэх/);
+  assert.match(page, /src="\/mobile-preview\/index\.html"/);
 });
 
 test("version 54 admin sign-in follows the global theme and exposes a close control", () => {

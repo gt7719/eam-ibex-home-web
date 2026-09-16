@@ -731,3 +731,82 @@ html[data-ibex-theme="day"] :is(.payment-admin-card input,.payment-admin-card se
   .bank-app-delete { justify-self: stretch; }
   .offer-benefit-card { grid-template-columns: 1fr; }
 }
+
+/* v60: isolated iBeX Mobile v5 integration. */
+.mobile-preview-page {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  color: #eee8f2;
+  background: #08070b;
+}
+.mobile-preview-header {
+  display: flex;
+  min-height: 54px;
+  flex: 0 0 54px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 7px max(12px, env(safe-area-inset-right)) 7px max(16px, env(safe-area-inset-left));
+  border-bottom: 1px solid rgba(168, 85, 247, .2);
+  background: rgba(10, 8, 13, .96);
+}
+.mobile-preview-heading {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 10px;
+}
+.mobile-preview-heading strong { font-size: 16px; letter-spacing: -.02em; }
+.mobile-preview-heading span {
+  color: #78e9ae;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.mobile-preview-close {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  border: 1px solid rgba(216, 180, 254, .35);
+  border-radius: 12px;
+  color: #eee7f3;
+  background: rgba(111, 45, 189, .1);
+  font-size: 26px;
+  line-height: 1;
+  text-decoration: none;
+}
+.mobile-preview-close:hover { border-color: rgba(57, 229, 140, .55); color: #c8f5dd; }
+.mobile-preview-close:focus-visible { outline: 3px solid #78e9ae; outline-offset: 2px; }
+.mobile-preview-frame {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  border: 0;
+  background: #e9ecf3;
+}
+html[data-ibex-theme="day"] .mobile-preview-page { color: #30283a; background: #f7f4f9; }
+html[data-ibex-theme="day"] .mobile-preview-header { border-color: #dfd4e7; background: rgba(255, 255, 255, .97); }
+html[data-ibex-theme="day"] .mobile-preview-heading span { color: #176d45; }
+html[data-ibex-theme="day"] .mobile-preview-close { border-color: #bca7ca; color: #51266c; background: #f6effa; }
+@media(max-width:520px) {
+  .mobile-preview-header {
+    min-height: calc(50px + env(safe-area-inset-top));
+    flex-basis: calc(50px + env(safe-area-inset-top));
+    padding-top: max(6px, env(safe-area-inset-top));
+  }
+  .mobile-preview-heading { gap: 7px; }
+  .mobile-preview-heading strong { font-size: 15px; }
+  .mobile-preview-heading span { font-size: 10px; }
+  .mobile-preview-close { width: 38px; height: 38px; flex-basis: 38px; }
+}
