@@ -12,7 +12,6 @@ function packageSummary(){
   const reasons=r.drivers.map(id=>packageModel.features.find(f=>f.id===id)).filter(Boolean).map(f=>state.lang==='en'?f.en:f.mn);
   const scope=t('Цэсний суурь багц: ','Menu base tier: ')+base.name;
   if(r.rank===4)return {title:'Custom',detail:t('Тусгай үнийн санал авах. ','Request a custom quote. ')+(reasons.length?reasons.join(', ')+'. ':'')+t('Сонгосон боломж эсвэл тоон хэрэгцээ стандарт багцаас давсан.','Selected features or counts exceed standard packages.')};
-  if(r.needsReview)return {title:base.name+' · '+t('Нэмэлт багтаамж','Extra capacity'),detail:scope+'. '+t('Суурь сарын үнэ: ','Base monthly price: ')+packageModel.formatMnt(base.monthlyMnt,state.lang)+'. '+t('Хэрэглэгч эсвэл хөрөнгийн хязгаар давсан. Нэмэлт үнэ батлагдаагүй; нийт үнийн санал шаардлагатай.','User or asset capacity exceeded. Extra pricing is not approved; the total requires a quote.')};
   return {title:p.name+' · '+price+' / '+t('сар','month'),detail:scope+'. '+(r.rank>r.baseRank?t('Тоон хэрэгцээнээс шалтгаалан багц ахисан. ','Tier increased to fit your counts. '):'')+`${t('Нийт хэрэглэгч','Total users')}: ${state.users}/${p.users} · ${t('Нийт хөрөнгө','Total assets')}: ${state.assets}/${p.assets}`};
 }
 const packageFooter=updateFooter;

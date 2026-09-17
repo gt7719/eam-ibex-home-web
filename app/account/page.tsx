@@ -360,7 +360,6 @@ export default function AccountPage() {
             >
               {t("Миний багц", "My plan")}
             </button>
-            <button type="button" onClick={openHomeAi}>Home AI</button>
             <button
               type="button"
               className={tab === "security" ? "active" : ""}
@@ -763,7 +762,7 @@ export default function AccountPage() {
           ) : null}
         </>
       ) : null}
-      <HomeAiDrawer open={homeAiOpen} onClose={closeHomeAi} />
+      <HomeAiDrawer open={homeAiOpen} onOpen={openHomeAi} onClose={closeHomeAi} />
     </AccountShell>
   );
 }

@@ -14,7 +14,8 @@ test('migrates explicit MNT values and never converts legacy USD',()=>{
 test('independent menu, total user and parent-child asset needs',()=>{
  const c=initialConfig();assert.equal(recommend(c,pick()).rank,0);assert.equal(recommend(c,pick(['pm'],5,20)).rank,1);assert.equal(recommend(c,pick(['warehouse'],15,35)).rank,2);
  assert.equal(recommend(c,pick(['hse'],1,1)).rank,4);assert.equal(recommend(c,pick([],2,61)).rank,4);
- assert.equal(recommend(c,pick([],3,5)).needsReview,true);assert.equal(recommend(c,pick([],2,6)).needsReview,true);
+ assert.equal(recommend(c,pick([],3,5)).rank,1);assert.equal(recommend(c,pick([],2,6)).rank,1);
+ assert.equal(recommend(c,pick([],5,10)).rank,1);
  assert.equal(recommend(c,pick([],1,1,['monitor'])).rank,3);
  c.capacityMode='upgrade';assert.equal(recommend(c,pick(['pm'],2,60)).rank,3);assert.equal(recommend(c,pick([],40,1)).rank,3);
  assert.equal(recommend(c,pick([],0,1)).invalid,true);

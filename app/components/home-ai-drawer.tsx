@@ -6,7 +6,7 @@ import { useSiteLanguage } from "../lib/use-site-language";
 
 type Message = { role: "user" | "assistant"; content: string };
 
-export function HomeAiDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function HomeAiDrawer({ open, onOpen, onClose }: { open: boolean; onOpen: () => void; onClose: () => void }) {
   const { t, lang } = useSiteLanguage();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -41,8 +41,9 @@ export function HomeAiDrawer({ open, onClose }: { open: boolean; onClose: () => 
     setWorking(false);
   }
 
-  if (!open) return null;
-  return <div className="home-ai-drawer-layer" role="presentation" onMouseDown={onClose}>
+  return <>
+    <button className="account-home-ai-launch" type="button" onClick={onOpen} aria-label="Home AI"><span aria-hidden="true">AI</span><span><strong>Home AI</strong><small>{t("24/7 хэрэглэгчийн туслах", "24/7 customer assistant")}</small></span></button>
+    <div className={`home-ai-drawer-layer${open ? " is-open" : ""}`} aria-hidden={!open} role="presentation" onMouseDown={onClose}>
     <aside className="home-ai-drawer" role="dialog" aria-modal="true" aria-label="Home AI" onMouseDown={(event) => event.stopPropagation()}>
       <header><div><span>HOME AI</span><h2>Home AI</h2><p>{t("Зөвхөн батлагдсан нийтэд зориулсан эх сурвалжаас хариулна.", "Answers from approved public sources only.")}</p></div><button type="button" onClick={onClose} aria-label={t("Хаах", "Close")}>×</button></header>
       <div className="home-ai-drawer-content" ref={contentRef}>
@@ -52,5 +53,6 @@ export function HomeAiDrawer({ open, onClose }: { open: boolean; onClose: () => 
       </div>
       <form className="home-ai-drawer-form" onSubmit={ask}><textarea value={input} onChange={(event) => setInput(event.target.value)} maxLength={1500} placeholder={t("Асуултаа бичнэ үү…", "Write your question…")} required /><button className="account-submit" type="submit" disabled={working}>{working ? t("Хариулж байна…", "Answering…") : t("Асуух", "Ask")}</button></form>
     </aside>
-  </div>;
+    </div>
+  </>;
 }
