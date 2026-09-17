@@ -180,6 +180,13 @@ export function customerAiGreetingAnswer(lang: CustomerAiLang) {
     : "Сайн байна уу! Би Home AI. iBeX-ийн бүтээгдэхүүн, багц, бүртгэл, нэвтрэлт болон вэбийн ерөнхий мэдээллээр тусалж чадна.";
 }
 
+export function customerAiImplementationAnswer(lang: CustomerAiLang, message: string) {
+  if (!/(нэвтрүүл|хэрэгжүүл|implementation|onboard|rollout|deploy)/i.test(message)) return "";
+  return lang === "en"
+    ? "iBeX implementation is staged. The timeline depends on user and asset volume, selected modules, source-data readiness, training and any required integrations. We first review the scope, prepare data, validate a pilot, then agree the rollout timeline with the organization."
+    : "iBeX нэвтрүүлэлтийг үе шаттай хийдэг. Хугацаа нь хэрэглэгч ба хөрөнгийн тоо, сонгосон модуль, эх өгөгдлийн бэлэн байдал, сургалт болон шаардлагатай интеграцаас хамаарна. Эхлээд хамрах хүрээг үнэлж, өгөгдлөө бэлтгэн туршилтаар шалгаад байгууллагатай хамт нэвтрүүлэх хугацааг тохирно.";
+}
+
 function safePublicSourceUrl(value: string) {
   if (!value) return "";
   try {
@@ -206,7 +213,7 @@ export function retrieveCustomerAiKnowledge(entries: KnowledgeEntry[], query: st
       }, 0);
       return { entry, content, score };
     })
-    .filter(({ score }) => score > 0)
+    .filter(({ score }) => score >= 3)
     .sort((a, b) => b.score - a.score)
     .slice(0, 4)
     .map(({ entry, content }) => ({

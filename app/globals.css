@@ -884,3 +884,6 @@ html[data-ibex-theme="day"] .profile-photo-card,html[data-ibex-theme="day"] .ver
 
 /* Version 70: Home AI remains focused, readable, and uses a polished sliding drawer. */
 .home-ai-drawer-layer{align-items:center;background:rgba(7,5,10,.86);backdrop-filter:blur(8px)}.home-ai-drawer{width:min(700px,calc(100vw - 24px));height:calc(100dvh - 24px);margin:12px 0 12px;overflow:hidden;border:1px solid rgba(168,85,247,.4);border-right:0;border-radius:28px 0 0 28px;box-shadow:-28px 0 80px rgba(0,0,0,.58)}.home-ai-drawer-content{padding-bottom:28px}.home-ai-drawer-form{background:inherit}@media(max-width:760px){.home-ai-drawer{width:100vw;height:100dvh;margin:0;border-radius:0}}
+
+/* Version 71: messages grow only with their content and the composer starts compact. */
+.home-ai-messages{min-height:0;align-content:start}.home-ai-messages article{align-self:start;height:max-content}.home-ai-drawer-form textarea{min-height:44px;height:44px;max-height:112px;padding:10px 12px;line-height:1.35;overflow-y:auto}.home-ai-drawer-form .account-submit{min-height:44px}

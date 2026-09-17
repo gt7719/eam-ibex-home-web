@@ -13,6 +13,12 @@ export function HomeAiDrawer({ open, onOpen, onClose }: { open: boolean; onOpen:
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const contentRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+
+  function resizeComposer(element: HTMLTextAreaElement) {
+    element.style.height = "44px";
+    element.style.height = `${Math.min(element.scrollHeight, 112)}px`;
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -29,7 +35,7 @@ export function HomeAiDrawer({ open, onOpen, onClose }: { open: boolean; onOpen:
     const question = input.trim();
     if (!question || working) return;
     const history = messages.slice(-6);
-    setInput(""); setError(""); setWorking(true);
+    setInput(""); if (composerRef.current) composerRef.current.style.height = "44px"; setError(""); setWorking(true);
     setMessages((current) => [...current, { role: "user", content: question }]);
     const response = await fetch("/api/assistant/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -51,7 +57,7 @@ export function HomeAiDrawer({ open, onOpen, onClose }: { open: boolean; onOpen:
         <div className="home-ai-messages" aria-live="polite">{messages.length ? messages.map((message, index) => <article key={`${message.role}-${index}`} className={message.role}><small>{message.role === "user" ? t("Та", "You") : "Home AI"}</small><p>{message.content}</p></article>) : <p className="home-ai-empty">{t("Багц, бүтээгдэхүүн, нэвтрэлт эсвэл iBeX-ийн ерөнхий боломжийн талаар асуугаарай.", "Ask about plans, products, sign-in, or general iBeX capabilities.")}</p>}</div>
         {error ? <AccountAlert type="error">{error}</AccountAlert> : null}
       </div>
-      <form className="home-ai-drawer-form" onSubmit={ask}><textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} maxLength={1500} placeholder={t("Асуултаа бичнэ үү…", "Write your question…")} required aria-keyshortcuts="Enter" /><button className="account-submit" type="submit" disabled={working}>{working ? t("Хариулж байна…", "Answering…") : t("Асуух", "Ask")}</button></form>
+      <form className="home-ai-drawer-form" onSubmit={ask}><textarea ref={composerRef} rows={1} value={input} onChange={(event) => { setInput(event.target.value); resizeComposer(event.currentTarget); }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} maxLength={1500} placeholder={t("Асуултаа бичнэ үү…", "Write your question…")} required aria-keyshortcuts="Enter" /><button className="account-submit" type="submit" disabled={working}>{working ? t("Хариулж байна…", "Answering…") : t("Асуух", "Ask")}</button></form>
     </aside>
     </div>
   </>;

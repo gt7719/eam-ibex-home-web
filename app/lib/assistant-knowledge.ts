@@ -96,6 +96,24 @@ export const defaultKnowledge: KnowledgeEntry[] = [
     enabled: true,
   },
   {
+    id: "kb-implementation",
+    topic: "implementation",
+    titleMn: "iBeX нэвтрүүлэлтийн эхний алхам",
+    titleEn: "Starting an iBeX implementation",
+    contentMn:
+      "iBeX нэвтрүүлэлтийн хугацаа нь байгууллагын хэрэглэгчийн тоо, Parent–Child хөрөнгийн бүртгэл, сонгосон модуль, эх өгөгдлийн бэлэн байдал, сургалт болон шаардлагатай интеграцаас хамаарна. Эхлээд хамрах хүрээг үнэлж, хөрөнгө ба хэрэглэгчийн мэдээллийг бэлтгэн, туршилтын орчинд шалгаад үе шаттай нэвтрүүлнэ. Тодорхой хугацааг байгууллагын анхны үнэлгээний дараа тохирно.",
+    contentEn:
+      "The time required for iBeX implementation depends on the number of users, Parent–Child asset records, selected modules, source-data readiness, training and required integrations. The process starts with a scope review, prepares asset and user data, validates a pilot environment, then rolls out in stages. A specific timeline is agreed after the initial organizational assessment.",
+    keywords: ["нэвтрүүлэлт", "нэвтрүүлэх", "хэрэгжүүлэх", "хугацаа", "implementation", "onboarding", "rollout", "deployment"],
+    sourceLabel: "iBeX Website · Approved implementation guidance",
+    sourceUrl: "",
+    version: "1.0",
+    status: "approved",
+    visibility: "public",
+    stage: "general",
+    enabled: true,
+  },
+  {
     id: "kb-ai-status",
     topic: "ai",
     titleMn: "iBeX AI хөгжүүлэлтийн төлөв",

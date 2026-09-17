@@ -10,6 +10,7 @@ import {
   customerAiGuard,
   customerAiGreetingAnswer,
   customerAiHandoff,
+  customerAiImplementationAnswer,
   enforceCustomerAiQuota,
   estimateCustomerAiCost,
   hashCustomerAiSubject,
@@ -267,7 +268,8 @@ export async function POST(request: Request) {
   const deterministicHandoff = customerAiHandoff(parsed.payload.message, deterministicIntent);
   const guard = customerAiGuard(parsed.payload.message);
 
-  let answer = guard ? safeCustomerAiAnswer(parsed.payload.lang, guard) : localAnswer(parsed.payload.lang, sources);
+  const implementationAnswer = customerAiImplementationAnswer(parsed.payload.lang, parsed.payload.message);
+  let answer = guard ? safeCustomerAiAnswer(parsed.payload.lang, guard) : implementationAnswer || localAnswer(parsed.payload.lang, sources);
   let intent = deterministicIntent;
   let needsHandoff = deterministicHandoff.required;
   let handoffReason = deterministicHandoff.reason;
@@ -276,7 +278,7 @@ export async function POST(request: Request) {
   let inputTokens = 0;
   let outputTokens = 0;
 
-  if (!guard && sources.length && homeAiSettings.mode === "production" && runtime.OPENAI_HOME_API_KEY) {
+  if (!guard && !implementationAnswer && sources.length && homeAiSettings.mode === "production" && runtime.OPENAI_HOME_API_KEY) {
     try {
       const generated = await callOpenAi({
         apiKey: runtime.OPENAI_HOME_API_KEY,
