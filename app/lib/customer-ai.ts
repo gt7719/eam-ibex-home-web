@@ -84,6 +84,11 @@ const stopWords = new Set([
   "the", "and", "is", "are", "what", "how", "about", "with", "for",
 ]);
 
+const greetingPatterns = [
+  /^(?:hi|hello|hey)$/i,
+  /^(?:сайн уу|сайн байна уу|сайн байцгаана уу|өглөөний мэнд|өдрийн мэнд|оройн мэнд)$/iu,
+];
+
 function boundedNumber(value: string | undefined, fallback: number, minimum: number, maximum: number) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? Math.min(maximum, Math.max(minimum, parsed)) : fallback;
@@ -164,6 +169,17 @@ function textTokens(value: string) {
   )];
 }
 
+export function isCustomerAiGreeting(message: string) {
+  const normalized = message.trim().replace(/[!?.…,]+/gu, "").replace(/\s+/gu, " ");
+  return greetingPatterns.some((pattern) => pattern.test(normalized));
+}
+
+export function customerAiGreetingAnswer(lang: CustomerAiLang) {
+  return lang === "en"
+    ? "Hello! I’m Home AI. I can help with iBeX products, plans, registration, sign-in, and general website information."
+    : "Сайн байна уу! Би Home AI. iBeX-ийн бүтээгдэхүүн, багц, бүртгэл, нэвтрэлт болон вэбийн ерөнхий мэдээллээр тусалж чадна.";
+}
+
 function safePublicSourceUrl(value: string) {
   if (!value) return "";
   try {
@@ -185,7 +201,8 @@ export function retrieveCustomerAiKnowledge(entries: KnowledgeEntry[], query: st
       const score = queryTokens.reduce((total, word) => {
         if (keywordSet.has(word)) return total + 5;
         if (haystack.includes(word)) return total + 2;
-        return total + (haystack.some((candidate) => candidate.includes(word) || word.includes(candidate)) ? 1 : 0);
+        if (word.length < 3) return total;
+        return total + (haystack.some((candidate) => candidate.startsWith(word) || word.startsWith(candidate)) ? 1 : 0);
       }, 0);
       return { entry, content, score };
     })

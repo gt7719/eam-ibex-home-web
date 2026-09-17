@@ -1,7 +1,6 @@
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 import { defaultKnowledge, readKnowledge, type KnowledgeEntry } from "../../../lib/assistant-knowledge";
-import bookKnowledge from "../../../lib/ibex-book-knowledge.json";
 import { getSiteUserSession } from "../../../lib/site-user-auth";
 import { readHomeAiSettings } from "../../../lib/home-ai-control";
 import {
@@ -9,11 +8,13 @@ import {
   CustomerAiQuotaError,
   customerAiConfig,
   customerAiGuard,
+  customerAiGreetingAnswer,
   customerAiHandoff,
   enforceCustomerAiQuota,
   estimateCustomerAiCost,
   hashCustomerAiSubject,
   inferCustomerAiIntent,
+  isCustomerAiGreeting,
   noKnowledgeAnswer,
   parseCustomerAiPayload,
   recordCustomerAiConsent,
@@ -112,7 +113,8 @@ async function callOpenAi(input: {
         "You are iBeX Home AI, a public customer assistant.",
         "You are not iBeX Hybrid Intelligent AI, iBeX System AI, CMMS intelligence, or an industrial control agent.",
         "You are not the administrator-only iBeX Marketing AI and you cannot access its campaigns, leads, content workspace, channels or credentials.",
-        `Answer in ${input.lang === "en" ? "English" : "Mongolian"} using only APPROVED EVIDENCE.`,
+        `Answer in ${input.lang === "en" ? "English" : "Mongolian"} using only APPROVED EVIDENCE from the Home Web public knowledge base.`,
+        "Never use research, laboratory, protocol, book, tenant, payment, or internal administrative material as evidence.",
         "If evidence is insufficient, say that plainly. Never invent prices, capabilities, customer facts or implementation status.",
         "Never claim that an email, social post, campaign, database change or other external action was executed.",
         "Never create, schedule or operate marketing campaigns. Customer handoff is limited to the approved registration path.",
@@ -199,6 +201,23 @@ export async function POST(request: Request) {
     siteUser?.id ? `site-user:${siteUser.id}` : `anonymous-session:${parsed.payload.sessionId}`,
     config.identitySalt,
   );
+  if (isCustomerAiGreeting(parsed.payload.message)) {
+    try {
+      await recordCustomerAiConsent(runtime.DB, subjectHash);
+      await recordCustomerAiOutcome({
+        db: runtime.DB, requestId, subjectHash, eventType: "customer_ai.response", status: "greeting",
+        model: null, intent: "general", sourceIds: [], messageLength: parsed.payload.message.length,
+        inputTokens: 0, outputTokens: 0, estimatedCostUsd: 0, metadata: { grounded: false, greeting: true },
+      });
+    } catch (error) {
+      console.error("customer_ai_greeting_audit_unavailable", error instanceof Error ? error.message : "unknown");
+    }
+    return reply({
+      answer: customerAiGreetingAnswer(parsed.payload.lang), sources: [], grounded: false, mode: "greeting", intent: "general",
+      handoff: handoffPayload(parsed.payload.lang, false, "none"), requestId,
+      controls: { dataBoundary: CUSTOMER_AI_DATA_BOUNDARY, externalActions: "blocked_pending_admin_approval", systemAiAccess: false, memory: "ephemeral_last_6_messages", consent: "recorded", controlMode: homeAiSettings.mode },
+    });
+  }
   const model = selectCustomerAiModel(config, parsed.payload.message, parsed.payload.history);
   const reservationInputTokens = Math.ceil((parsed.payload.message.length + parsed.payload.history.reduce((sum, item) => sum + item.content.length, 0) + 5_000) / 4);
   const reservationCostUsd = estimateCustomerAiCost(config, model, reservationInputTokens, config.maxOutputTokens);
@@ -240,7 +259,7 @@ export async function POST(request: Request) {
     console.error("customer_ai_knowledge_unavailable", error instanceof Error ? error.message : "unknown");
   }
   const sources = retrieveCustomerAiKnowledge(
-    [...managedKnowledge, ...(bookKnowledge as KnowledgeEntry[])],
+    managedKnowledge,
     parsed.payload.message,
     parsed.payload.lang,
   );
