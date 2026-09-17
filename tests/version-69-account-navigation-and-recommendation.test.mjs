@@ -11,6 +11,12 @@ test("version 69 recommends the lowest tier satisfying features, users and asset
   assert.equal(recommendation.rank, 1);
   assert.equal(recommendation.needsReview, false);
   assert.equal(recommend(config, { menus: ["warehouse"], dashboards: [], users: 5, assets: 10 }).rank, 2);
+  assert.equal(recommend(config, { menus: [], dashboards: [], users: 2, assets: 5 }).rank, 0);
+  assert.equal(recommend(config, { menus: [], dashboards: [], users: 3, assets: 5 }).rank, 1);
+  assert.equal(recommend(config, { menus: [], dashboards: [], users: 5, assets: 21 }).rank, 2);
+  assert.equal(recommend(config, { menus: [], dashboards: [], users: 16, assets: 35 }).rank, 3);
+  assert.equal(recommend(config, { menus: [], dashboards: [], users: 41, assets: 60 }).rank, 4);
+  assert.equal(recommend(config, { menus: ["unknown-feature"], dashboards: [], users: 2, assets: 5 }).needsReview, true);
 });
 
 test("version 69 moves Home AI to an animated floating launcher", () => {
@@ -28,5 +34,7 @@ test("version 69 limits the signed-in header menu to workspace access and sign o
   assert.match(concept, /id="systemLoginLink"/);
   assert.match(navigation, /link\.hidden=true;admin\.hidden=true;logout\.hidden=false/);
   assert.match(navigation, /\/api\/account\/logout/);
-  assert.match(concept, /\.login\.authenticated\{width:270px/);
+  assert.match(concept, /id="headerAccountLink"[^>]+href="\/account"/);
+  assert.match(concept, /id="loginLink"[^>]+aria-controls="loginDropdown"/);
+  assert.doesNotMatch(navigation, /loginLink\.innerHTML=`<span class="header-account-avatar"/);
 });

@@ -24,12 +24,13 @@ test("version 68 opens Home AI from My iBeX as a single-scroll right drawer", ()
   assert.doesNotMatch(css, /\.home-ai-messages\{[^}]*overflow-y/);
 });
 
-test("version 68 gives the public header an authenticated My iBeX identity trigger", () => {
-  const navigation = read("public/navigation-content.js"), session = read("app/api/account/session/route.ts"), css = read("app/globals.css");
+test("the public header exposes a dedicated authenticated My iBeX link", () => {
+  const navigation = read("public/navigation-content.js"), session = read("app/api/account/session/route.ts"), css = read("app/globals.css"), header = read("public/concept.html");
   assert.match(navigation, /renderWebsiteAccountIdentity/);
-  assert.match(navigation, /loginWrap\.classList\.add\('authenticated'\)/);
-  assert.match(navigation, /header-account-avatar/);
+  assert.match(navigation, /loginWrap\.classList\.add\('account-authenticated'\)/);
+  assert.match(navigation, /accountLink\.hidden=false/);
+  assert.match(header, /class="header-account-avatar" id="headerAccountAvatar"/);
   assert.match(session, /profileImageUrl/);
-  assert.match(css, /width:min\(1640px,100%\)/);
+  assert.match(css, /width:min\(1800px,100%\)/);
   assert.match(css, /\.account-alert\.success\{color:#d6ffe6/);
 });

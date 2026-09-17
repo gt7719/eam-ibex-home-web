@@ -7,6 +7,7 @@ import {
   CUSTOMER_AI_DATA_BOUNDARY,
   CustomerAiQuotaError,
   customerAiConfig,
+  customerAiContextualQuery,
   customerAiGuard,
   customerAiGreetingAnswer,
   customerAiHandoff,
@@ -62,7 +63,11 @@ function outputText(payload: OpenAiResponse) {
 }
 
 function localAnswer(lang: CustomerAiLang, sources: CustomerAiSource[]) {
-  return sources[0]?.excerpt || noKnowledgeAnswer(lang);
+  const excerpt = sources[0]?.excerpt.trim();
+  if (!excerpt) return noKnowledgeAnswer(lang);
+  const sentences = excerpt.match(/[^.!?\n]+[.!?]?/gu) || [excerpt];
+  const concise = sentences.slice(0, 3).join(" ").trim();
+  return concise.length <= 620 ? concise : `${concise.slice(0, 617).trimEnd()}…`;
 }
 
 function handoffPayload(lang: CustomerAiLang, required: boolean, reason: string) {
@@ -259,16 +264,17 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("customer_ai_knowledge_unavailable", error instanceof Error ? error.message : "unknown");
   }
+  const contextualQuery = customerAiContextualQuery(parsed.payload.message, parsed.payload.history);
   const sources = retrieveCustomerAiKnowledge(
     managedKnowledge,
-    parsed.payload.message,
+    contextualQuery,
     parsed.payload.lang,
   );
-  const deterministicIntent = inferCustomerAiIntent(parsed.payload.message);
+  const deterministicIntent = inferCustomerAiIntent(contextualQuery);
   const deterministicHandoff = customerAiHandoff(parsed.payload.message, deterministicIntent);
   const guard = customerAiGuard(parsed.payload.message);
 
-  const implementationAnswer = customerAiImplementationAnswer(parsed.payload.lang, parsed.payload.message);
+  const implementationAnswer = customerAiImplementationAnswer(parsed.payload.lang, parsed.payload.message, parsed.payload.history);
   let answer = guard ? safeCustomerAiAnswer(parsed.payload.lang, guard) : implementationAnswer || localAnswer(parsed.payload.lang, sources);
   let intent = deterministicIntent;
   let needsHandoff = deterministicHandoff.required;
@@ -278,7 +284,7 @@ export async function POST(request: Request) {
   let inputTokens = 0;
   let outputTokens = 0;
 
-  if (!guard && !implementationAnswer && sources.length && homeAiSettings.mode === "production" && runtime.OPENAI_HOME_API_KEY) {
+  if (!guard && sources.length && homeAiSettings.mode === "production" && runtime.OPENAI_HOME_API_KEY) {
     try {
       const generated = await callOpenAi({
         apiKey: runtime.OPENAI_HOME_API_KEY,

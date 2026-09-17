@@ -1,0 +1,107 @@
+/* Version 72: one canonical authenticated-header contract. */
+.login-wrap.account-authenticated {
+  display: grid;
+  grid-template-columns: minmax(0, 300px) 46px;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.header-account-link {
+  display: flex;
+  min-width: 0;
+  min-height: 66px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border: 1px solid rgba(168, 85, 247, .6);
+  border-radius: 16px;
+  color: #fff;
+  background: rgba(111, 45, 189, .14);
+  text-align: left;
+  text-decoration: none;
+}
+
+.header-account-link[hidden] { display: none; }
+.header-account-link:hover { background: rgba(111, 45, 189, .28); }
+.header-account-link .header-account-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  font-size: 15px;
+}
+.header-account-link .header-account-copy { gap: 4px; }
+.header-account-link .header-account-copy strong {
+  font-size: 15px;
+  line-height: 1.2;
+}
+.header-account-link .header-account-copy small {
+  overflow: hidden;
+  color: #c8becd;
+  font-size: 13px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.login-wrap.account-authenticated .login-menu-toggle {
+  width: 46px;
+  min-height: 66px;
+  margin: 0;
+  padding: 0;
+  border-radius: 14px;
+}
+.login-wrap.account-authenticated .login-menu-toggle .chev { margin: 0; }
+.login-wrap.account-authenticated.open .login-menu-toggle .chev { transform: rotate(180deg); }
+.header-account-link:focus-visible,
+.login-menu-toggle:focus-visible,
+.login-dropdown :is(a, button):focus-visible {
+  outline: 2px solid #75e9a9;
+  outline-offset: 3px;
+}
+.login-dropdown :is(a, button) { min-height: 56px; }
+.login-dropdown strong { font-size: 14px; line-height: 1.25; }
+.login-dropdown small { font-size: 12px; line-height: 1.4; }
+
+body.theme-day .header-account-link {
+  border-color: #8b65a5;
+  color: #351b47;
+  background: #f7effa;
+}
+body.theme-day .header-account-link:hover { background: #efe2f5; }
+body.theme-day .header-account-link .header-account-copy small { color: #685773; }
+
+@media (max-width: 1499px) and (min-width: 1181px) {
+  .login-wrap.account-authenticated { grid-template-columns: minmax(0, 260px) 44px; }
+  .header-account-link { min-height: 62px; padding: 7px 11px; }
+  .header-account-link .header-account-avatar { width: 40px; height: 40px; }
+  .header-account-link .header-account-copy strong { font-size: 14px; }
+  .header-account-link .header-account-copy small { font-size: 12px; }
+  .login-wrap.account-authenticated .login-menu-toggle { width: 44px; min-height: 62px; }
+}
+
+@media (max-width: 1180px) and (min-width: 921px) {
+  .login-wrap.account-authenticated { grid-template-columns: minmax(0, 216px) 40px; gap: 6px; }
+  .header-account-link { min-height: 56px; gap: 8px; padding: 6px 9px; border-radius: 13px; }
+  .header-account-link .header-account-avatar { width: 36px; height: 36px; }
+  .header-account-link .header-account-copy strong { font-size: 13px; }
+  .header-account-link .header-account-copy small { font-size: 11px; }
+  .login-wrap.account-authenticated .login-menu-toggle { width: 40px; min-height: 56px; }
+}
+
+@media (max-width: 920px) {
+  .login-wrap.account-authenticated {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) 48px;
+    gap: 8px;
+  }
+  .header-account-link { min-height: 58px; padding: 7px 11px; }
+  .header-account-link .header-account-avatar { width: 40px; height: 40px; }
+  .header-account-link .header-account-copy strong { font-size: 14px; }
+  .header-account-link .header-account-copy small { font-size: 12px; }
+  .login-wrap.account-authenticated .login-menu-toggle {
+    width: 48px;
+    min-height: 58px;
+    margin: 0;
+  }
+  .login-wrap.account-authenticated .login-dropdown { grid-column: 1 / -1; }
+}

@@ -180,8 +180,21 @@ export function customerAiGreetingAnswer(lang: CustomerAiLang) {
     : "Сайн байна уу! Би Home AI. iBeX-ийн бүтээгдэхүүн, багц, бүртгэл, нэвтрэлт болон вэбийн ерөнхий мэдээллээр тусалж чадна.";
 }
 
-export function customerAiImplementationAnswer(lang: CustomerAiLang, message: string) {
-  if (!/(нэвтрүүл|хэрэгжүүл|implementation|onboard|rollout|deploy)/i.test(message)) return "";
+export function customerAiContextualQuery(message: string, history: CustomerAiHistoryItem[]) {
+  const current = message.trim();
+  const isFollowUp = current.length <= 100 && /(?:хэр их|хэдий|хэдэн|хугацаа|энэ нь|тэгвэл|тийм бол|дэлгэрүүл|ямар үнэтэй|how long|how much|what about|tell me more)/iu.test(current);
+  if (!isFollowUp) return current;
+  const previousQuestion = [...history].reverse().find((item) => item.role === "user")?.content.trim();
+  return previousQuestion ? `${previousQuestion}\n${current}` : current;
+}
+
+export function customerAiImplementationAnswer(lang: CustomerAiLang, message: string, history: CustomerAiHistoryItem[] = []) {
+  const contextualQuery = customerAiContextualQuery(message, history);
+  if (!/(нэвтрүүл|хэрэгжүүл|implementation|onboard|rollout|deploy)/i.test(contextualQuery)) return "";
+  const asksDuration = /(?:хэр их|хэдий|хэдэн|хугацаа|how long|timeline|duration)/iu.test(message);
+  if (asksDuration) return lang === "en"
+    ? "The implementation timeline is agreed after reviewing your user and asset counts, selected modules, source-data readiness, training needs, and integrations. iBeX does not promise a fixed duration before that scope review; a pilot is validated first, then the rollout schedule is confirmed with your organization."
+    : "Нэвтрүүлэх хугацааг танай хэрэглэгч, хөрөнгийн тоо, сонгосон модуль, эх өгөгдлийн бэлэн байдал, сургалт болон интеграцын хэрэгцээг үнэлсний дараа тохирно. Энэ үнэлгээгүйгээр тогтсон хоног амлахгүй; эхлээд туршилтын орчноо баталгаажуулж, дараа нь байгууллагатай хамт нэвтрүүлэх хуваарийг тогтооно.";
   return lang === "en"
     ? "iBeX implementation is staged. The timeline depends on user and asset volume, selected modules, source-data readiness, training and any required integrations. We first review the scope, prepare data, validate a pilot, then agree the rollout timeline with the organization."
     : "iBeX нэвтрүүлэлтийг үе шаттай хийдэг. Хугацаа нь хэрэглэгч ба хөрөнгийн тоо, сонгосон модуль, эх өгөгдлийн бэлэн байдал, сургалт болон шаардлагатай интеграцаас хамаарна. Эхлээд хамрах хүрээг үнэлж, өгөгдлөө бэлтгэн туршилтаар шалгаад байгууллагатай хамт нэвтрүүлэх хугацааг тохирно.";
