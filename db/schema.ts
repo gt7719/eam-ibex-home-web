@@ -145,8 +145,8 @@ export const aiApprovals = sqliteTable(
 );
 
 // iBeX Home customer/marketing AI data is deliberately isolated from the
-// industrial Hybrid/System AI tables above. These tables contain only hashed
-// subjects, consent state, aggregate usage and privacy-safe audit metadata.
+// industrial Hybrid/System AI tables above. Usage controls remain pseudonymous;
+// authenticated chat history is stored separately and owned by the site user.
 export const customerAiConsents = sqliteTable(
   "customer_ai_consents",
   {
@@ -218,6 +218,29 @@ export const customerAiAuditEvents = sqliteTable(
     index("customer_ai_audit_channel_created_idx").on(
       table.channel,
       table.createdAt,
+    ),
+  ],
+);
+
+export const customerAiMessages = sqliteTable(
+  "customer_ai_messages",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    requestId: text("request_id").notNull(),
+    messageOrder: integer("message_order").notNull(),
+    role: text("role").notNull(),
+    content: text("content").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("customer_ai_messages_user_created_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    uniqueIndex("customer_ai_messages_request_order_unique").on(
+      table.requestId,
+      table.messageOrder,
     ),
   ],
 );

@@ -6,7 +6,7 @@ import { callingCodeForIso } from "./calling-codes";
 export const SITE_USER_SESSION_COOKIE = "ibex_user_session";
 export const SITE_USER_SESSION_MAX_AGE = 60 * 60 * 24 * 30;
 export const TERMS_VERSION = "2026-09-v1";
-export const PRIVACY_VERSION = "2026-09-v1";
+export const PRIVACY_VERSION = "2026-09-v2";
 export const EMAIL_TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 export const RESET_TOKEN_MAX_AGE_MS = 30 * 60 * 1000;
 

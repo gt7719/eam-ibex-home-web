@@ -322,6 +322,11 @@ export async function enforceCustomerAiQuota(
   const minuteKey = now.toISOString().slice(0, 16);
   const dayKey = now.toISOString().slice(0, 10);
   const monthKey = dayKey.slice(0, 7);
+  const secondsToNextMinute = Math.max(1, 60 - now.getUTCSeconds());
+  const nextDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+  const secondsToNextDay = Math.max(1, Math.ceil((nextDay - now.getTime()) / 1_000));
+  const nextMonth = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
+  const secondsToNextMonth = Math.max(1, Math.ceil((nextMonth - now.getTime()) / 1_000));
   const staleWindowCutoff = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1_000).toISOString();
   await db.batch([
     db.prepare(
@@ -342,15 +347,15 @@ export async function enforceCustomerAiQuota(
     db.prepare("SELECT estimated_cost_usd FROM customer_ai_monthly_usage WHERE subject_hash=? AND month_key=? LIMIT 1")
       .bind(subjectHash, monthKey).first<{ estimated_cost_usd: number }>(),
   ]);
-  if (Number(minute?.request_count || 0) > config.requestsPerMinute) throw new CustomerAiQuotaError("minute", 60);
-  if (Number(day?.request_count || 0) > config.requestsPerDay) throw new CustomerAiQuotaError("day", 86_400);
+  if (Number(minute?.request_count || 0) > config.requestsPerMinute) throw new CustomerAiQuotaError("minute", secondsToNextMinute);
+  if (Number(day?.request_count || 0) > config.requestsPerDay) throw new CustomerAiQuotaError("day", secondsToNextDay);
   const poolSpent = Number(pool?.spent || 0);
   const subjectSpent = Number(subject?.estimated_cost_usd || 0);
   const activeSubjects = Math.max(1, Number(pool?.active || 0) + (subject ? 0 : 1));
   const baseShare = config.monthlyBudgetUsd / activeSubjects;
   const fairShareUsd = Math.min(config.monthlyBudgetUsd, Math.max(config.minimumFairShareUsd, baseShare * 2));
-  if (poolSpent + estimatedReservationUsd > config.monthlyBudgetUsd) throw new CustomerAiQuotaError("monthly_budget", 86_400);
-  if (subjectSpent + estimatedReservationUsd > fairShareUsd) throw new CustomerAiQuotaError("fair_share", 86_400);
+  if (poolSpent + estimatedReservationUsd > config.monthlyBudgetUsd) throw new CustomerAiQuotaError("monthly_budget", secondsToNextMonth);
+  if (subjectSpent + estimatedReservationUsd > fairShareUsd) throw new CustomerAiQuotaError("fair_share", secondsToNextMonth);
   return {
     month: monthKey,
     monthlyBudgetUsd: config.monthlyBudgetUsd,

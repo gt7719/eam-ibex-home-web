@@ -71,6 +71,13 @@
       "when": 1789552322379,
       "tag": "0009_smart_killmonger",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1789683469264,
+      "tag": "0010_chemical_tigra",
+      "breakpoints": true
     }
   ]
 }

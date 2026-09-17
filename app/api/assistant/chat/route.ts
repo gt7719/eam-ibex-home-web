@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { defaultKnowledge, readKnowledge, type KnowledgeEntry } from "../../../lib/assistant-knowledge";
 import { getSiteUserSession } from "../../../lib/site-user-auth";
 import { readHomeAiSettings } from "../../../lib/home-ai-control";
+import { saveHomeAiExchange } from "../../../lib/home-ai-history";
 import {
   CUSTOMER_AI_DATA_BOUNDARY,
   CustomerAiQuotaError,
@@ -77,6 +78,38 @@ function handoffPayload(lang: CustomerAiLang, required: boolean, reason: string)
     href: "/register",
     label: lang === "en" ? "Continue with an iBeX specialist" : "iBeX мэргэжилтэнтэй үргэлжлүүлэх",
   };
+}
+
+function quotaMessage(lang: CustomerAiLang, reason: CustomerAiQuotaError["reason"]) {
+  if (lang === "en") {
+    if (reason === "minute") return "You have sent several questions in a row. Please wait about a minute and try again.";
+    if (reason === "day") return "You have reached today's Home AI limit. You can ask more questions when the next day begins.";
+    return "This month's Home AI allowance has been reached. It will be available again when the next monthly period begins.";
+  }
+  if (reason === "minute") return "Олон асуулт дараалан илгээлээ. Нэг минут орчим хүлээгээд дахин оролдоно уу.";
+  if (reason === "day") return "Өнөөдрийн Home AI ашиглах хязгаарт хүрлээ. Дараагийн өдөр дахин асуулт асуух боломжтой.";
+  return "Энэ сарын Home AI ашиглах нөөцөд хүрлээ. Дараагийн сарын хугацаа эхлэхэд дахин ашиглах боломжтой.";
+}
+
+async function persistExchange(input: {
+  db: CustomerAiDatabase;
+  userId?: string;
+  requestId: string;
+  question: string;
+  answer: string;
+}) {
+  if (!input.userId) return;
+  try {
+    await saveHomeAiExchange({
+      db: input.db,
+      userId: input.userId,
+      requestId: input.requestId,
+      userMessage: input.question,
+      assistantMessage: input.answer,
+    });
+  } catch (error) {
+    console.error("customer_ai_history_save_failed", error instanceof Error ? error.message : "unknown");
+  }
 }
 
 async function callOpenAi(input: {
@@ -218,10 +251,12 @@ export async function POST(request: Request) {
     } catch (error) {
       console.error("customer_ai_greeting_audit_unavailable", error instanceof Error ? error.message : "unknown");
     }
+    const greetingAnswer = customerAiGreetingAnswer(parsed.payload.lang);
+    await persistExchange({ db: runtime.DB, userId: siteUser?.id, requestId, question: parsed.payload.message, answer: greetingAnswer });
     return reply({
-      answer: customerAiGreetingAnswer(parsed.payload.lang), sources: [], grounded: false, mode: "greeting", intent: "general",
+      answer: greetingAnswer, sources: [], grounded: false, mode: "greeting", intent: "general",
       handoff: handoffPayload(parsed.payload.lang, false, "none"), requestId,
-      controls: { dataBoundary: CUSTOMER_AI_DATA_BOUNDARY, externalActions: "blocked_pending_admin_approval", systemAiAccess: false, memory: "ephemeral_last_6_messages", consent: "recorded", controlMode: homeAiSettings.mode },
+      controls: { dataBoundary: CUSTOMER_AI_DATA_BOUNDARY, externalActions: "blocked_pending_admin_approval", systemAiAccess: false, memory: siteUser?.id ? "persistent_user_history_last_6_context" : "ephemeral_last_6_messages", consent: "recorded", controlMode: homeAiSettings.mode },
     });
   }
   const model = selectCustomerAiModel(config, parsed.payload.message, parsed.payload.history);
@@ -243,8 +278,9 @@ export async function POST(request: Request) {
         console.error("customer_ai_block_audit_unavailable", auditError instanceof Error ? auditError.message : "unknown");
       }
       return reply({
-        error: parsed.payload.lang === "en" ? "This request is paused by the fair-use budget guard. Please try again later." : "Шударга хэрэглээний төсвийн хамгаалалт энэ хүсэлтийг түр зогсоолоо. Дараа дахин оролдоно уу.",
+        error: quotaMessage(parsed.payload.lang, error.reason),
         code: `QUOTA_${error.reason.toUpperCase()}`,
+        retryAfterSeconds: error.retryAfterSeconds,
         requestId,
       }, 429, { "Retry-After": String(error.retryAfterSeconds) });
     }
@@ -330,6 +366,14 @@ export async function POST(request: Request) {
     console.error("customer_ai_outcome_audit_unavailable", error instanceof Error ? error.message : "unknown");
   }
 
+  await persistExchange({
+    db: runtime.DB,
+    userId: siteUser?.id,
+    requestId,
+    question: parsed.payload.message,
+    answer,
+  });
+
   return reply({
     answer,
     sources: guard ? [] : sources.map((source) => ({
@@ -348,7 +392,7 @@ export async function POST(request: Request) {
       dataBoundary: CUSTOMER_AI_DATA_BOUNDARY,
       externalActions: "blocked_pending_admin_approval",
       systemAiAccess: false,
-      memory: "ephemeral_last_6_messages",
+      memory: siteUser?.id ? "persistent_user_history_last_6_context" : "ephemeral_last_6_messages",
       consent: "recorded",
       controlMode: homeAiSettings.mode,
     },

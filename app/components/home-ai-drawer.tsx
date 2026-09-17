@@ -11,10 +11,14 @@ export function HomeAiDrawer({ open, onOpen, onClose }: { open: boolean; onOpen:
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [working, setWorking] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [quotaBlocked, setQuotaBlocked] = useState(false);
   const [error, setError] = useState("");
   const contentRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const sessionIdRef = useRef("");
+  const historyLoadedRef = useRef(false);
   const onCloseRef = useRef(onClose);
 
   function resizeComposer(element: HTMLTextAreaElement) {
@@ -26,6 +30,24 @@ export function HomeAiDrawer({ open, onOpen, onClose }: { open: boolean; onOpen:
   useEffect(() => {
     if (!sessionIdRef.current) sessionIdRef.current = `account-${crypto.randomUUID()}`;
   }, []);
+  useEffect(() => {
+    if (!open || historyLoadedRef.current) return;
+    historyLoadedRef.current = true;
+    setLoadingHistory(true);
+    fetch("/api/account/home-ai-history", { cache: "no-store" })
+      .then(async (response) => ({ response, payload: await response.json().catch(() => ({})) }))
+      .then(({ response, payload }) => {
+        if (!response.ok || !Array.isArray(payload.messages)) throw new Error("history_unavailable");
+        setMessages(payload.messages.filter((message: Message) =>
+          (message?.role === "user" || message?.role === "assistant") && typeof message.content === "string",
+        ));
+      })
+      .catch(() => {
+        historyLoadedRef.current = false;
+        setError(t("Өмнөх яриаг ачаалж чадсангүй. Дахин нээгээд оролдоно уу.", "Previous messages could not be loaded. Please reopen Home AI and try again."));
+      })
+      .finally(() => setLoadingHistory(false));
+  }, [open, t]);
   useEffect(() => {
     if (!open) {
       document.body.classList.remove("home-ai-modal-open");
@@ -50,7 +72,7 @@ export function HomeAiDrawer({ open, onOpen, onClose }: { open: boolean; onOpen:
   async function ask(event: FormEvent) {
     event.preventDefault();
     const question = input.trim();
-    if (!question || working) return;
+    if (!question || working || quotaBlocked) return;
     const history = messages.slice(-6);
     setInput(""); if (composerRef.current) composerRef.current.style.height = "44px"; setError(""); setWorking(true);
     setMessages((current) => [...current, { role: "user", content: question }]);
@@ -59,22 +81,39 @@ export function HomeAiDrawer({ open, onOpen, onClose }: { open: boolean; onOpen:
       body: JSON.stringify({ message: question, lang: lang === "en" ? "en" : "mn", sessionId: sessionIdRef.current, history, consent: true }),
     }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
-    if (!response?.ok || !payload.answer) setError(payload.error || t("Home AI одоогоор хариулж чадсангүй.", "Home AI could not answer right now."));
+    if (!response?.ok || !payload.answer) {
+      setError(payload.error || t("Home AI одоогоор хариулж чадсангүй.", "Home AI could not answer right now."));
+      if (typeof payload.code === "string" && payload.code.startsWith("QUOTA_") && payload.code !== "QUOTA_MINUTE") setQuotaBlocked(true);
+    }
     else setMessages((current) => [...current, { role: "assistant", content: payload.answer }]);
     setWorking(false);
+  }
+
+  async function clearHistory() {
+    if (working || clearing || loadingHistory) return;
+    if (!window.confirm(t("Home AI-ийн ярианы түүхийг цэвэрлэж, шинэ яриа эхлүүлэх үү?", "Clear Home AI history and start a new conversation?"))) return;
+    setClearing(true); setError("");
+    const response = await fetch("/api/account/home-ai-history", { method: "DELETE" }).catch(() => null);
+    if (!response?.ok) setError(t("Ярианы түүхийг цэвэрлэж чадсангүй. Дахин оролдоно уу.", "Conversation history could not be cleared. Please try again."));
+    else {
+      setMessages([]);
+      setQuotaBlocked(false);
+      sessionIdRef.current = `account-${crypto.randomUUID()}`;
+    }
+    setClearing(false);
   }
 
   return <>
     <button className="account-home-ai-launch" type="button" onClick={onOpen} aria-label="Home AI"><span aria-hidden="true">AI</span><span><strong>Home AI</strong><small>{t("24/7 хэрэглэгчийн туслах", "24/7 customer assistant")}</small></span></button>
     <div className={`home-ai-drawer-layer${open ? " is-open" : ""}`} aria-hidden={!open} role="presentation" onMouseDown={onClose}>
     <aside className="home-ai-drawer" role="dialog" aria-modal="true" aria-labelledby="home-ai-title" onMouseDown={(event) => event.stopPropagation()}>
-      <header><div><span>HOME AI</span><h2 id="home-ai-title">Home AI</h2><p>{t("Зөвхөн батлагдсан нийтэд зориулсан эх сурвалжаас хариулна.", "Answers from approved public sources only.")}</p></div><button type="button" onClick={onClose} aria-label={t("Хаах", "Close")}>×</button></header>
+      <header><div><span>HOME AI</span><h2 id="home-ai-title">Home AI</h2><p>{t("Зөвхөн батлагдсан нийтэд зориулсан эх сурвалжаас хариулна.", "Answers from approved public sources only.")}</p></div><div className="home-ai-header-actions"><button className="home-ai-clear" type="button" onClick={clearHistory} disabled={working || clearing || loadingHistory || messages.length === 0}>{clearing ? t("Цэвэрлэж байна…", "Clearing…") : t("Түүх цэвэрлэх", "Clear history")}</button><button type="button" onClick={onClose} aria-label={t("Хаах", "Close")}>×</button></div></header>
       <div className="home-ai-drawer-content" ref={contentRef}>
         <div className="home-ai-boundary"><strong>{t("Хэрэглэгчийн туслах", "Customer assistant")}</strong><span>{t("Тенантын ажлын өгөгдөл, төлбөр, Marketing AI-д хандахгүй бөгөөд гадаад үйлдэл гүйцэтгэхгүй.", "It cannot access tenant work data, payments, Marketing AI, or execute external actions.")}</span></div>
-        <div className="home-ai-messages" aria-live="polite">{messages.length ? messages.map((message, index) => <article key={`${message.role}-${index}`} className={message.role}><small>{message.role === "user" ? t("Та", "You") : "Home AI"}</small><p>{message.content}</p></article>) : <p className="home-ai-empty">{t("Багц, бүтээгдэхүүн, нэвтрэлт эсвэл iBeX-ийн ерөнхий боломжийн талаар асуугаарай.", "Ask about plans, products, sign-in, or general iBeX capabilities.")}</p>}</div>
+        <div className="home-ai-messages" aria-live="polite">{loadingHistory ? <p className="home-ai-empty">{t("Өмнөх яриаг ачаалж байна…", "Loading previous conversation…")}</p> : messages.length ? messages.map((message, index) => <article key={`${message.role}-${index}`} className={message.role}><small>{message.role === "user" ? t("Та", "You") : "Home AI"}</small><p>{message.content}</p></article>) : <p className="home-ai-empty">{t("Багц, бүтээгдэхүүн, нэвтрэлт эсвэл iBeX-ийн ерөнхий боломжийн талаар асуугаарай.", "Ask about plans, products, sign-in, or general iBeX capabilities.")}</p>}</div>
         {error ? <AccountAlert type="error">{error}</AccountAlert> : null}
       </div>
-      <form className="home-ai-drawer-form" onSubmit={ask}><textarea ref={composerRef} rows={1} value={input} onChange={(event) => { setInput(event.target.value); resizeComposer(event.currentTarget); }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} maxLength={1500} placeholder={t("Асуултаа бичнэ үү…", "Write your question…")} required aria-keyshortcuts="Enter" /><button className="account-submit" type="submit" disabled={working}>{working ? t("Хариулж байна…", "Answering…") : t("Асуух", "Ask")}</button></form>
+      <form className="home-ai-drawer-form" onSubmit={ask}><textarea ref={composerRef} rows={1} value={input} onChange={(event) => { setInput(event.target.value); resizeComposer(event.currentTarget); }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} maxLength={1500} placeholder={quotaBlocked ? t("Home AI-ийн ашиглах хугацаа шинэчлэгдэхийг хүлээж байна", "Waiting for the Home AI allowance to renew") : t("Асуултаа бичнэ үү…", "Write your question…")} required aria-keyshortcuts="Enter" disabled={working || clearing || loadingHistory || quotaBlocked} /><button className="account-submit" type="submit" disabled={working || clearing || loadingHistory || quotaBlocked}>{working ? t("Хариулж байна…", "Answering…") : t("Асуух", "Ask")}</button></form>
     </aside>
     </div>
   </>;
