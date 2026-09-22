@@ -32,12 +32,13 @@ test("Home AI restores server history and clears it only after explicit confirma
   assert.doesNotMatch(drawer, /localStorage|sessionStorage/);
 });
 
-test("successful and greeting responses are persisted while quota notices remain friendly", async () => {
+test("successful OpenAI responses are persisted while quota notices remain friendly", async () => {
   const route = await read("app/api/assistant/chat/route.ts");
   const quota = await read("app/lib/customer-ai.ts");
 
   assert.match(route, /saveHomeAiExchange/);
-  assert.match(route, /status: "greeting"[\s\S]*await persistExchange/);
+  assert.match(route, /answer = generated\.answer;[\s\S]*await persistExchange/);
+  assert.doesNotMatch(route, /status: "greeting"/);
   assert.match(route, /await persistExchange\(\{[\s\S]*question: parsed\.payload\.message,[\s\S]*answer,/);
   assert.match(route, /Өнөөдрийн Home AI ашиглах хязгаарт хүрлээ/);
   assert.match(route, /Энэ сарын Home AI ашиглах нөөцөд хүрлээ/);

@@ -4,20 +4,23 @@ import test from "node:test";
 
 const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("Home AI treats greetings as greetings instead of searching unrelated material", () => {
+test("Home AI sends greetings through the production OpenAI response path", () => {
   const customerAi = read("app/lib/customer-ai.ts");
   const route = read("app/api/assistant/chat/route.ts");
-  assert.match(customerAi, /\^\(\?:hi\|hello\|hey\)\$/);
-  assert.match(customerAi, /Сайн байна уу! Би Home AI/);
-  assert.match(route, /if \(isCustomerAiGreeting\(parsed\.payload\.message\)\)/);
-  assert.match(route, /mode: "greeting"/);
+  assert.doesNotMatch(customerAi, /isCustomerAiGreeting|customerAiGreetingAnswer/);
+  assert.match(route, /if \(!guard\) \{[\s\S]*await callOpenAi/);
+  assert.doesNotMatch(route, /isCustomerAiGreeting/);
+  assert.doesNotMatch(route, /mode: "greeting"/);
 });
 
-test("Home AI only retrieves approved public Home Web knowledge", () => {
+test("Home AI uses approved public Home Web knowledge only as optional references", () => {
   const route = read("app/api/assistant/chat/route.ts");
+  const prompt = read("app/lib/home-ai-prompt.ts");
   assert.doesNotMatch(route, /ibex-book-knowledge\.json/);
   assert.match(route, /retrieveCustomerAiKnowledge\(\s*managedKnowledge/s);
-  assert.match(route, /Never use research, laboratory, protocol, book, tenant, payment, or internal administrative material/);
+  assert.match(route, /OPTIONAL IBEX REFERENCES/);
+  assert.match(prompt, /general model knowledge/);
+  assert.match(prompt, /not the only permitted knowledge source/);
 });
 
 test("Home AI drawer submits with Enter and keeps Shift+Enter for a new line", () => {

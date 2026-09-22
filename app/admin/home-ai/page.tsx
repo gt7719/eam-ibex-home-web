@@ -17,6 +17,7 @@ type Payload = {
     identitySaltConfigured: boolean;
     approvedSources: number;
     readyForTest: boolean;
+    knowledgeMode: "open";
     rawChatStored: true;
     historyMessages: number;
     historyRetentionDays: number;
@@ -102,8 +103,8 @@ export default function HomeAiControlPage() {
 
     <section className="home-ai-status-grid">
       <article><small>OPENAI</small><strong className={status?.keyConfigured ? "ok" : "wait"}>{status?.keyConfigured ? t("Холбогдсон", "Connected") : t("Key хүлээж байна", "Waiting for key")}</strong><span>{t("Key-ийн утгыг энд харуулахгүй", "The key value is never displayed here")}</span></article>
-      <article><small>PUBLISHED PROMPT</small><strong className={status?.promptConfigured ? "ok" : "wait"}>{status?.promptConfigured ? t("Тохируулсан", "Configured") : t("ID хүлээж байна", "Waiting for ID")}</strong><span>{t("OpenAI дээр publish хийсэн prompt", "Prompt published in OpenAI")}</span></article>
-      <article><small>{t("МЭДЛЭГ", "KNOWLEDGE")}</small><strong className={status?.approvedSources ? "ok" : "wait"}>{status?.approvedSources || 0}</strong><span>{t("Approved + Public эх сурвалж", "Approved + Public sources")}</span></article>
+      <article><small>{t("МЭДЛЭГИЙН ГОРИМ", "KNOWLEDGE MODE")}</small><strong className="ok">{t("НЭЭЛТТЭЙ", "OPEN")}</strong><span>{t("OpenAI-ийн ерөнхий мэдлэг ашиглана", "Uses OpenAI general knowledge")}</span></article>
+      <article><small>{t("iBeX ЛАВЛАГАА", "iBeX REFERENCES")}</small><strong className={status?.approvedSources ? "ok" : "wait"}>{status?.approvedSources || 0}</strong><span>{t("Нэмэлт эх сурвалж · заавал биш", "Optional supplementary sources")}</span></article>
       <article><small>{t("ЭНЭ САР", "THIS MONTH")}</small><strong>{usage?.requests || 0}</strong><span>{t("AI хүсэлт", "AI requests")} · {usage?.activeSubjects || 0} {t("хэрэглэгч", "users")}</span></article>
       <article><small>{t("ТООЦООЛСОН ЗАРДАЛ", "ESTIMATED COST")}</small><strong>${(usage?.estimatedCostUsd || 0).toFixed(4)}</strong><span>{t("OpenAI Billing нь эцсийн дүн", "OpenAI Billing is authoritative")}</span></article>
     </section>
@@ -113,18 +114,17 @@ export default function HomeAiControlPage() {
         <div className="home-ai-panel-head"><div><span>01 · OPERATION</span><h2>{t("Ажиллагаа ба model", "Operation & models")}</h2></div><b className={`mode ${settings.mode}`}>{settings.mode}</b></div>
         <div className="home-ai-form-grid">
           <label>{t("Ажиллах горим", "Operating mode")}<select value={settings.mode} onChange={event => setSettings(current => ({ ...current, mode: event.target.value as HomeAiControlSettings["mode"] }))}><option value="disabled">Disabled</option><option value="test">Test</option><option value="production">Production</option></select></label>
-          <label className="wide">OpenAI Published Prompt ID<input value={settings.publishedPromptId} onChange={event => setSettings(current => ({ ...current, publishedPromptId: event.target.value.trim() }))} placeholder="pmpt_…" autoComplete="off" /><small>{t("Энд зөвхөн Prompt ID оруулна. API key нь server-ийн нууц environment variable хэвээр байна.", "Enter only the Prompt ID here. The API key remains a secret server environment variable.")}</small><small className="home-ai-deprecation-note">{t("OpenAI reusable Prompt ID-г 2026-11-30-нд зогсоохоор зарласан. Энэ нь шилжилтийн тохиргоо бөгөөд хугацаанаас өмнө prompt-ийг version-тэй код руу шилжүүлэх шаардлагатай.", "OpenAI has scheduled reusable Prompt IDs to shut down on 2026-11-30. This is a transitional setting and the prompt must move to versioned application code before then.")}</small></label>
           <label>{t("Хурдан model", "Fast model")}<input value={settings.fastModel} onChange={event => setSettings(current => ({ ...current, fastModel: event.target.value }))} /></label>
           <label>{t("Нарийвчилсан model", "Complex model")}<input value={settings.complexModel} onChange={event => setSettings(current => ({ ...current, complexModel: event.target.value }))} /></label>
           <label>{t("Хариултын max token", "Max output tokens")}<input type="number" min="120" max="2000" value={settings.maxOutputTokens} onChange={event => updateNumber("maxOutputTokens", event.target.value)} /></label>
         </div>
         <div className="home-ai-readiness">
           <span className={status?.keyConfigured ? "ready" : ""}>{t("Тусдаа OpenAI key", "Separate OpenAI key")}</span>
-          <span className={status?.promptConfigured ? "ready" : ""}>{t("Published Prompt ID", "Published Prompt ID")}</span>
           <span className={status?.identitySaltConfigured ? "ready" : ""}>{t("Нууц identity salt", "Private identity salt")}</span>
-          <span className={status?.approvedSources ? "ready" : ""}>{t("Баталгаажсан мэдлэг", "Approved knowledge")}</span>
+          <span className="ready">{t("Нээлттэй ерөнхий мэдлэг", "Open general knowledge")}</span>
+          <span className={status?.approvedSources ? "ready" : ""}>{t("Нэмэлт iBeX лавлагаа", "Optional iBeX references")}</span>
         </div>
-        <div className="home-ai-test-row"><button type="button" onClick={runTest} disabled={testing || !status?.readyForTest}>{testing ? t("Тестэлж байна…", "Testing…") : t("Prompt холболт тестлэх", "Test prompt connection")}</button><small>{t("Published Prompt ID болон server-ийн API key-г ашиглан богино Responses API тест хийнэ.", "Runs one short Responses API test using the Published Prompt ID and server API key.")}</small></div>
+        <div className="home-ai-test-row"><button type="button" onClick={runTest} disabled={testing || !status?.readyForTest}>{testing ? t("Тестэлж байна…", "Testing…") : t("OpenAI холболт тестлэх", "Test OpenAI connection")}</button><small>{t("Production Home AI-тай ижил code-managed prompt болон server API key-г ашиглан богино Responses API тест хийнэ.", "Runs one short Responses API test using the same code-managed prompt as production Home AI and the server API key.")}</small></div>
         {payload?.updatedAt ? <p className="home-ai-note">{t("Сүүлд өөрчилсөн", "Last changed")}: {new Date(payload.updatedAt).toLocaleString()} · {payload.updatedBy || "—"}</p> : null}
       </section>
 
@@ -153,7 +153,7 @@ export default function HomeAiControlPage() {
         <div className="home-ai-audit-list">{payload?.audit.length ? payload.audit.map((row, index) => <div key={`${row.createdAt}-${index}`}><span><b>{row.status}</b>{row.eventType}{row.detail ? <em>{row.detail}</em> : null}</span><small>{row.model || "local"} · {new Date(row.createdAt).toLocaleString()}</small></div>) : <p>{t("Одоогоор audit event бүртгэгдээгүй.", "No audit events recorded yet.")}</p>}</div>
       </section>
 
-      <footer className="home-ai-actions"><span>{t("Production горимд server API key, Published Prompt ID, identity salt болон баталгаажсан мэдлэг шаардлагатай.", "Production requires the server API key, Published Prompt ID, identity salt and approved knowledge.")}</span><button type="submit" disabled={saving}>{saving ? t("Хадгалж байна…", "Saving…") : t("Тохиргоо хадгалах", "Save settings")}</button></footer>
+      <footer className="home-ai-actions"><span>{t("Production горимд server API key болон identity salt шаардлагатай. iBeX лавлагаа нь нэмэлт бөгөөд хариултыг хязгаарлахгүй.", "Production requires the server API key and identity salt. iBeX references are supplementary and do not restrict answers.")}</span><button type="submit" disabled={saving}>{saving ? t("Хадгалж байна…", "Saving…") : t("Тохиргоо хадгалах", "Save settings")}</button></footer>
     </form>
   </main>;
 }

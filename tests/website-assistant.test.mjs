@@ -11,8 +11,9 @@ test("website assistant stays separate from iBeX System AI and live tenant data"
   assert.match(knowledge, /iBeX System AI-аас бүрэн тусдаа/);
   assert.match(knowledge, /PostgreSQL, Directus, байгууллагын tenant өгөгдөл/);
   assert.match(customerAi, /entry\.enabled && entry\.status === "approved" && entry\.visibility === "public"/);
-  assert.match(customerAi, /CUSTOMER_AI_DATA_BOUNDARY = "approved-public-website-only"/);
+  assert.match(customerAi, /CUSTOMER_AI_DATA_BOUNDARY = "public-assistant-no-private-system-access"/);
   assert.match(route, /systemAiAccess: false/);
+  assert.doesNotMatch(route, /Use only APPROVED EVIDENCE/);
 });
 
 test("assistant UI is bilingual, cites sources and is wired into the public site", () => {
@@ -38,13 +39,14 @@ test("Marketing AI is an administrator-only full module instead of a public chat
   const permissions = read("app/lib/site-admin.ts");
   const marketing = read("app/admin/marketing-ai/page.tsx");
   const customerRoute = read("app/api/assistant/chat/route.ts");
+  const homePrompt = read("app/lib/home-ai-prompt.ts");
   assert.match(adminHub, /marketing\.manage/);
   assert.match(permissions, /"marketing\.manage"/);
   for (const label of ["Хяналтын самбар", "AI командын төв", "Хэрэглэгч ба Lead", "Кампанит ажил", "Зөвшөөрлийн төв", "Төсөв ба хэрэглээ", "Audit log"]) {
     assert.match(marketing, new RegExp(label));
   }
   assert.match(marketing, /ЗӨВХӨН АДМИН/);
-  assert.match(customerRoute, /public customer assistant/);
+  assert.match(homePrompt, /public customer assistant/);
   assert.doesNotMatch(customerRoute, /public customer and marketing assistant/);
 });
 

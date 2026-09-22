@@ -28,7 +28,7 @@ test("environment names, status, visibility and routes use one published configu
   assert.match(mobile, /adminPreview=1/);
 });
 
-test("Home AI Prompt ID remains server-side and is used by Responses API", async () => {
+test("Home AI retains legacy Prompt ID data but uses a code-managed production prompt", async () => {
   const settings = await read("app/lib/home-ai-control.ts");
   const admin = await read("app/admin/home-ai/page.tsx");
   const control = await read("app/api/admin/home-ai-control/route.ts");
@@ -37,15 +37,16 @@ test("Home AI Prompt ID remains server-side and is used by Responses API", async
 
   assert.match(settings, /publishedPromptId: string/);
   assert.match(settings, /\^pmpt_/);
-  assert.match(admin, /OpenAI Published Prompt ID/);
-  assert.match(admin, /API key нь server-ийн нууц environment variable/);
-  assert.match(admin, /2026-11-30/);
+  const prompt = await read("app/lib/home-ai-prompt.ts");
+  assert.match(admin, /code-managed prompt/);
   assert.match(control, /promptConfigured: Boolean\(settings\.publishedPromptId\)/);
   assert.match(control, /customer_ai\.settings_changed/);
   assert.match(control, /promptIdChanged/);
-  assert.match(chat, /prompt: \{ id: input\.promptId \}/);
+  assert.match(chat, /instructions: homeAiInstructions\(input\.lang\)/);
+  assert.match(prompt, /general model knowledge/);
+  assert.doesNotMatch(chat, /prompt: \{ id:/);
   assert.match(chat, /store: false/);
-  assert.match(connectionTest, /prompt: \{ id: settings\.publishedPromptId \}/);
+  assert.match(connectionTest, /instructions: homeAiInstructions\("mn"\)/);
   assert.doesNotMatch(admin, /OPENAI_HOME_API_KEY\s*=/);
 });
 

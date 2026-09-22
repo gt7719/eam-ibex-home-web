@@ -73,7 +73,8 @@ export async function GET() {
       promptStatus: settings.publishedPromptId ? "ready" : "missing",
       identitySaltConfigured: Boolean(runtime.HOME_AI_ID_HASH_SALT?.trim()),
       approvedSources,
-      readyForTest: Boolean(runtime.OPENAI_HOME_API_KEY?.trim() && runtime.HOME_AI_ID_HASH_SALT?.trim() && settings.publishedPromptId && approvedSources > 0),
+      readyForTest: Boolean(runtime.OPENAI_HOME_API_KEY?.trim() && runtime.HOME_AI_ID_HASH_SALT?.trim()),
+      knowledgeMode: "open",
       rawChatStored: true,
       historyMessages: 6,
       historyRetentionDays: settings.historyRetentionDays,
@@ -108,10 +109,8 @@ export async function PUT(request: Request) {
   const runtime = env as unknown as HomeAiRuntime;
   const { settings: previousSettings } = await readHomeAiSettings(runtime.DB);
   if (settings.mode === "production") {
-    const knowledge = await readKnowledge();
-    const approvedSources = knowledge.entries.filter((entry) => entry.enabled && entry.status === "approved" && entry.visibility === "public").length;
-    if (!runtime.OPENAI_HOME_API_KEY?.trim() || !runtime.HOME_AI_ID_HASH_SALT?.trim() || !settings.publishedPromptId || approvedSources < 1) {
-      return reply({ error: "Production горимд орохын өмнө тусдаа OpenAI key, Published Prompt ID, identity salt болон Approved + Public мэдлэг бэлэн байх ёстой." }, 409);
+    if (!runtime.OPENAI_HOME_API_KEY?.trim() || !runtime.HOME_AI_ID_HASH_SALT?.trim()) {
+      return reply({ error: "Production горимд орохын өмнө тусдаа OpenAI key болон identity salt бэлэн байх ёстой." }, 409);
     }
   }
   const revision = await saveContentWithRevision({ key: HOME_AI_SETTINGS_KEY, value: settings, userId: auth.user.id, expectedRevision: raw.revision ?? null });

@@ -15,17 +15,17 @@ test("Home AI messages and composer stay compact until their content needs more 
   assert.match(drawer, /event\.key === "Enter" && !event\.shiftKey/);
 });
 
-test("Implementation questions use approved implementation guidance instead of unrelated excerpts", async () => {
+test("Implementation questions use contextual optional references and the OpenAI response", async () => {
   const knowledge = await read("app/lib/assistant-knowledge.ts");
   const customerAi = await read("app/lib/customer-ai.ts");
   const route = await read("app/api/assistant/chat/route.ts");
   assert.match(knowledge, /id: "kb-implementation"/);
-  assert.match(customerAi, /customerAiImplementationAnswer/);
   assert.match(customerAi, /customerAiContextualQuery/);
   assert.match(customerAi, /\.filter\(\(\{ score \}\) => score >= 3\)/);
-  assert.match(route, /implementationAnswer \|\| localAnswer/);
+  assert.match(route, /answer = generated\.answer/);
+  assert.match(route, /OPTIONAL IBEX REFERENCES/);
   assert.match(route, /retrieveCustomerAiKnowledge\(\s*managedKnowledge,\s*contextualQuery/s);
-  assert.doesNotMatch(route, /!implementationAnswer && sources\.length/);
+  assert.doesNotMatch(route, /implementationAnswer|localAnswer/);
 });
 
 test("The signed-in account identity and its two-item menu are separate controls", async () => {

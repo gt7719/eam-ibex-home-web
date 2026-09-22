@@ -31,10 +31,11 @@ test("Home AI cost, consent and audit records are isolated from Hybrid AI", () =
 
 test("external marketing actions remain blocked and require a later approval path", () => {
   const route = read("app/api/assistant/chat/route.ts");
+  const prompt = read("app/lib/home-ai-prompt.ts");
   const knowledge = read("app/lib/assistant-knowledge.ts");
   const marketing = read("app/admin/marketing-ai/page.tsx");
   assert.match(route, /externalActions: "blocked_pending_admin_approval"/);
-  assert.match(route, /Never claim that an email, social post, campaign/);
+  assert.match(prompt, /Never claim that an email, social post, campaign/);
   assert.match(knowledge, /имэйл, сошиал нийтлэл, кампанит ажил/);
   assert.match(knowledge, /зөвхөн админд нээлттэй iBeX Marketing AI/);
   assert.match(marketing, /Гадагш илгээх/);

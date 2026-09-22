@@ -43,10 +43,11 @@ test("Marketing AI is draft-only with isolated durable usage and audit", () => {
   assert.match(migration, /CREATE TABLE `marketing_ai_audit_events`/);
 });
 
-test("Home AI production is controlled by the admin setting and retains public-only evidence", () => {
+test("Home AI production is controlled by the admin setting without a knowledge-source gate", () => {
   const route = read("app/api/assistant/chat/route.ts");
   const control = read("app/api/admin/home-ai-control/route.ts");
-  assert.match(route, /homeAiSettings\.mode === "production"/);
-  assert.match(control, /Approved \+ Public/);
+  assert.match(route, /homeAiSettings\.mode !== "production"/);
+  assert.doesNotMatch(control, /approvedSources < 1/);
+  assert.match(control, /knowledgeMode: "open"/);
   assert.match(route, /CUSTOMER_AI_DATA_BOUNDARY/);
 });

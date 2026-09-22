@@ -38,13 +38,13 @@ test("Home AI keeps one session, isolates the modal footer and retains keyboard 
   assert.doesNotMatch(css, /Version 71: messages grow only/);
 });
 
-test("Home AI grounds follow-up retrieval in recent context and still uses OpenAI in production", () => {
+test("Home AI uses recent context and calls OpenAI without requiring a matched source", () => {
   const customerAi = read("app/lib/customer-ai.ts");
   const route = read("app/api/assistant/chat/route.ts");
   assert.match(customerAi, /const previousQuestion = \[\.\.\.history\]\.reverse\(\)\.find/);
-  assert.match(customerAi, /customerAiImplementationAnswer\(lang: CustomerAiLang, message: string, history: CustomerAiHistoryItem\[\] = \[\]\)/);
   assert.match(route, /const contextualQuery = customerAiContextualQuery/);
   assert.match(route, /managedKnowledge,\s*contextualQuery,/s);
-  assert.match(route, /if \(!guard && sources\.length && homeAiSettings\.mode === "production"/);
-  assert.doesNotMatch(route, /if \(!guard && !implementationAnswer/);
+  assert.match(route, /if \(!guard\) \{/);
+  assert.doesNotMatch(route, /if \(!guard && sources\.length/);
+  assert.doesNotMatch(route, /implementationAnswer|localAnswer/);
 });

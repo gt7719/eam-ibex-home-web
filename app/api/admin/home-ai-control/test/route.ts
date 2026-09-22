@@ -8,6 +8,7 @@ import {
   type CustomerAiDatabase,
 } from "../../../../lib/customer-ai";
 import { readHomeAiSettings } from "../../../../lib/home-ai-control";
+import { homeAiInstructions } from "../../../../lib/home-ai-prompt";
 import { hasTrustedOrigin } from "../../../../lib/admin-security";
 import { getAdminSession, hasAdminPermission } from "../../../../lib/site-admin";
 
@@ -33,7 +34,6 @@ export async function POST(request: Request) {
   if (!runtime.HOME_AI_ID_HASH_SALT?.trim()) return NextResponse.json({ error: "HOME_AI_ID_HASH_SALT нууц тохиргоо дутуу байна." }, { status: 503 });
   const { settings } = await readHomeAiSettings(runtime.DB);
   if (settings.mode === "disabled") return NextResponse.json({ error: "Эхлээд Test горимыг сонгож хадгална уу." }, { status: 409 });
-  if (!settings.publishedPromptId) return NextResponse.json({ error: "OpenAI Published Prompt ID-г оруулж хадгална уу." }, { status: 409 });
   const started = Date.now();
   try {
     const response = await fetch("https://api.openai.com/v1/responses", {
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
         store: false,
         max_output_tokens: 80,
         safety_identifier: await hashCustomerAiSubject(`admin-test:${user.id}`, runtime.HOME_AI_ID_HASH_SALT),
-        prompt: { id: settings.publishedPromptId },
+        instructions: homeAiInstructions("mn"),
         input: "Холболт хэвийн эсэхийг нэг өгүүлбэрээр баталгаажуул. Гадаад үйлдэл бүү гүйцэтгэ.",
       }),
     });

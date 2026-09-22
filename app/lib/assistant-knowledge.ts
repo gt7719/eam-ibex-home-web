@@ -139,7 +139,7 @@ export const defaultKnowledge: KnowledgeEntry[] = [
     contentMn:
       "iBeX Home AI нь веб сайтын хэрэглэгчид зориулсан тусдаа OpenAI-д суурилсан туслах. Баталгаажсан нийтэд нээлттэй мэдээллээс бүтээгдэхүүн, багц, демо, тусламж болон нууцлалын асуултад хариулж, шаардлагатай үед iBeX мэргэжилтэнтэй үргэлжлүүлэх санал гаргана. Энэ нь iBeX Hybrid Intelligent AI болон үйлдвэрлэлийн System AI биш.",
     contentEn:
-      "iBeX Home AI is a separate OpenAI-powered assistant for website customers. It answers product, plan, demo, support and privacy questions from approved public information and can propose a handoff to an iBeX specialist. It is not iBeX Hybrid Intelligent AI or the industrial System AI.",
+      "iBeX Home AI is a separate OpenAI-powered assistant for website customers. It can answer general questions, use optional public iBeX references for product-specific context, and propose a handoff to an iBeX specialist. It is not iBeX Hybrid Intelligent AI or the industrial System AI.",
     keywords: ["home", "customer", "хэрэглэгч", "туслах", "openai", "demo", "support", "hybrid", "intelligent"],
     sourceLabel: "iBeX Home AI · Approved service boundary",
     sourceUrl: "",
@@ -175,7 +175,7 @@ export const defaultKnowledge: KnowledgeEntry[] = [
     contentMn:
       "iBeX Website Assistant нь зөвхөн нийтэд нээлттэй, баталгаажсан сайтын болон Handbook-ийн мэдээллийг тайлбарлана. Энэ туслах нь iBeX System AI-аас бүрэн тусдаа бөгөөд PostgreSQL, Directus, байгууллагын tenant өгөгдөл, хэрэглэгч, хөрөнгө болон бодит WO мэдээлэлд хандахгүй, системд өөрчлөлт хийхгүй.",
     contentEn:
-      "The iBeX Website Assistant explains only approved public website and Handbook information. It is fully separate from iBeX System AI and cannot access PostgreSQL, Directus, tenant data, users, assets or live WO records, and cannot change system data.",
+      "The iBeX Website Assistant can use OpenAI general knowledge and optional public website or Handbook references. It is fully separate from iBeX System AI and cannot access PostgreSQL, Directus, tenant data, users, assets or live WO records, and cannot change system data.",
     keywords: ["assistant", "туслах", "chatbot", "чатбот", "system", "website", "аюулгүй", "өгөгдөл", "directus", "postgresql"],
     sourceLabel: "iBeX AI Governance · Website boundary",
     sourceUrl: "",
