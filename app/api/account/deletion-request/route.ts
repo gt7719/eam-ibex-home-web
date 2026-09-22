@@ -11,6 +11,7 @@ export async function POST(request: Request) {
   await env.DB.batch([
     env.DB.prepare("UPDATE site_users SET account_status='deletion_requested',deletion_requested_at=?,updated_at=? WHERE id=?").bind(now, now, user.id),
     env.DB.prepare("UPDATE site_user_sessions SET status='admin_revoked',revoked_at=? WHERE user_id=? AND status='active'").bind(now, user.id),
+    env.DB.prepare("DELETE FROM customer_ai_messages WHERE user_id=?").bind(user.id),
   ]);
   return NextResponse.json({ requested: true, purgeAfter: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() });
 }

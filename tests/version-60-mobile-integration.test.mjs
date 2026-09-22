@@ -6,7 +6,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf
 
 test("version 60 mounts the approved mobile preview as an isolated route", () => {
   const page = read("app/mobile/page.tsx");
-  assert.match(page, /src="\/mobile-preview\/index\.html"/);
+  assert.match(page, /mobile-preview\/index\.html/);
   assert.match(page, /className="mobile-preview-frame"/);
   assert.match(page, /href="\/"/);
   assert.match(page, /Туршилтын орчин/);

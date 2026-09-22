@@ -65,13 +65,54 @@ export type NavigationMenu = {
   groups: NavigationGroup[];
 };
 
-export type NavigationConfig = { environmentVisible: boolean; menus: NavigationMenu[] };
+export type EnvironmentStatus = "active" | "preview";
+
+export type EnvironmentConfig = {
+  id: "web" | "mobile";
+  nameMn: string;
+  nameEn: string;
+  descriptionMn: string;
+  descriptionEn: string;
+  status: EnvironmentStatus;
+  visible: boolean;
+  href: string;
+};
+
+export type NavigationConfig = {
+  environmentVisible: boolean;
+  environments: EnvironmentConfig[];
+  menus: NavigationMenu[];
+};
 
 export const NAVIGATION_MENU_IDS: HeaderMenuId[] = ["product", "solution", "industry", "ai", "intro"];
 export const NAVIGATION_LIMITS = { menus: 8, groups: 8, items: 20, image: 10, video: 5, pdf: 5 } as const;
 
+export const DEFAULT_ENVIRONMENTS: EnvironmentConfig[] = [
+  {
+    id: "web",
+    nameMn: "iBeX веб орчин",
+    nameEn: "iBeX web environment",
+    descriptionMn: "Одоогийн веб систем",
+    descriptionEn: "Current web system",
+    status: "active",
+    visible: true,
+    href: "/organization",
+  },
+  {
+    id: "mobile",
+    nameMn: "iBeX мобайл орчин",
+    nameEn: "iBeX mobile environment",
+    descriptionMn: "Интерактив туршилтын орчин",
+    descriptionEn: "Interactive preview environment",
+    status: "preview",
+    visible: true,
+    href: "/mobile",
+  },
+];
+
 export const DEFAULT_NAVIGATION: NavigationConfig = {
   "environmentVisible": true,
+  "environments": DEFAULT_ENVIRONMENTS,
   "menus": [
     {
       "id": "product",
@@ -970,6 +1011,23 @@ export function cloneDefaultNavigation(): NavigationConfig {
   return JSON.parse(JSON.stringify(DEFAULT_NAVIGATION)) as NavigationConfig;
 }
 
+function normalizeEnvironments(value: unknown): EnvironmentConfig[] {
+  const rows = Array.isArray(value) ? value : [];
+  return DEFAULT_ENVIRONMENTS.map((fallback) => {
+    const incoming = rows.find((row) => row && typeof row === "object" && (row as { id?: unknown }).id === fallback.id) as Partial<EnvironmentConfig> | undefined;
+    return {
+      id: fallback.id,
+      nameMn: text(incoming?.nameMn, fallback.nameMn, 100),
+      nameEn: text(incoming?.nameEn, fallback.nameEn, 100),
+      descriptionMn: text(incoming?.descriptionMn, fallback.descriptionMn, 240),
+      descriptionEn: text(incoming?.descriptionEn, fallback.descriptionEn, 240),
+      status: incoming?.status === "preview" ? "preview" : "active",
+      visible: incoming?.visible !== false,
+      href: safeHref(incoming?.href) || fallback.href,
+    };
+  });
+}
+
 function uniqueNavigationId(value: unknown, fallback: string, seen: Set<string>, reserved = false) {
   let candidate = id(value, fallback);
   if (reserved || seen.has(candidate)) candidate = fallback;
@@ -1087,6 +1145,7 @@ export function normalizeNavigation(value: unknown): NavigationConfig | null {
   });
   return !menus.length || menus.some((menu) => !menu) ? null : {
     environmentVisible: (value as { environmentVisible?: unknown }).environmentVisible !== false,
+    environments: normalizeEnvironments((value as { environments?: unknown }).environments),
     menus: menus as NavigationMenu[],
   };
 }

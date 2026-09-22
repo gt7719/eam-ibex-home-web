@@ -20,6 +20,22 @@ type HomeAiRuntime = {
 
 const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
+async function auditSubject(adminId: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`home-ai-admin:${adminId}`));
+  return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+function auditDetail(value: string) {
+  try {
+    const metadata = JSON.parse(value) as { promptIdChanged?: boolean; nextMode?: string; retentionDays?: number };
+    if (metadata.promptIdChanged) return `Prompt ID changed · ${metadata.nextMode || "—"} · ${metadata.retentionDays || "—"} days`;
+    if (metadata.nextMode) return `${metadata.nextMode} · ${metadata.retentionDays || "—"} days`;
+  } catch {
+    // Older audit entries may not contain JSON written by this control.
+  }
+  return "";
+}
+
 async function authorize() {
   const user = await getAdminSession();
   if (!user) return { error: reply({ error: "Админ нэвтрэлт шаардлагатай." }, 401), user: null };
@@ -33,8 +49,8 @@ export async function GET() {
   const runtime = env as unknown as HomeAiRuntime;
   const now = new Date();
   const month = now.toISOString().slice(0, 7);
-  const { settings, revision } = await readHomeAiSettings(runtime.DB);
-  const [usage, auditResult, knowledge] = await Promise.all([
+  const { settings, revision, updatedAt, updatedBy } = await readHomeAiSettings(runtime.DB);
+  const [usage, auditResult, knowledge, changedBy] = await Promise.all([
     runtime.DB.prepare(
       "SELECT COALESCE(SUM(request_count),0) AS requests, COALESCE(SUM(input_tokens),0) AS input_tokens, COALESCE(SUM(output_tokens),0) AS output_tokens, COALESCE(SUM(estimated_cost_usd),0) AS estimated_cost_usd, COUNT(*) AS active_subjects FROM customer_ai_monthly_usage WHERE month_key=?",
     ).bind(month).first<{ requests: number; input_tokens: number; output_tokens: number; estimated_cost_usd: number; active_subjects: number }>(),
@@ -42,19 +58,25 @@ export async function GET() {
       "SELECT event_type, model, status, metadata_json, created_at FROM customer_ai_audit_events WHERE channel='ibex-home' ORDER BY created_at DESC LIMIT 12",
     ).all<{ event_type: string; model: string | null; status: string; metadata_json: string; created_at: string }>(),
     readKnowledge(),
+    updatedBy ? runtime.DB.prepare("SELECT name,email FROM admin_users WHERE id=? LIMIT 1").bind(updatedBy).first<{ name: string; email: string }>() : Promise.resolve(null),
   ]);
   const approvedSources = knowledge.entries.filter((entry) => entry.enabled && entry.status === "approved" && entry.visibility === "public").length;
   const recentAudit = auditResult.results || [];
   return reply({
     settings,
     revision,
+    updatedAt,
+    updatedBy: changedBy?.name || changedBy?.email || updatedBy,
     status: {
       keyConfigured: Boolean(runtime.OPENAI_HOME_API_KEY?.trim()),
+      promptConfigured: Boolean(settings.publishedPromptId),
+      promptStatus: settings.publishedPromptId ? "ready" : "missing",
       identitySaltConfigured: Boolean(runtime.HOME_AI_ID_HASH_SALT?.trim()),
       approvedSources,
-      readyForTest: Boolean(runtime.OPENAI_HOME_API_KEY?.trim() && runtime.HOME_AI_ID_HASH_SALT?.trim() && approvedSources > 0),
-      rawChatStored: false,
+      readyForTest: Boolean(runtime.OPENAI_HOME_API_KEY?.trim() && runtime.HOME_AI_ID_HASH_SALT?.trim() && settings.publishedPromptId && approvedSources > 0),
+      rawChatStored: true,
       historyMessages: 6,
+      historyRetentionDays: settings.historyRetentionDays,
       externalActions: false,
       separateFromMarketingAi: true,
       separateFromIntelligentAi: true,
@@ -68,7 +90,7 @@ export async function GET() {
       activeSubjects: Number(usage?.active_subjects || 0),
       authoritativeBilling: "OpenAI Platform project budget",
     },
-    audit: recentAudit.map((row) => ({ eventType: row.event_type, model: row.model, status: row.status, createdAt: row.created_at })),
+    audit: recentAudit.map((row) => ({ eventType: row.event_type, model: row.model, status: row.status, detail: auditDetail(row.metadata_json), createdAt: row.created_at })),
   });
 }
 
@@ -79,15 +101,36 @@ export async function PUT(request: Request) {
   const raw = await request.json().catch(() => null) as { settings?: unknown; revision?: string | null } | null;
   if (!raw) return reply({ error: "Хүсэлтийн формат буруу байна." }, 400);
   const settings = normalizeHomeAiSettings(raw.settings);
+  const submittedPromptId = raw.settings && typeof raw.settings === "object" && !Array.isArray(raw.settings)
+    ? String((raw.settings as { publishedPromptId?: unknown }).publishedPromptId || "").trim()
+    : "";
+  if (submittedPromptId && !settings.publishedPromptId) return reply({ error: "Published Prompt ID нь pmpt_ угтвартай зөв форматтай байна." }, 400);
   const runtime = env as unknown as HomeAiRuntime;
+  const { settings: previousSettings } = await readHomeAiSettings(runtime.DB);
   if (settings.mode === "production") {
     const knowledge = await readKnowledge();
     const approvedSources = knowledge.entries.filter((entry) => entry.enabled && entry.status === "approved" && entry.visibility === "public").length;
-    if (!runtime.OPENAI_HOME_API_KEY?.trim() || !runtime.HOME_AI_ID_HASH_SALT?.trim() || approvedSources < 1) {
-      return reply({ error: "Production горимд орохын өмнө тусдаа OpenAI key, identity salt болон Approved + Public мэдлэг бэлэн байх ёстой." }, 409);
+    if (!runtime.OPENAI_HOME_API_KEY?.trim() || !runtime.HOME_AI_ID_HASH_SALT?.trim() || !settings.publishedPromptId || approvedSources < 1) {
+      return reply({ error: "Production горимд орохын өмнө тусдаа OpenAI key, Published Prompt ID, identity salt болон Approved + Public мэдлэг бэлэн байх ёстой." }, 409);
     }
   }
   const revision = await saveContentWithRevision({ key: HOME_AI_SETTINGS_KEY, value: settings, userId: auth.user.id, expectedRevision: raw.revision ?? null });
   if (!revision) return reply({ error: conflictMessage() }, 409);
+  await runtime.DB.prepare(
+    "INSERT INTO customer_ai_audit_events (id,subject_hash,channel,event_type,model,status,metadata_json,created_at) VALUES (?,?,?,'customer_ai.settings_changed',NULL,'completed',?,?)",
+  ).bind(
+    crypto.randomUUID(),
+    await auditSubject(auth.user.id),
+    "ibex-home",
+    JSON.stringify({
+      promptIdChanged: previousSettings.publishedPromptId !== settings.publishedPromptId,
+      promptConfigured: Boolean(settings.publishedPromptId),
+      previousMode: previousSettings.mode,
+      nextMode: settings.mode,
+      previousRetentionDays: previousSettings.historyRetentionDays,
+      retentionDays: settings.historyRetentionDays,
+    }),
+    revision,
+  ).run();
   return reply({ saved: true, settings, revision });
 }

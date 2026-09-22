@@ -20,10 +20,14 @@ test("authenticated account navigation and menu are separate accessible controls
 
 test("Home AI keeps one session, isolates the modal footer and retains keyboard submit", () => {
   const drawer = read("app/components/home-ai-drawer.tsx");
+  const publicWidget = read("public/assistant-widget.js");
   const css = read("app/globals.css");
   assert.match(drawer, /const sessionIdRef = useRef\(""\)/);
   assert.match(drawer, /sessionId: sessionIdRef\.current/);
   assert.doesNotMatch(drawer, /sessionId: `account-\$\{crypto\.randomUUID\(\)\}`/);
+  assert.match(publicWidget, /globalThis\.crypto\?\.randomUUID/);
+  assert.match(publicWidget, /globalThis\.crypto\?\.getRandomValues/);
+  assert.doesNotMatch(publicWidget, /value = crypto\.randomUUID\(\)/);
   assert.match(drawer, /document\.body\.classList\.add\("home-ai-modal-open"\)/);
   assert.match(drawer, /event\.key === "Enter" && !event\.shiftKey/);
   assert.match(css, /body\.home-ai-modal-open\{overflow:hidden\}/);

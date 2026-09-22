@@ -19,6 +19,60 @@ interface ExecutionContext {
   passThroughOnException(): void;
 }
 
+type EnvironmentId = "web" | "mobile";
+
+function cookieValue(request: Request, name: string) {
+  const cookieHeader = request.headers.get("cookie") || "";
+  for (const part of cookieHeader.split(";")) {
+    const [key, ...value] = part.trim().split("=");
+    if (key === name) {
+      try {
+        return decodeURIComponent(value.join("="));
+      } catch {
+        return "";
+      }
+    }
+  }
+  return "";
+}
+
+async function sha256(value: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function hasActiveAdminSession(request: Request, env: Env) {
+  const token = cookieValue(request, "ibex_site_session");
+  if (!token) return false;
+  const row = await env.DB.prepare(
+    `SELECT 1 AS allowed
+     FROM admin_sessions s
+     INNER JOIN admin_users u ON u.id=s.user_id
+     WHERE s.token_hash=? AND s.expires_at>? AND u.status='active'
+     LIMIT 1`,
+  ).bind(await sha256(token), new Date().toISOString()).first<{ allowed: number }>();
+  return row?.allowed === 1;
+}
+
+async function environmentIsVisible(env: Env, id: EnvironmentId) {
+  const row = await env.DB.prepare("SELECT value_json FROM site_content WHERE key='headerNavigation' LIMIT 1")
+    .first<{ value_json: string }>();
+  if (!row?.value_json) return true;
+  try {
+    const parsed = JSON.parse(row.value_json) as { environments?: Array<{ id?: string; visible?: boolean }> };
+    const environment = parsed.environments?.find((item) => item?.id === id);
+    return environment?.visible !== false;
+  } catch {
+    return true;
+  }
+}
+
+function protectedEnvironment(pathname: string): EnvironmentId | null {
+  if (pathname === "/organization-preview.html") return "web";
+  if (pathname === "/mobile-preview" || pathname === "/mobile-preview/" || pathname === "/mobile-preview/index.html") return "mobile";
+  return null;
+}
+
 // Image security config. SVG sources with .svg extension auto-skip the
 // optimization endpoint on the client side (served directly, no proxy).
 // To route SVGs through the optimizer (with security headers), set
@@ -28,6 +82,17 @@ interface ExecutionContext {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    const environmentId = protectedEnvironment(url.pathname);
+    if (environmentId && !(await environmentIsVisible(env, environmentId))) {
+      const adminPreview = url.searchParams.get("adminPreview") === "1";
+      if (!adminPreview || !(await hasActiveAdminSession(request, env))) {
+        return new Response("Not found", {
+          status: 404,
+          headers: { "Cache-Control": "no-store", "Content-Type": "text/plain; charset=utf-8" },
+        });
+      }
+    }
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];

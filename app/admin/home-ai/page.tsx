@@ -8,13 +8,18 @@ import "./style.css";
 type Payload = {
   settings: HomeAiControlSettings;
   revision: string | null;
+  updatedAt: string | null;
+  updatedBy: string | null;
   status: {
     keyConfigured: boolean;
+    promptConfigured: boolean;
+    promptStatus: "ready" | "missing";
     identitySaltConfigured: boolean;
     approvedSources: number;
     readyForTest: boolean;
-    rawChatStored: false;
+    rawChatStored: true;
     historyMessages: number;
+    historyRetentionDays: number;
     externalActions: false;
     separateFromMarketingAi: true;
     separateFromIntelligentAi: true;
@@ -28,13 +33,14 @@ type Payload = {
     activeSubjects: number;
     authoritativeBilling: string;
   };
-  audit: Array<{ eventType: string; model: string | null; status: string; createdAt: string }>;
+  audit: Array<{ eventType: string; model: string | null; status: string; detail?: string; createdAt: string }>;
 };
 
 const emptySettings: HomeAiControlSettings = {
   mode: "test", fastModel: "gpt-5.6-luna", complexModel: "gpt-5.6-terra",
   monthlyBudgetUsd: 10, warningBudgetUsd: 5, criticalBudgetUsd: 8,
   minimumFairShareUsd: .25, requestsPerMinute: 6, requestsPerDay: 10, maxOutputTokens: 520,
+  publishedPromptId: "", historyRetentionDays: 90,
 };
 
 export default function HomeAiControlPage() {
@@ -96,6 +102,7 @@ export default function HomeAiControlPage() {
 
     <section className="home-ai-status-grid">
       <article><small>OPENAI</small><strong className={status?.keyConfigured ? "ok" : "wait"}>{status?.keyConfigured ? t("Холбогдсон", "Connected") : t("Key хүлээж байна", "Waiting for key")}</strong><span>{t("Key-ийн утгыг энд харуулахгүй", "The key value is never displayed here")}</span></article>
+      <article><small>PUBLISHED PROMPT</small><strong className={status?.promptConfigured ? "ok" : "wait"}>{status?.promptConfigured ? t("Тохируулсан", "Configured") : t("ID хүлээж байна", "Waiting for ID")}</strong><span>{t("OpenAI дээр publish хийсэн prompt", "Prompt published in OpenAI")}</span></article>
       <article><small>{t("МЭДЛЭГ", "KNOWLEDGE")}</small><strong className={status?.approvedSources ? "ok" : "wait"}>{status?.approvedSources || 0}</strong><span>{t("Approved + Public эх сурвалж", "Approved + Public sources")}</span></article>
       <article><small>{t("ЭНЭ САР", "THIS MONTH")}</small><strong>{usage?.requests || 0}</strong><span>{t("AI хүсэлт", "AI requests")} · {usage?.activeSubjects || 0} {t("хэрэглэгч", "users")}</span></article>
       <article><small>{t("ТООЦООЛСОН ЗАРДАЛ", "ESTIMATED COST")}</small><strong>${(usage?.estimatedCostUsd || 0).toFixed(4)}</strong><span>{t("OpenAI Billing нь эцсийн дүн", "OpenAI Billing is authoritative")}</span></article>
@@ -106,16 +113,19 @@ export default function HomeAiControlPage() {
         <div className="home-ai-panel-head"><div><span>01 · OPERATION</span><h2>{t("Ажиллагаа ба model", "Operation & models")}</h2></div><b className={`mode ${settings.mode}`}>{settings.mode}</b></div>
         <div className="home-ai-form-grid">
           <label>{t("Ажиллах горим", "Operating mode")}<select value={settings.mode} onChange={event => setSettings(current => ({ ...current, mode: event.target.value as HomeAiControlSettings["mode"] }))}><option value="disabled">Disabled</option><option value="test">Test</option><option value="production">Production</option></select></label>
+          <label className="wide">OpenAI Published Prompt ID<input value={settings.publishedPromptId} onChange={event => setSettings(current => ({ ...current, publishedPromptId: event.target.value.trim() }))} placeholder="pmpt_…" autoComplete="off" /><small>{t("Энд зөвхөн Prompt ID оруулна. API key нь server-ийн нууц environment variable хэвээр байна.", "Enter only the Prompt ID here. The API key remains a secret server environment variable.")}</small><small className="home-ai-deprecation-note">{t("OpenAI reusable Prompt ID-г 2026-11-30-нд зогсоохоор зарласан. Энэ нь шилжилтийн тохиргоо бөгөөд хугацаанаас өмнө prompt-ийг version-тэй код руу шилжүүлэх шаардлагатай.", "OpenAI has scheduled reusable Prompt IDs to shut down on 2026-11-30. This is a transitional setting and the prompt must move to versioned application code before then.")}</small></label>
           <label>{t("Хурдан model", "Fast model")}<input value={settings.fastModel} onChange={event => setSettings(current => ({ ...current, fastModel: event.target.value }))} /></label>
           <label>{t("Нарийвчилсан model", "Complex model")}<input value={settings.complexModel} onChange={event => setSettings(current => ({ ...current, complexModel: event.target.value }))} /></label>
           <label>{t("Хариултын max token", "Max output tokens")}<input type="number" min="120" max="2000" value={settings.maxOutputTokens} onChange={event => updateNumber("maxOutputTokens", event.target.value)} /></label>
         </div>
         <div className="home-ai-readiness">
           <span className={status?.keyConfigured ? "ready" : ""}>{t("Тусдаа OpenAI key", "Separate OpenAI key")}</span>
+          <span className={status?.promptConfigured ? "ready" : ""}>{t("Published Prompt ID", "Published Prompt ID")}</span>
           <span className={status?.identitySaltConfigured ? "ready" : ""}>{t("Нууц identity salt", "Private identity salt")}</span>
           <span className={status?.approvedSources ? "ready" : ""}>{t("Баталгаажсан мэдлэг", "Approved knowledge")}</span>
         </div>
-        <div className="home-ai-test-row"><button type="button" onClick={runTest} disabled={testing || !status?.readyForTest}>{testing ? t("Тестэлж байна…", "Testing…") : t("OpenAI холболт тестлэх", "Test OpenAI connection")}</button><small>{t("Test нь богино, төлбөртэй Responses API хүсэлт илгээнэ.", "The test sends one short, billable Responses API request.")}</small></div>
+        <div className="home-ai-test-row"><button type="button" onClick={runTest} disabled={testing || !status?.readyForTest}>{testing ? t("Тестэлж байна…", "Testing…") : t("Prompt холболт тестлэх", "Test prompt connection")}</button><small>{t("Published Prompt ID болон server-ийн API key-г ашиглан богино Responses API тест хийнэ.", "Runs one short Responses API test using the Published Prompt ID and server API key.")}</small></div>
+        {payload?.updatedAt ? <p className="home-ai-note">{t("Сүүлд өөрчилсөн", "Last changed")}: {new Date(payload.updatedAt).toLocaleString()} · {payload.updatedBy || "—"}</p> : null}
       </section>
 
       <section className="home-ai-panel">
@@ -134,15 +144,16 @@ export default function HomeAiControlPage() {
 
       <section className="home-ai-panel privacy">
         <div className="home-ai-panel-head"><div><span>03 · PRIVACY</span><h2>{t("Нууцлал ба өгөгдлийн хил", "Privacy & data boundary")}</h2></div></div>
-        <ul><li><b>✓</b>{t("Түүхий чат D1-д хадгалахгүй", "Raw chat is not stored in D1")}</li><li><b>✓</b>{t("OpenAI Responses API-д store: false", "OpenAI Responses API uses store: false")}</li><li><b>✓</b>{t("Зөвшөөрөлгүйгээр асуулт илгээхгүй", "No question is sent without consent")}</li><li><b>✓</b>{t("Зөвхөн сүүлийн 6 мессежийн түр context", "Only the latest 6 messages are temporary context")}</li><li><b>✓</b>{t("Имэйл, social, кампанит ажил гүйцэтгэхгүй", "No email, social or campaign execution")}</li></ul>
+        <div className="home-ai-form-grid"><label className="wide">{t("Ярианы түүх хадгалах хоног", "Conversation retention days")}<input type="number" min="1" max="365" value={settings.historyRetentionDays} onChange={event => updateNumber("historyRetentionDays", event.target.value)} /><small>{t("Хугацаа дууссан түүх автоматаар цэвэрлэгдэнэ.", "Expired conversation history is removed automatically.")}</small></label></div>
+        <ul><li><b>✓</b>{t(`Нэвтэрсэн хэрэглэгчийн яриа D1-д ${settings.historyRetentionDays} хүртэл хоног хадгалагдана`, `Signed-in conversation history is stored in D1 for up to ${settings.historyRetentionDays} days`)}</li><li><b>✓</b>{t("OpenAI Responses API-д store: false", "OpenAI Responses API uses store: false")}</li><li><b>✓</b>{t("Privacy v2 зөвшөөрөлгүйгээр шинэ асуулт илгээхгүй", "No new question is sent without Privacy v2 consent")}</li><li><b>✓</b>{t("Хариулт боловсруулахдаа зөвхөн сүүлийн 6 мессеж ашиглана", "Only the latest 6 messages are used to prepare a response")}</li><li><b>✓</b>{t("Имэйл, social, кампанит ажил гүйцэтгэхгүй", "No email, social or campaign execution")}</li></ul>
       </section>
 
       <section className="home-ai-panel audit">
         <div className="home-ai-panel-head"><div><span>04 · AUDIT</span><h2>{t("Сүүлийн үйл ажиллагаа", "Recent activity")}</h2></div><small>{usage?.month}</small></div>
-        <div className="home-ai-audit-list">{payload?.audit.length ? payload.audit.map((row, index) => <div key={`${row.createdAt}-${index}`}><span><b>{row.status}</b>{row.eventType}</span><small>{row.model || "local"} · {new Date(row.createdAt).toLocaleString()}</small></div>) : <p>{t("Одоогоор audit event бүртгэгдээгүй.", "No audit events recorded yet.")}</p>}</div>
+        <div className="home-ai-audit-list">{payload?.audit.length ? payload.audit.map((row, index) => <div key={`${row.createdAt}-${index}`}><span><b>{row.status}</b>{row.eventType}{row.detail ? <em>{row.detail}</em> : null}</span><small>{row.model || "local"} · {new Date(row.createdAt).toLocaleString()}</small></div>) : <p>{t("Одоогоор audit event бүртгэгдээгүй.", "No audit events recorded yet.")}</p>}</div>
       </section>
 
-      <footer className="home-ai-actions"><span>{t("Production горим зөвхөн key, identity salt, баталгаажсан мэдлэг бэлэн үед нээгдэнэ.", "Production is allowed only when the key, identity salt and approved knowledge are ready.")}</span><button type="submit" disabled={saving}>{saving ? t("Хадгалж байна…", "Saving…") : t("Тохиргоо хадгалах", "Save settings")}</button></footer>
+      <footer className="home-ai-actions"><span>{t("Production горимд server API key, Published Prompt ID, identity salt болон баталгаажсан мэдлэг шаардлагатай.", "Production requires the server API key, Published Prompt ID, identity salt and approved knowledge.")}</span><button type="submit" disabled={saving}>{saving ? t("Хадгалж байна…", "Saving…") : t("Тохиргоо хадгалах", "Save settings")}</button></footer>
     </form>
   </main>;
 }

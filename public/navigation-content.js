@@ -45,6 +45,24 @@ function createMoreItem(menus){
   item.addEventListener('mouseleave',()=>{if(innerWidth>920)closeNavigationMore()});item.append(button,panel);navigationMoreItem=item;navigationMoreButton=button;return item;
 }
 
+function configuredEnvironments(config){return Array.isArray(config?.environments)?config.environments.filter(row=>row&&row.visible!==false):[]}
+function applyEnvironmentConfig(config){
+  const rows=configuredEnvironments(config),toMenu=en=>({
+    k:en?'iBeX ENVIRONMENT • WEB + MOBILE':'iBeX ОРЧИН • ВЕБ + МОБАЙЛ',
+    t:en?'Choose your environment':'Ашиглах орчноо сонгоно уу',
+    i:en?'Open an available iBeX environment based on its current operating status.':'Одоогийн ажиллагааны төлөвт тохирсон iBeX орчноо сонгоно.',
+    foot:en?'Environment names, status and availability are maintained by the site administrator.':'Орчны нэр, төлөв болон харагдах байдлыг сайтын админ удирдана.',
+    groups:rows.map(row=>({t:en?(row.id==='web'?'Web environment':'Mobile environment'):(row.id==='web'?'Веб орчин':'Мобайл орчин'),items:[[
+      en?row.nameEn:row.nameMn,
+      en?row.descriptionEn:row.descriptionMn,
+      {href:row.href||'',environmentTarget:row.id,status:row.status==='preview'?'preview':'active'}
+    ]] })),
+  });
+  headerMenus.environment=toMenu(false);headerMenusEN.environment=toMenu(true);
+  menuExperience.mn.environment={e:'ОРЧНЫ СОНГОЛТ',t:'Веб болон мобайл орчин.',p:'Нэр, төлөв болон нэвтрэх боломж нь админ тохиргоотой уялдана.',s:`${rows.length} ОРЧИН`,c:''};
+  menuExperience.en.environment={e:'ENVIRONMENT CHOICE',t:'Web and mobile environments.',p:'Names, status and availability follow the published administrator settings.',s:`${rows.length} ENVIRONMENT${rows.length===1?'':'S'}`,c:''};
+}
+
 function rebuildHeaderMenus(config){
   const nav=document.getElementById('primaryNav'),environmentButton=nav.querySelector('.menu-trigger[data-menu="environment"]'),environmentItem=environmentButton?.closest('.navitem'),pricingButton=nav.querySelector('.menu-trigger[data-menu="pricing"]'),pricingItem=pricingButton?.closest('.navitem'),controls=nav.querySelector('.view-controls');
   if(!environmentButton||!environmentItem||!pricingButton||!pricingItem||!controls)return;
@@ -58,7 +76,7 @@ function rebuildHeaderMenus(config){
   for(const menu of directTail){const created=createManagedMenuItem(menu);nav.insertBefore(created.item,controls);tailButtons.push(created.button)}
   for(const menu of overflow){const created=createManagedMenuItem(menu,true);nav.insertBefore(created.item,controls);tailButtons.push(created.button)}
   if(overflow.length)nav.insertBefore(createMoreItem(overflow),controls);
-  environmentItem.hidden=config.environmentVisible===false;
+  environmentItem.hidden=config.environmentVisible===false||configuredEnvironments(config).length===0;
   menuTriggers.splice(0,menuTriggers.length,...primaryButtons,environmentButton,pricingButton,...tailButtons);
   ui.mn.nav=[...primary.map(menu=>menu.labelMn),'iBeX орчин','Үнэ',...tail.map(menu=>menu.labelMn)];ui.en.nav=[...primary.map(menu=>menu.labelEn),'iBeX environment','Pricing',...tail.map(menu=>menu.labelEn)];
 }
@@ -66,9 +84,10 @@ function rebuildHeaderMenus(config){
 function applyPublishedNavigation(config){
   if(!config||!Array.isArray(config.menus))return;
   publishedNavigation=config;
+  applyEnvironmentConfig(config);
   for(const menu of config.menus){headerMenus[menu.id]=localizedNavigationMenu(menu,false);headerMenusEN[menu.id]=localizedNavigationMenu(menu,true);menuExperience.mn[menu.id]={e:menu.feature.eyebrowMn,t:menu.feature.titleMn,p:menu.feature.descriptionMn,s:menu.feature.statMn,c:menu.feature.ctaMn};menuExperience.en[menu.id]={e:menu.feature.eyebrowEn,t:menu.feature.titleEn,p:menu.feature.descriptionEn,s:menu.feature.statEn,c:menu.feature.ctaEn}}
   rebuildHeaderMenus(config);
-  if(activeHeaderMenu==='environment'&&config.environmentVisible===false)closeHeaderMenu();
+  if(activeHeaderMenu==='environment'&&(config.environmentVisible===false||configuredEnvironments(config).length===0))closeHeaderMenu();
   else if(activeHeaderMenu&&activeHeaderMenu!=='environment'&&!config.menus.find(menu=>menu.id===activeHeaderMenu&&menu.enabled!==false&&menu.archived!==true)&&activeHeaderMenu!=='pricing')closeHeaderMenu();
   applyLanguage();
 }
@@ -88,7 +107,7 @@ const navigationLanguageRenderer=applyLanguage;
 function renderWebsiteAccountIdentity(){const link=document.getElementById('webAccountLink'),title=document.getElementById('webAccountTitle'),copy=document.getElementById('webAccountText'),register=document.getElementById('headerRegisterLink'),admin=document.getElementById('adminLoginLink'),logout=document.getElementById('webAccountLogout'),accountLink=document.getElementById('headerAccountLink'),accountAvatar=document.getElementById('headerAccountAvatar'),accountTitle=document.getElementById('headerAccountTitle'),accountName=document.getElementById('headerAccountName');if(!websiteAccountUser){link.hidden=false;admin.hidden=false;logout.hidden=true;accountLink.hidden=true;loginLink.hidden=false;loginWrap.classList.remove('account-authenticated');loginLink.setAttribute('aria-label',currentLang==='en'?'Open sign-in menu':'Нэвтрэх цэс нээх');return;}const name=websiteAccountUser.fullName||websiteAccountUser.email||'',initial=(name.trim().charAt(0)||'I').toUpperCase();link.hidden=true;admin.hidden=true;logout.hidden=false;accountLink.hidden=false;loginLink.hidden=false;if(register)register.hidden=true;loginWrap.classList.add('account-authenticated');accountAvatar.innerHTML=websiteAccountUser.profileImageUrl?`<img src="${websiteAccountUser.profileImageUrl}" alt="">`:initial;accountTitle.textContent=currentLang==='en'?'My iBeX':'Миний iBeX';accountName.textContent=name;accountLink.setAttribute('aria-label',`${accountTitle.textContent}: ${name}`);loginLink.innerHTML='<span class="chev" aria-hidden="true">⌄</span>';loginLink.setAttribute('aria-label',currentLang==='en'?'Open account menu':'Хэрэглэгчийн цэс нээх')}
 applyLanguage=function(){if(publishedNavigation){const visible=publishedNavigation.menus.filter(menu=>menu.archived!==true&&menu.enabled!==false),primary=visible.slice(0,4),tail=visible.slice(4);ui.mn.nav=[...primary.map(menu=>menu.labelMn),'iBeX орчин','Үнэ',...tail.map(menu=>menu.labelMn)];ui.en.nav=[...primary.map(menu=>menu.labelEn),'iBeX environment','Pricing',...tail.map(menu=>menu.labelEn)]}navigationLanguageRenderer();if(navigationMoreButton){navigationMoreButton.textContent=currentLang==='en'?'More':'Бусад';const chev=document.createElement('span');chev.className='chev';chev.textContent='⌄';navigationMoreButton.append(' ',chev);navigationMoreItem.querySelectorAll('[data-more-menu]').forEach(button=>{const menu=publishedNavigation?.menus.find(row=>row.id===button.dataset.moreMenu);button.textContent=currentLang==='en'?menu?.labelEn||'':menu?.labelMn||''})}renderWebsiteAccountIdentity()};
 
-document.addEventListener('click',event=>{if(!event.target.closest?.('.navigation-more'))closeNavigationMore();const target=event.target.closest?.('.mega-item[data-href],.detail-item[data-href]'),href=target?.dataset?.href;if(!href)return;event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();if(target.dataset.environmentTarget==='web'&&globalThis.openOrganization){globalThis.openOrganization(target);return}if(target.dataset.newTab==='1')window.open(href,'_blank','noopener,noreferrer');else window.top.location.href=href},true);
+document.addEventListener('click',event=>{if(!event.target.closest?.('.navigation-more'))closeNavigationMore();const target=event.target.closest?.('.mega-item[data-href],.detail-item[data-href]'),href=target?.dataset?.href;if(!href)return;event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();if(target.dataset.environmentTarget==='web'&&href==='/organization'&&globalThis.openOrganization){globalThis.openOrganization(target);return}if(target.dataset.newTab==='1')window.open(href,'_blank','noopener,noreferrer');else window.top.location.href=href},true);
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&navigationMoreItem?.classList.contains('open')){closeNavigationMore();navigationMoreButton?.focus()}});
 fetch('/api/content',{cache:'no-store'}).then(async response=>{if(!response.ok)return;const payload=await response.json();applyPublishedNavigation(payload?.content?.navigation);if(activeHeaderMenu)renderHeaderMenu(activeHeaderMenu);if(currentDetailMenu)renderDetailContent(currentDetailMenu)}).catch(()=>{});
 fetch('/api/account/session',{cache:'no-store'}).then(async response=>{if(!response.ok)return;const payload=await response.json();if(!payload.user)return;websiteAccountUser=payload.user;applyLanguage()}).catch(()=>{});

@@ -1,17 +1,36 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useSiteLanguage } from "../lib/use-site-language";
+import type { EnvironmentConfig } from "../lib/navigation";
 
 export default function MobileEnvironmentPage() {
-  const { t } = useSiteLanguage();
+  const { t, lang } = useSiteLanguage();
+  const [adminPreview] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("adminPreview") === "1");
+  const [environment, setEnvironment] = useState<EnvironmentConfig | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch(adminPreview ? "/api/admin/navigation" : "/api/content", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("environment_unavailable")))
+      .then((payload) => {
+        const navigation = adminPreview ? payload?.published : payload?.content?.navigation;
+        setEnvironment(navigation?.environments?.find((row: EnvironmentConfig) => row.id === "mobile") || null);
+      })
+      .catch(() => setEnvironment(null))
+      .finally(() => setLoaded(true));
+  }, [adminPreview]);
+
+  const available = Boolean(environment && (environment.visible || adminPreview));
+  const name = environment ? (lang === "en" ? environment.nameEn : environment.nameMn) : "iBeX Mobile";
 
   return (
     <main className="mobile-preview-page">
       <header className="mobile-preview-header">
         <div className="mobile-preview-heading">
-          <strong>iBeX Mobile</strong>
-          <span>{t("Туршилтын орчин", "Interactive preview")}</span>
+          <strong>{name}</strong>
+          <span>{environment?.status === "active" ? t("Одоо ажиллаж байна", "Active now") : t("Туршилтын орчин", "Preview environment")}</span>
         </div>
         <Link
           className="mobile-preview-close"
@@ -23,13 +42,13 @@ export default function MobileEnvironmentPage() {
         </Link>
       </header>
 
-      <iframe
+      {!loaded ? <div className="environment-unavailable">{t("Орчны мэдээллийг ачаалж байна…", "Loading environment…")}</div> : available ? <iframe
         className="mobile-preview-frame"
-        src="/mobile-preview/index.html"
-        title={t("iBeX мобайл орчны туршилтын хувилбар", "iBeX Mobile interactive preview")}
+        src={`/mobile-preview/index.html${adminPreview ? "?adminPreview=1" : ""}`}
+        title={name}
         loading="eager"
         referrerPolicy="same-origin"
-      />
+      /> : <div className="environment-unavailable"><strong>{t("Энэ орчин одоогоор нийтэд харагдахгүй байна", "This environment is not currently available")}</strong><Link href="/">{t("Нүүр хуудас руу буцах", "Return to home")}</Link></div>}
     </main>
   );
 }

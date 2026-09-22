@@ -6,6 +6,7 @@ import {
   cloneDefaultNavigation,
   NAVIGATION_LIMITS,
   NAVIGATION_ICON_OPTIONS,
+  type EnvironmentConfig,
   type NavigationConfig,
   type NavigationGroup,
   type NavigationItem,
@@ -131,6 +132,13 @@ export default function NavigationAdminPage() {
 
   function updateConfig(update: (config: NavigationConfig) => NavigationConfig) {
     setDraft((current) => current ? update(current) : current);
+  }
+
+  function updateEnvironment(id: EnvironmentConfig["id"], update: (environment: EnvironmentConfig) => EnvironmentConfig) {
+    updateConfig((current) => ({
+      ...current,
+      environments: current.environments.map((environment) => environment.id === id ? update(environment) : environment),
+    }));
   }
 
   function updateMenu(update: (menu: NavigationMenu) => NavigationMenu) {
@@ -311,7 +319,7 @@ export default function NavigationAdminPage() {
         <div>
           <span>HEADER CONTENT</span>
           <h1>{t("Толгой цэсний мэдээлэл", "Header menu content")}</h1>
-          <p>{t("Үндсэн цэсүүдийг удирдаж, iBeX орчны харагдах эсэхийг тусад нь тохируулна. Үнэ болон орчны дэд бүтэц хамгаалагдана.", "Manage the main menus and control iBeX environment visibility separately. Pricing and the environment structure remain protected.")}</p>
+          <p>{t("Үндсэн цэсүүд болон iBeX орчны нэр, тайлбар, төлөв, холбоос, харагдах байдлыг нэг дор удирдана.", "Manage the main menus and each iBeX environment name, description, status, link and visibility in one place.")}</p>
         </div>
         <div className="navigation-admin-actions">
           <button type="button" onClick={() => setPreview((value) => !value)}>{preview ? t("Урьдчилан харахыг хаах", "Close preview") : t("Урьдчилан харах", "Preview")}</button>
@@ -324,16 +332,36 @@ export default function NavigationAdminPage() {
       {message ? <div className="navigation-admin-alert success" role="status">{message}</div> : null}
 
       <section className="navigation-protected-menu" aria-labelledby="environment-control-title">
-        <div>
-          <span>{t("ХАМГААЛАГДСАН ЦЭС", "PROTECTED MENU")}</span>
-          <h2 id="environment-control-title">{t("iBeX орчин", "iBeX environment")}</h2>
-          <p>{t("Зөвхөн толгой цэсэнд харуулах эсэхийг удирдана. Веб, мобайл орчны нэр, дэд цэс болон холбоос өөрчлөгдөхгүй.", "Only control whether it appears in the header. Web and mobile names, submenus and links cannot be changed here.")}</p>
+        <div className="navigation-environment-head">
+          <div>
+            <span>{t("ОРЧНЫ УДИРДЛАГА", "ENVIRONMENT CONTROL")}</span>
+            <h2 id="environment-control-title">{t("iBeX орчин", "iBeX environment")}</h2>
+            <p>{t("Толгой цэс болон хэрэглэгчийн сонголтод харагдах веб, мобайл орчны мэдээллийг удирдана.", "Manage the web and mobile environment information shown in the header and environment chooser.")}</p>
+          </div>
+          <label className="navigation-environment-toggle">
+            <input type="checkbox" checked={draft.environmentVisible} onChange={(event) => updateConfig((current) => ({ ...current, environmentVisible: event.target.checked }))} />
+            <span aria-hidden="true"></span>
+            <strong>{draft.environmentVisible ? t("Цэс харагдана", "Menu visible") : t("Цэс нуугдана", "Menu hidden")}</strong>
+          </label>
         </div>
-        <label className="navigation-environment-toggle">
-          <input type="checkbox" checked={draft.environmentVisible} onChange={(event) => updateConfig((current) => ({ ...current, environmentVisible: event.target.checked }))} />
-          <span aria-hidden="true"></span>
-          <strong>{draft.environmentVisible ? t("Харагдана", "Visible") : t("Нуугдана", "Hidden")}</strong>
-        </label>
+        <div className="navigation-environment-grid">
+          {draft.environments.map((environment) => (
+            <article key={environment.id} className="navigation-environment-card">
+              <header>
+                <div><small>{environment.id.toUpperCase()}</small><strong>{lang === "en" ? environment.nameEn : environment.nameMn}</strong></div>
+                <div className="navigation-environment-card-actions"><a href={`${environment.href}${environment.href.includes("?") ? "&" : "?"}adminPreview=1`} target="_blank" rel="noreferrer">{t("Админ урьдчилан харах", "Admin preview")}</a><label className="navigation-switch"><input type="checkbox" checked={environment.visible} onChange={(event) => updateEnvironment(environment.id, (row) => ({ ...row, visible: event.target.checked }))} />{environment.visible ? t("Харагдана", "Visible") : t("Нуугдана", "Hidden")}</label></div>
+              </header>
+              <div className="navigation-field-grid">
+                <label>{t("Орчны нэр • MN", "Environment name • MN")}<input value={environment.nameMn} onChange={(event) => updateEnvironment(environment.id, (row) => ({ ...row, nameMn: event.target.value }))} /></label>
+                <label>{t("Орчны нэр • EN", "Environment name • EN")}<input value={environment.nameEn} onChange={(event) => updateEnvironment(environment.id, (row) => ({ ...row, nameEn: event.target.value }))} /></label>
+                <label>{t("Тайлбар • MN", "Description • MN")}<textarea value={environment.descriptionMn} onChange={(event) => updateEnvironment(environment.id, (row) => ({ ...row, descriptionMn: event.target.value }))} /></label>
+                <label>{t("Тайлбар • EN", "Description • EN")}<textarea value={environment.descriptionEn} onChange={(event) => updateEnvironment(environment.id, (row) => ({ ...row, descriptionEn: event.target.value }))} /></label>
+                <label>{t("Ажиллагааны төлөв", "Operating status")}<select value={environment.status} onChange={(event) => updateEnvironment(environment.id, (row) => ({ ...row, status: event.target.value as EnvironmentConfig["status"] }))}><option value="active">{t("Одоо ажиллаж байна", "Active now")}</option><option value="preview">{t("Туршилтын орчин", "Preview environment")}</option></select></label>
+                <label>{t("Нээх холбоос", "Destination route")}<input value={environment.href} onChange={(event) => updateEnvironment(environment.id, (row) => ({ ...row, href: event.target.value }))} /></label>
+              </div>
+            </article>
+          ))}
+        </div>
       </section>
 
       <nav className="navigation-menu-tabs" role="tablist" aria-label={t("Удирдах толгой цэс", "Header menu to manage")}>

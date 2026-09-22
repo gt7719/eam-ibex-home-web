@@ -13,6 +13,8 @@ export type HomeAiControlSettings = {
   requestsPerMinute: number;
   requestsPerDay: number;
   maxOutputTokens: number;
+  publishedPromptId: string;
+  historyRetentionDays: number;
 };
 
 export const HOME_AI_SETTINGS_KEY = "homeAiControl";
@@ -28,6 +30,8 @@ export const DEFAULT_HOME_AI_SETTINGS: HomeAiControlSettings = {
   requestsPerMinute: 6,
   requestsPerDay: 10,
   maxOutputTokens: 520,
+  publishedPromptId: "",
+  historyRetentionDays: 90,
 };
 
 function boundedNumber(value: unknown, fallback: number, minimum: number, maximum: number) {
@@ -38,6 +42,11 @@ function boundedNumber(value: unknown, fallback: number, minimum: number, maximu
 function safeModel(value: unknown, fallback: string) {
   const model = typeof value === "string" ? value.trim() : "";
   return /^[a-zA-Z0-9._:-]{2,80}$/.test(model) ? model : fallback;
+}
+
+function safePromptId(value: unknown) {
+  const promptId = typeof value === "string" ? value.trim() : "";
+  return !promptId || /^pmpt_[a-zA-Z0-9_-]{6,200}$/.test(promptId) ? promptId : "";
 }
 
 export function normalizeHomeAiSettings(value: unknown): HomeAiControlSettings {
@@ -57,17 +66,19 @@ export function normalizeHomeAiSettings(value: unknown): HomeAiControlSettings {
     requestsPerMinute: Math.round(boundedNumber(row.requestsPerMinute, DEFAULT_HOME_AI_SETTINGS.requestsPerMinute, 1, 120)),
     requestsPerDay: Math.round(boundedNumber(row.requestsPerDay, DEFAULT_HOME_AI_SETTINGS.requestsPerDay, 1, 10_000)),
     maxOutputTokens: Math.round(boundedNumber(row.maxOutputTokens, DEFAULT_HOME_AI_SETTINGS.maxOutputTokens, 120, 2_000)),
+    publishedPromptId: safePromptId(row.publishedPromptId),
+    historyRetentionDays: Math.round(boundedNumber(row.historyRetentionDays, DEFAULT_HOME_AI_SETTINGS.historyRetentionDays, 1, 365)),
   };
 }
 
 export async function readHomeAiSettings(db: CustomerAiDatabase) {
-  const row = await db.prepare("SELECT value_json, updated_at FROM site_content WHERE key = ? LIMIT 1")
+  const row = await db.prepare("SELECT value_json, updated_at, updated_by FROM site_content WHERE key = ? LIMIT 1")
     .bind(HOME_AI_SETTINGS_KEY)
-    .first<{ value_json: string; updated_at: string }>();
-  if (!row) return { settings: DEFAULT_HOME_AI_SETTINGS, revision: null as string | null };
+    .first<{ value_json: string; updated_at: string; updated_by: string | null }>();
+  if (!row) return { settings: DEFAULT_HOME_AI_SETTINGS, revision: null as string | null, updatedAt: null as string | null, updatedBy: null as string | null };
   try {
-    return { settings: normalizeHomeAiSettings(JSON.parse(row.value_json)), revision: row.updated_at };
+    return { settings: normalizeHomeAiSettings(JSON.parse(row.value_json)), revision: row.updated_at, updatedAt: row.updated_at, updatedBy: row.updated_by };
   } catch {
-    return { settings: DEFAULT_HOME_AI_SETTINGS, revision: row.updated_at };
+    return { settings: DEFAULT_HOME_AI_SETTINGS, revision: row.updated_at, updatedAt: row.updated_at, updatedBy: row.updated_by };
   }
 }

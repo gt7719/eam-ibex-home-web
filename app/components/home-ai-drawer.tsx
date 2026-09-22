@@ -14,6 +14,9 @@ export function HomeAiDrawer({ open, onOpen, onClose }: { open: boolean; onOpen:
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [quotaBlocked, setQuotaBlocked] = useState(false);
+  const [privacyRequired, setPrivacyRequired] = useState(false);
+  const [acceptingPrivacy, setAcceptingPrivacy] = useState(false);
+  const [retentionDays, setRetentionDays] = useState(90);
   const [error, setError] = useState("");
   const contentRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
@@ -38,6 +41,8 @@ export function HomeAiDrawer({ open, onOpen, onClose }: { open: boolean; onOpen:
       .then(async (response) => ({ response, payload: await response.json().catch(() => ({})) }))
       .then(({ response, payload }) => {
         if (!response.ok || !Array.isArray(payload.messages)) throw new Error("history_unavailable");
+        setPrivacyRequired(payload.privacyCurrent === false);
+        if (Number.isFinite(Number(payload.retentionDays))) setRetentionDays(Number(payload.retentionDays));
         setMessages(payload.messages.filter((message: Message) =>
           (message?.role === "user" || message?.role === "assistant") && typeof message.content === "string",
         ));
@@ -72,7 +77,7 @@ export function HomeAiDrawer({ open, onOpen, onClose }: { open: boolean; onOpen:
   async function ask(event: FormEvent) {
     event.preventDefault();
     const question = input.trim();
-    if (!question || working || quotaBlocked) return;
+    if (!question || working || quotaBlocked || privacyRequired) return;
     const history = messages.slice(-6);
     setInput(""); if (composerRef.current) composerRef.current.style.height = "44px"; setError(""); setWorking(true);
     setMessages((current) => [...current, { role: "user", content: question }]);
@@ -83,6 +88,7 @@ export function HomeAiDrawer({ open, onOpen, onClose }: { open: boolean; onOpen:
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok || !payload.answer) {
       setError(payload.error || t("Home AI одоогоор хариулж чадсангүй.", "Home AI could not answer right now."));
+      if (payload.code === "PRIVACY_RECONSENT_REQUIRED") setPrivacyRequired(true);
       if (typeof payload.code === "string" && payload.code.startsWith("QUOTA_") && payload.code !== "QUOTA_MINUTE") setQuotaBlocked(true);
     }
     else setMessages((current) => [...current, { role: "assistant", content: payload.answer }]);
@@ -103,6 +109,15 @@ export function HomeAiDrawer({ open, onOpen, onClose }: { open: boolean; onOpen:
     setClearing(false);
   }
 
+  async function acceptPrivacy() {
+    if (acceptingPrivacy) return;
+    setAcceptingPrivacy(true); setError("");
+    const response = await fetch("/api/account/privacy-consent", { method: "POST" }).catch(() => null);
+    if (!response?.ok) setError(t("Нууцлалын зөвшөөрлийг хадгалж чадсангүй. Дахин оролдоно уу.", "Privacy consent could not be saved. Please try again."));
+    else setPrivacyRequired(false);
+    setAcceptingPrivacy(false);
+  }
+
   return <>
     <button className="account-home-ai-launch" type="button" onClick={onOpen} aria-label="Home AI"><span aria-hidden="true">AI</span><span><strong>Home AI</strong><small>{t("24/7 хэрэглэгчийн туслах", "24/7 customer assistant")}</small></span></button>
     <div className={`home-ai-drawer-layer${open ? " is-open" : ""}`} aria-hidden={!open} role="presentation" onMouseDown={onClose}>
@@ -110,10 +125,11 @@ export function HomeAiDrawer({ open, onOpen, onClose }: { open: boolean; onOpen:
       <header><div><span>HOME AI</span><h2 id="home-ai-title">Home AI</h2><p>{t("Зөвхөн батлагдсан нийтэд зориулсан эх сурвалжаас хариулна.", "Answers from approved public sources only.")}</p></div><div className="home-ai-header-actions"><button className="home-ai-clear" type="button" onClick={clearHistory} disabled={working || clearing || loadingHistory || messages.length === 0}>{clearing ? t("Цэвэрлэж байна…", "Clearing…") : t("Түүх цэвэрлэх", "Clear history")}</button><button type="button" onClick={onClose} aria-label={t("Хаах", "Close")}>×</button></div></header>
       <div className="home-ai-drawer-content" ref={contentRef}>
         <div className="home-ai-boundary"><strong>{t("Хэрэглэгчийн туслах", "Customer assistant")}</strong><span>{t("Тенантын ажлын өгөгдөл, төлбөр, Marketing AI-д хандахгүй бөгөөд гадаад үйлдэл гүйцэтгэхгүй.", "It cannot access tenant work data, payments, Marketing AI, or execute external actions.")}</span></div>
+        {privacyRequired ? <div className="home-ai-privacy-consent" role="status"><strong>{t("Нууцлалын мэдэгдэл шинэчлэгдсэн", "Privacy notice updated")}</strong><p>{t(`Нэвтэрсэн хэрэглэгчийн Home AI яриа ${retentionDays} хүртэл хоног хадгалагдаж, хариулт боловсруулахдаа хамгийн ихдээ сүүлийн 6 мессежийг OpenAI-д store: false тохиргоотой илгээнэ.`, `Signed-in Home AI conversations are retained for up to ${retentionDays} days. Up to six recent messages are sent to OpenAI with store: false to prepare a response.`)}</p><a href="/privacy" target="_blank" rel="noreferrer">{t("Нууцлалын бодлого унших", "Read privacy policy")}</a><button type="button" onClick={acceptPrivacy} disabled={acceptingPrivacy}>{acceptingPrivacy ? t("Хадгалж байна…", "Saving…") : t("Зөвшөөрч үргэлжлүүлэх", "Accept and continue")}</button></div> : null}
         <div className="home-ai-messages" aria-live="polite">{loadingHistory ? <p className="home-ai-empty">{t("Өмнөх яриаг ачаалж байна…", "Loading previous conversation…")}</p> : messages.length ? messages.map((message, index) => <article key={`${message.role}-${index}`} className={message.role}><small>{message.role === "user" ? t("Та", "You") : "Home AI"}</small><p>{message.content}</p></article>) : <p className="home-ai-empty">{t("Багц, бүтээгдэхүүн, нэвтрэлт эсвэл iBeX-ийн ерөнхий боломжийн талаар асуугаарай.", "Ask about plans, products, sign-in, or general iBeX capabilities.")}</p>}</div>
         {error ? <AccountAlert type="error">{error}</AccountAlert> : null}
       </div>
-      <form className="home-ai-drawer-form" onSubmit={ask}><textarea ref={composerRef} rows={1} value={input} onChange={(event) => { setInput(event.target.value); resizeComposer(event.currentTarget); }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} maxLength={1500} placeholder={quotaBlocked ? t("Home AI-ийн ашиглах хугацаа шинэчлэгдэхийг хүлээж байна", "Waiting for the Home AI allowance to renew") : t("Асуултаа бичнэ үү…", "Write your question…")} required aria-keyshortcuts="Enter" disabled={working || clearing || loadingHistory || quotaBlocked} /><button className="account-submit" type="submit" disabled={working || clearing || loadingHistory || quotaBlocked}>{working ? t("Хариулж байна…", "Answering…") : t("Асуух", "Ask")}</button></form>
+      <form className="home-ai-drawer-form" onSubmit={ask}><textarea ref={composerRef} rows={1} value={input} onChange={(event) => { setInput(event.target.value); resizeComposer(event.currentTarget); }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} maxLength={1500} placeholder={privacyRequired ? t("Эхлээд нууцлалын мэдэгдлийг зөвшөөрнө үү", "Please accept the privacy notice first") : quotaBlocked ? t("Home AI-ийн ашиглах хугацаа шинэчлэгдэхийг хүлээж байна", "Waiting for the Home AI allowance to renew") : t("Асуултаа бичнэ үү…", "Write your question…")} required aria-keyshortcuts="Enter" disabled={working || clearing || loadingHistory || quotaBlocked || privacyRequired} /><button className="account-submit" type="submit" disabled={working || clearing || loadingHistory || quotaBlocked || privacyRequired}>{working ? t("Хариулж байна…", "Answering…") : t("Асуух", "Ask")}</button></form>
     </aside>
     </div>
   </>;

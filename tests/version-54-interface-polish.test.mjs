@@ -22,7 +22,7 @@ test("mobile environment exposes the approved interactive preview with a safe ex
   assert.match(page, /iBeX Mobile/);
   assert.match(page, /Туршилтын орчин/);
   assert.match(page, /Нүүр хуудас руу буцах/);
-  assert.match(page, /src="\/mobile-preview\/index\.html"/);
+  assert.match(page, /mobile-preview\/index\.html/);
 });
 
 test("version 54 admin sign-in follows the global theme and exposes a close control", () => {

@@ -16,7 +16,7 @@ test("signed-in Home AI history is stored per user and can only be cleared by th
   assert.match(history, /WHERE user_id=\?/);
   assert.match(history, /DELETE FROM customer_ai_messages WHERE user_id=\?/);
   assert.match(route, /const user = await getSiteUserSession\(\)/);
-  assert.match(route, /readHomeAiHistory\(env\.DB, user\.id\)/);
+  assert.match(route, /readHomeAiHistory\(env\.DB, user\.id, settings\.historyRetentionDays\)/);
   assert.match(route, /clearHomeAiHistory\(env\.DB, user\.id\)/);
   assert.match(route, /hasTrustedOrigin\(request\)/);
 });
@@ -50,7 +50,7 @@ test("the privacy notice documents persistent history and explicit deletion", as
   const auth = await read("app/lib/site-user-auth.ts");
 
   assert.match(auth, /PRIVACY_VERSION = "2026-09-v2"/);
-  assert.match(privacy, /D1 санд тухайн хэрэглэгчийн бүртгэлтэй тусгаарлан хадгална/);
+  assert.match(privacy, /D1 санд тухайн хэрэглэгчийн бүртгэлтэй тусгаарлан/);
   assert.match(privacy, /«Түүх цэвэрлэх» үйлдлээр яриагаа хүссэн үедээ устгана/);
   assert.match(privacy, /store: false/);
 });

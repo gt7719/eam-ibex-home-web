@@ -13,7 +13,7 @@ test('iBeX environment precedes pricing without changing existing menu triggers'
   assert.equal((nav.match(/class="menu-trigger"/g)||[]).length,7);
   assert.match(html,/environmentTarget:'web'/);
   assert.match(html,/environmentTarget:'mobile'/);
-  assert.match(read('app/organization/page.tsx'),/src="\/organization-preview.html"/);
+  assert.match(read('app/organization/page.tsx'),/organization-preview\.html/);
 });
 test('integrated configurator has all local assets, home exit and explicit preview boundary',()=>{
   const html=read('public/organization-preview.html');
@@ -25,11 +25,15 @@ test('integrated configurator has all local assets, home exit and explicit previ
   }
 });
 test('iBeX environment name is consistent across modal, standalone and translations',()=>{
-  for(const file of ['public/concept.html','public/organization-modal.js','public/organization-preview.html','public/organization-enhancements.js','app/organization/page.tsx']) {
+  for(const file of ['public/concept.html','public/organization-modal.js','public/organization-preview.html','public/organization-enhancements.js']) {
     const source=read(file);
     assert.doesNotMatch(source,/Танай байгууллагын орчин|ТАНАЙ БАЙГУУЛЛАГЫН ОРЧИН|Your organization environment|YOUR ORGANIZATION ENVIRONMENT/);
     assert.match(source,/iBeX орчин/);
   }
+  const page=read('app/organization/page.tsx');
+  assert.doesNotMatch(page,/Танай байгууллагын орчин|ТАНАЙ БАЙГУУЛЛАГЫН ОРЧИН|Your organization environment|YOUR ORGANIZATION ENVIRONMENT/);
+  assert.match(page,/environment\.nameEn/);
+  assert.match(page,/environment\.nameMn/);
   assert.match(read('public/organization-enhancements.js'),/'iBeX орчин':'iBeX environment'/);
 });
 test('global preferences roundtrip, local preview preferences remain isolated',()=>{

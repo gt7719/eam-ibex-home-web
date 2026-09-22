@@ -31,6 +31,8 @@ export type SiteUserRow = {
   last_login_at: string | null;
   locked_until: string | null;
   deletion_requested_at: string | null;
+  privacy_version: string;
+  privacy_accepted_at: string;
   created_at: string;
   updated_at: string;
   password_hash?: string;
@@ -157,6 +159,10 @@ export function publicSiteUser(row: SiteUserRow) {
     securitySmsEnabled: Boolean(row.security_sms_enabled),
     lastLoginAt: row.last_login_at,
     deletionRequestedAt: row.deletion_requested_at,
+    privacyVersion: row.privacy_version,
+    privacyAcceptedAt: row.privacy_accepted_at,
+    privacyCurrent: row.privacy_version === PRIVACY_VERSION,
+    requiredPrivacyVersion: PRIVACY_VERSION,
     createdAt: row.created_at,
   };
 }
@@ -182,7 +188,7 @@ export async function findSiteUserByEmail(
      account_status, email_status, email_verified_at, phone_status, phone_verified_at,
      email_verification_required, phone_verification_required,
      locale, marketing_email_opt_in, marketing_sms_opt_in, security_sms_enabled,
-     last_login_at, locked_until, deletion_requested_at, created_at, updated_at${credential}
+     last_login_at, locked_until, deletion_requested_at, privacy_version, privacy_accepted_at, created_at, updated_at${credential}
      FROM site_users WHERE email = ? LIMIT 1`,
   )
     .bind(email)
@@ -220,7 +226,7 @@ export async function getSiteUserSession() {
      u.account_status, u.email_status, u.email_verified_at, u.phone_status, u.phone_verified_at,
      u.email_verification_required, u.phone_verification_required,
      u.locale, u.marketing_email_opt_in, u.marketing_sms_opt_in, u.security_sms_enabled,
-     u.last_login_at, u.locked_until, u.deletion_requested_at, u.created_at, u.updated_at
+     u.last_login_at, u.locked_until, u.deletion_requested_at, u.privacy_version, u.privacy_accepted_at, u.created_at, u.updated_at
      FROM site_user_sessions s INNER JOIN site_users u ON u.id=s.user_id
      WHERE s.token_hash=? AND s.status='active' AND s.expires_at>? AND u.account_status IN ('active','limited')
      LIMIT 1`,
@@ -332,6 +338,7 @@ export async function purgeExpiredSiteUsers(now = new Date()) {
       env.DB.prepare("DELETE FROM site_user_sessions WHERE user_id=?").bind(id),
       env.DB.prepare("DELETE FROM site_user_tokens WHERE user_id=?").bind(id),
       env.DB.prepare("DELETE FROM site_user_consents WHERE user_id=?").bind(id),
+      env.DB.prepare("DELETE FROM customer_ai_messages WHERE user_id=?").bind(id),
       env.DB.prepare("DELETE FROM auth_delivery_events WHERE user_id=?").bind(
         id,
       ),

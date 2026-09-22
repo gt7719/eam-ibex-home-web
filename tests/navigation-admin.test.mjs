@@ -7,9 +7,12 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf
 
 function defaultNavigation() {
   const source = read("app/lib/navigation.ts");
+  const environmentStart = source.indexOf("export const DEFAULT_ENVIRONMENTS: EnvironmentConfig[] = ") + "export const DEFAULT_ENVIRONMENTS: EnvironmentConfig[] = ".length;
+  const environmentEnd = source.indexOf(";\n\nexport const DEFAULT_NAVIGATION", environmentStart);
+  const environments = vm.runInNewContext(`(${source.slice(environmentStart, environmentEnd)})`);
   const start = source.indexOf("export const DEFAULT_NAVIGATION: NavigationConfig = ") + "export const DEFAULT_NAVIGATION: NavigationConfig = ".length;
   const end = source.indexOf(";\n\nconst ICONS", start);
-  return JSON.parse(source.slice(start, end));
+  return JSON.parse(source.slice(start, end).replace("DEFAULT_ENVIRONMENTS", JSON.stringify(environments)));
 }
 
 test("the header administrator starts with the exact five existing menus", () => {
@@ -19,7 +22,8 @@ test("the header administrator starts with the exact five existing menus", () =>
   assert.deepEqual(defaults.menus.map((menu) => menu.labelMn), ["Бүтээгдэхүүн", "Шийдэл", "Салбар", "AI хөгжүүлэлт", "Танилцуулга"]);
   assert.ok(defaults.menus.every((menu) => menu.groups.length && menu.groups.every((group) => group.items.length)));
   assert.ok(defaults.menus.every((menu) => menu.groups.flatMap((group) => group.items).every((item) => item.icon)));
-  assert.doesNotMatch(JSON.stringify(defaults), /Үнэ|Pricing|iBeX орчин|iBeX environment/);
+  assert.doesNotMatch(JSON.stringify(defaults.menus), /Үнэ|Pricing|iBeX орчин|iBeX environment/);
+  assert.deepEqual(defaults.environments.map((environment) => environment.id), ["web", "mobile"]);
 });
 
 test("the stored defaults match the currently rendered MN and EN content", () => {
