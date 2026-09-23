@@ -1,19 +1,20 @@
 export type MarketingAiOpenAiErrorCode = "OUTPUT_INCOMPLETE" | "OPENAI_AUTH_ERROR" | "OPENAI_ACCESS_DENIED" | "OPENAI_RATE_LIMIT" | "OPENAI_TIMEOUT" | "OPENAI_REQUEST_INVALID" | "OPENAI_UNAVAILABLE";
-export type MarketingAiOpenAiPayload = { status?: string; incomplete_details?: { reason?: string } | null; output_text?: string; output?: Array<{ content?: Array<{ type?: string; text?: string; refusal?: string }> }>; usage?: { input_tokens?: number; output_tokens?: number } };
+export type MarketingAiOpenAiPayload = { status?: string; incomplete_details?: { reason?: string } | null; output_text?: string; output?: Array<{ content?: Array<{ type?: string; text?: string; refusal?: string }> }>; usage?: { input_tokens?: number; output_tokens?: number; input_tokens_details?: { cached_tokens?: number }; output_tokens_details?: { reasoning_tokens?: number } } };
 export class MarketingAiOpenAiError extends Error {
   code: MarketingAiOpenAiErrorCode;
   httpStatus: number;
-  constructor(code: MarketingAiOpenAiErrorCode, httpStatus = 502, message = code) { super(message); this.name = "MarketingAiOpenAiError"; this.code = code; this.httpStatus = httpStatus; }
+  usage?: MarketingAiOpenAiPayload["usage"];
+  constructor(code: MarketingAiOpenAiErrorCode, httpStatus = 502, message: string = code, usage?: MarketingAiOpenAiPayload["usage"]) { super(message); this.name = "MarketingAiOpenAiError"; this.code = code; this.httpStatus = httpStatus; this.usage = usage; }
 }
 export function marketingAiOutputText(payload: MarketingAiOpenAiPayload) {
-  if (payload.status === "incomplete") throw new MarketingAiOpenAiError("OUTPUT_INCOMPLETE", 502, payload.incomplete_details?.reason || "response_incomplete");
+  if (payload.status === "incomplete") throw new MarketingAiOpenAiError("OUTPUT_INCOMPLETE", 502, payload.incomplete_details?.reason || "response_incomplete", payload.usage);
   const value = payload.output_text || (payload.output || []).flatMap(item => item.content || []).filter(part => part.type === "output_text").map(part => part.text || "").join("");
-  if (!value) throw new MarketingAiOpenAiError("OUTPUT_INCOMPLETE", 502, "empty_output");
+  if (!value) throw new MarketingAiOpenAiError("OUTPUT_INCOMPLETE", 502, "empty_output", payload.usage);
   return value;
 }
 export function parseMarketingAiStructuredOutput<T>(payload: MarketingAiOpenAiPayload) {
   try { return JSON.parse(marketingAiOutputText(payload)) as T; }
-  catch (error) { if (error instanceof MarketingAiOpenAiError) throw error; throw new MarketingAiOpenAiError("OUTPUT_INCOMPLETE", 502, "invalid_or_truncated_json"); }
+  catch (error) { if (error instanceof MarketingAiOpenAiError) throw error; throw new MarketingAiOpenAiError("OUTPUT_INCOMPLETE", 502, "invalid_or_truncated_json", payload.usage); }
 }
 export async function marketingAiOpenAiHttpError(response: Response) {
   if (response.status === 401) return new MarketingAiOpenAiError("OPENAI_AUTH_ERROR", 502);

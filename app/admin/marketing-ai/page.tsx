@@ -39,17 +39,65 @@ type MarketingControl = {
   status: { keyConfigured: boolean; tested: boolean; testedAt: string; emailConnected: boolean; socialConnected: boolean; draftReady: boolean; productionReady: boolean; outboundReady: false; humanApprovalRequired: true; budgetState: "normal" | "warning" | "critical" | "exhausted" };
   usage: { month: string; requests: number; inputTokens: number; outputTokens: number; estimatedCostUsd: number };
   draftCounts: Record<string, number>;
-  audit: Array<{ eventType: string; model: string | null; status: string; createdAt: string }>;
+  recordCounts: Record<string, Record<string, number>>;
+  settingsHistory: Array<{ revision: number; changeType: string; changedBy: string; createdAt: string }>;
+  audit: Array<{ eventType: string; model: string | null; status: string; metadata?: Record<string, unknown>; createdAt: string }>;
 };
 
 const defaultControlSettings: MarketingAiControlSettings = {
-  schemaVersion: 2, mode: "disabled", model: "gpt-5.6-luna", fastModel: "gpt-5.6-luna", detailedModel: "gpt-5.6-terra", fallbackModel: "gpt-5.6-luna",
+  schemaVersion: 3, mode: "disabled", model: "gpt-5.6-luna", fastModel: "gpt-5.6-luna", detailedModel: "gpt-5.6-terra", fallbackModel: "gpt-5.6-luna",
   reasoningEffort: "medium", verbosity: "medium", defaultPromptProfile: "general", brandTone: "Мэргэжлийн, ойлгомжтой, баримтад тулгуурласан", approvedClaims: "", prohibitedClaims: "",
   monthlyBudgetUsd: 10, warningBudgetUsd: 5, criticalBudgetUsd: 8, requestsPerMinute: 4, requestsPerDay: 30, maxOutputTokens: 700,
+  tokenPolicy: { general: 700, content: 900, campaign: 1400, lead_followup: 700, report: 1600 }, incompleteRetryLimit: 1,
   testedAt: "", testedFingerprint: "", testedBy: "", humanApprovalRequired: true, outboundEnabled: false,
 };
 
 type MarketingDraft = { id: string; title: string; taskType: string; promptProfile: string; promptVersion: string; model: string; content: string; missingInputs: string[]; status: "draft" | "review" | "approved" | "rejected"; revision: number; estimatedCostUsd: number; updatedAt: string; decisionNote?: string | null };
+
+type WorkspaceDomain = "knowledge" | "leads" | "content" | "campaigns" | "channels" | "automation";
+type WorkspaceRecord = { id: string; domain: WorkspaceDomain; kind: string; title: string; status: string; data: Record<string, string | number | boolean | null | Array<string | number | boolean | null>>; revision: number; approvedBy?: string | null; approvedAt?: string | null; publishedAt?: string | null; updatedAt: string };
+type WorkspaceField = { key: string; mn: string; en: string; type?: "text" | "textarea" | "number" | "date" | "select" | "checkbox"; options?: Array<[string, string, string]> };
+const workspaceConfigs: Record<WorkspaceDomain, { kind: string; titleMn: string; titleEn: string; fields: WorkspaceField[] }> = {
+  knowledge: { kind: "source", titleMn: "Мэдлэг эсвэл загварын нэр", titleEn: "Knowledge or template name", fields: [
+    { key: "body", mn: "Баталгаажсан агуулга", en: "Approved content", type: "textarea" }, { key: "provenanceUrl", mn: "Эх сурвалжийн холбоос", en: "Provenance URL" },
+    { key: "evidenceNote", mn: "Нотолгооны тайлбар", en: "Evidence note", type: "textarea" }, { key: "locale", mn: "Хэл", en: "Language", type: "select", options: [["mn", "Монгол", "Mongolian"], ["en", "English", "English"], ["both", "Хоёр хэл", "Bilingual"]] },
+  ] },
+  leads: { kind: "lead", titleMn: "Lead-ийн нэр", titleEn: "Lead name", fields: [
+    { key: "organization", mn: "Байгууллага", en: "Organization" }, { key: "source", mn: "Эх үүсвэр", en: "Source" },
+    { key: "lifecycle", mn: "Lead шат", en: "Lifecycle", type: "select", options: [["new", "Шинэ", "New"], ["qualified", "Шалгарсан", "Qualified"], ["demo", "Демо", "Demo"], ["proposal", "Санал", "Proposal"], ["won", "Амжилттай", "Won"], ["lost", "Хаагдсан", "Lost"]] },
+    { key: "emailConsent", mn: "Email зөвшөөрөлтэй", en: "Email consent", type: "checkbox" }, { key: "socialConsent", mn: "Social зөвшөөрөлтэй", en: "Social consent", type: "checkbox" }, { key: "notes", mn: "Тэмдэглэл", en: "Notes", type: "textarea" },
+  ] },
+  content: { kind: "post", titleMn: "Контентын нэр", titleEn: "Content title", fields: [
+    { key: "channel", mn: "Суваг", en: "Channel", type: "select", options: [["website", "Веб сайт", "Website"], ["facebook", "Facebook", "Facebook"], ["email", "Email", "Email"], ["video", "Видео", "Video"]] },
+    { key: "locale", mn: "Хэл", en: "Language", type: "select", options: [["mn", "Монгол", "Mongolian"], ["en", "English", "English"], ["both", "Хоёр хэл", "Bilingual"]] },
+    { key: "scheduledAt", mn: "Төлөвлөсөн огноо", en: "Scheduled date", type: "date" }, { key: "body", mn: "Draft агуулга", en: "Draft content", type: "textarea" }, { key: "brandCheck", mn: "Брэндийн шалгалт хийсэн", en: "Brand check completed", type: "checkbox" },
+  ] },
+  campaigns: { kind: "campaign", titleMn: "Кампанит ажлын нэр", titleEn: "Campaign name", fields: [
+    { key: "objective", mn: "Зорилго", en: "Objective", type: "textarea" }, { key: "audience", mn: "Зорилтот бүлэг", en: "Audience" }, { key: "kpi", mn: "KPI", en: "KPI" },
+    { key: "budgetUsd", mn: "Төсөв · USD", en: "Budget · USD", type: "number" }, { key: "startDate", mn: "Эхлэх огноо", en: "Start date", type: "date" }, { key: "endDate", mn: "Дуусах огноо", en: "End date", type: "date" },
+  ] },
+  channels: { kind: "email", titleMn: "Сувгийн нэр", titleEn: "Channel name", fields: [
+    { key: "provider", mn: "Үйлчилгээ үзүүлэгч", en: "Provider" }, { key: "sender", mn: "Илгээгч / Page", en: "Sender / Page" }, { key: "scope", mn: "OAuth scope", en: "OAuth scope" },
+    { key: "consentPolicy", mn: "Зөвшөөрлийн бодлого", en: "Consent policy", type: "textarea" }, { key: "testRecipient", mn: "Тест хүлээн авагч", en: "Test recipient" },
+  ] },
+  automation: { kind: "rule", titleMn: "Дүрмийн нэр", titleEn: "Rule name", fields: [
+    { key: "trigger", mn: "Trigger", en: "Trigger" }, { key: "draftAction", mn: "Draft үйлдэл", en: "Draft action" }, { key: "dailyLimit", mn: "Өдрийн лимит", en: "Daily limit", type: "number" },
+    { key: "idempotencyKey", mn: "Давхардал хамгаалах түлхүүр", en: "Idempotency key" }, { key: "killSwitch", mn: "Kill switch идэвхтэй", en: "Kill switch enabled", type: "checkbox" },
+  ] },
+};
+const workspaceKindOptions: Record<WorkspaceDomain, Array<[string, string, string]>> = {
+  knowledge: [["source", "Эх сурвалж", "Source"], ["claim", "Баталгаажсан мэдэгдэл", "Approved claim"], ["template", "Загвар", "Template"]],
+  leads: [["lead", "Lead", "Lead"]],
+  content: [["post", "Нийтлэл", "Post"], ["email", "Email Draft", "Email draft"], ["video", "Видео Draft", "Video draft"], ["website", "Веб контент", "Website content"], ["event", "Арга хэмжээ", "Event"]],
+  campaigns: [["campaign", "Кампанит ажил", "Campaign"]],
+  channels: [["email", "Email", "Email"], ["facebook", "Facebook", "Facebook"], ["website", "Веб сайт", "Website"], ["other", "Бусад", "Other"]],
+  automation: [["rule", "Draft workflow", "Draft workflow"]],
+};
+const workspaceDefaults: Record<WorkspaceDomain, Record<string, string | number | boolean>> = {
+  knowledge: { locale: "mn" }, leads: { lifecycle: "new", emailConsent: false, socialConsent: false },
+  content: { channel: "website", locale: "mn", brandCheck: false }, campaigns: { budgetUsd: 0 }, channels: {},
+  automation: { dailyLimit: 10, killSwitch: true },
+};
 
 const sections: Array<{ id: SectionId; code: string; mn: string; en: string }> = [
   { id: "dashboard", code: "01", mn: "Хяналтын самбар", en: "Dashboard" },
@@ -190,6 +238,16 @@ export default function MarketingAiPage() {
   const [savingControl, setSavingControl] = useState(false), [running, setRunning] = useState(false);
   const [testingControl, setTestingControl] = useState(false);
   const [drafts, setDrafts] = useState<MarketingDraft[]>([]);
+  const [draftHistory, setDraftHistory] = useState<{ title: string; rows: Array<{ revision: number; changeType: string; changedBy: string; note?: string | null; createdAt: string }> } | null>(null);
+  const [workspaceRecords, setWorkspaceRecords] = useState<WorkspaceRecord[]>([]);
+  const [workspaceSummary, setWorkspaceSummary] = useState<Record<string, Record<string, number>>>({});
+  const [workspaceTitle, setWorkspaceTitle] = useState("");
+  const [workspaceKind, setWorkspaceKind] = useState("");
+  const [workspaceData, setWorkspaceData] = useState<Record<string, string | number | boolean>>({});
+  const [workspaceEditing, setWorkspaceEditing] = useState<WorkspaceRecord | null>(null);
+  const [workspaceHistory, setWorkspaceHistory] = useState<{ title: string; rows: Array<{ revision: number; changeType: string; changedBy: string; note?: string | null; createdAt: string }> } | null>(null);
+  const [workspaceBusy, setWorkspaceBusy] = useState(false);
+  const workspaceDomain = (["knowledge", "leads", "content", "campaigns", "channels", "automation"] as string[]).includes(section) ? section as WorkspaceDomain : null;
   const dirty = Boolean(control && JSON.stringify(control.settings) !== JSON.stringify(controlSettings));
 
   const loadControl = useCallback(async () => {
@@ -203,6 +261,13 @@ export default function MarketingAiPage() {
     const response = await fetch("/api/admin/marketing-ai-drafts", { cache: "no-store" }).catch(() => null);
     if (response?.ok) setDrafts((await response.json()).drafts || []);
   }, []);
+
+  const loadWorkspace = useCallback(async (domain: WorkspaceDomain) => {
+    const response = await fetch(`/api/admin/marketing-ai-workspace?domain=${encodeURIComponent(domain)}`, { cache: "no-store" }).catch(() => null);
+    const payload = response ? await response.json().catch(() => ({})) : {};
+    if (response?.ok) { setWorkspaceRecords(payload.records || []); setWorkspaceSummary(payload.summary || {}); }
+    else setControlError(payload.error || t("Маркетингийн өгөгдлийг ачаалж чадсангүй.", "Could not load marketing data."));
+  }, [t]);
 
   useEffect(() => {
     fetch("/api/admin/session", { cache: "no-store" })
@@ -232,6 +297,7 @@ export default function MarketingAiPage() {
 
   const hasScope = (permission: string) => Boolean(user?.permissions?.includes("marketing.manage") || user?.permissions?.includes(permission));
   const canDraft = hasScope("marketing.draft"), canApprove = hasScope("marketing.approve"), canConfigure = hasScope("marketing.settings"), canAudit = hasScope("marketing.audit");
+  const canWorkspaceWrite = workspaceDomain ? (["leads", "content", "campaigns"].includes(workspaceDomain) ? canDraft : canConfigure) : false;
   const visibleSections = sections.filter(item => {
     if (["command", "leads", "content", "campaigns"].includes(item.id)) return canDraft;
     if (item.id === "approvals") return canDraft || canApprove;
@@ -290,6 +356,72 @@ export default function MarketingAiPage() {
     else { setControlMessage(t("Draft-ийн шийдвэрийг audit-д бүртгэлээ.", "The draft decision was recorded in the audit trail.")); await Promise.all([loadDrafts(), loadControl()]); }
   }
 
+  async function editDraft(draft: MarketingDraft) {
+    const title = window.prompt(t("Draft-ийн нэр", "Draft title"), draft.title);
+    if (title == null) return;
+    const content = window.prompt(t("Draft-ийн агуулга", "Draft content"), draft.content);
+    if (content == null) return;
+    const response = await fetch("/api/admin/marketing-ai-drafts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: draft.id, revision: draft.revision, action: "edit", title, content }) }).catch(() => null);
+    const payload = response ? await response.json().catch(() => ({})) : {};
+    if (!response?.ok) setControlError(payload.error || t("Draft засварлаж чадсангүй.", "Could not edit the draft."));
+    else { setControlMessage(t("Draft-ийн шинэ revision хадгалагдлаа.", "A new draft revision was saved.")); await Promise.all([loadDrafts(), loadControl()]); }
+  }
+
+  async function showDraftHistory(draft: MarketingDraft) {
+    const response = await fetch(`/api/admin/marketing-ai-drafts?history=${encodeURIComponent(draft.id)}`, { cache: "no-store" }).catch(() => null);
+    const payload = response ? await response.json().catch(() => ({})) : {};
+    if (!response?.ok) setControlError(payload.error || t("Draft revision history ачаалж чадсангүй.", "Could not load draft revision history."));
+    else setDraftHistory({ title: draft.title, rows: payload.history || [] });
+  }
+
+  async function createWorkspaceRecord(event: FormEvent) {
+    event.preventDefault(); if (!workspaceDomain) return;
+    setWorkspaceBusy(true); setControlError(""); setControlMessage("");
+    const config = workspaceConfigs[workspaceDomain];
+    const response = await fetch("/api/admin/marketing-ai-workspace", { method: workspaceEditing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(workspaceEditing ? { id: workspaceEditing.id, revision: workspaceEditing.revision, action: "update", title: workspaceTitle, data: workspaceData } : { domain: workspaceDomain, kind: workspaceKind || config.kind, title: workspaceTitle, data: workspaceData }) }).catch(() => null);
+    const payload = response ? await response.json().catch(() => ({})) : {};
+    if (!response?.ok) setControlError(payload.error || t("Record хадгалж чадсангүй.", "Could not save the record."));
+    else { setWorkspaceTitle(""); setWorkspaceData(workspaceDefaults[workspaceDomain]); setWorkspaceEditing(null); setControlMessage(t("Draft record хадгалагдаж, revision үүслээ.", "The draft record was saved with a revision.")); await Promise.all([loadWorkspace(workspaceDomain), loadControl()]); }
+    setWorkspaceBusy(false);
+  }
+
+  function startWorkspaceEdit(record: WorkspaceRecord) {
+    setWorkspaceEditing(record); setWorkspaceKind(record.kind); setWorkspaceTitle(record.title);
+    setWorkspaceData(Object.fromEntries(Object.entries(record.data).filter(([, value]) => !Array.isArray(value)).map(([key, value]) => [key, value == null ? "" : value])) as Record<string, string | number | boolean>);
+    document.querySelector(".marketing-ai-record-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function showWorkspaceHistory(record: WorkspaceRecord) {
+    const response = await fetch(`/api/admin/marketing-ai-workspace?history=${encodeURIComponent(record.id)}`, { cache: "no-store" }).catch(() => null);
+    const payload = response ? await response.json().catch(() => ({})) : {};
+    if (!response?.ok) setControlError(payload.error || t("Revision history ачаалж чадсангүй.", "Could not load revision history."));
+    else setWorkspaceHistory({ title: record.title, rows: payload.history || [] });
+  }
+
+  function prepareRecordCommand(record: WorkspaceRecord) {
+    const context = Object.entries(record.data).filter(([, value]) => value !== "" && value != null).slice(0, 8).map(([key, value]) => `${key}: ${String(value)}`).join("; ");
+    setCommand(`${record.domain} · ${record.title}. ${context}`.slice(0, 1200)); setSection("command");
+  }
+
+  function selectSection(next: SectionId) {
+    if (next !== section && (["knowledge", "leads", "content", "campaigns", "channels", "automation"] as string[]).includes(next)) {
+      const domain = next as WorkspaceDomain;
+      setWorkspaceKind(workspaceConfigs[domain].kind); setWorkspaceTitle(""); setWorkspaceData(workspaceDefaults[domain]); setWorkspaceEditing(null); setWorkspaceHistory(null);
+      if (authorized) void loadWorkspace(domain);
+    }
+    setSection(next);
+  }
+
+  async function changeWorkspaceRecord(record: WorkspaceRecord, action: "submit" | "approve" | "reject" | "publish" | "archive" | "return_to_draft" | "verify" | "test") {
+    const note = action === "reject" ? window.prompt(t("Татгалзсан шалтгаан", "Rejection reason")) || "" : "";
+    setWorkspaceBusy(true); setControlError("");
+    const response = await fetch("/api/admin/marketing-ai-workspace", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: record.id, revision: record.revision, action, note }) }).catch(() => null);
+    const payload = response ? await response.json().catch(() => ({})) : {};
+    if (!response?.ok) setControlError(payload.error || t("Record шинэчилж чадсангүй.", "Could not update the record."));
+    else { setControlMessage(t("Шийдвэр болон revision audit-д бүртгэгдлээ.", "The decision and revision were recorded in audit.")); if (workspaceDomain) await Promise.all([loadWorkspace(workspaceDomain), loadControl()]); }
+    setWorkspaceBusy(false);
+  }
+
   if (checking || !authorized) return <main className="marketing-ai-state">{t("Маркетингийн админ эрхийг шалгаж байна…", "Checking marketing administration access…")}</main>;
 
   return (
@@ -315,7 +447,7 @@ export default function MarketingAiPage() {
       <div className="marketing-ai-workspace">
         <aside className="marketing-ai-sidebar">
           <nav aria-label={t("Маркетинг AI цэс", "Marketing AI menu")}>
-            {sectionGroups.map(group => { const items = visibleSections.filter(item => (group.ids as readonly string[]).includes(item.id)); return items.length ? <section className="marketing-ai-nav-group" key={group.en}><h3>{t(group.mn, group.en)}</h3>{items.map((item) => <button key={item.id} type="button" className={item.id === active.id ? "active" : ""} onClick={() => setSection(item.id)}><small>{item.code}</small><span>{t(item.mn, item.en)}</span></button>)}</section> : null; })}
+            {sectionGroups.map(group => { const items = visibleSections.filter(item => (group.ids as readonly string[]).includes(item.id)); return items.length ? <section className="marketing-ai-nav-group" key={group.en}><h3>{t(group.mn, group.en)}</h3>{items.map((item) => <button key={item.id} type="button" className={item.id === active.id ? "active" : ""} onClick={() => selectSection(item.id)}><small>{item.code}</small><span>{t(item.mn, item.en)}</span></button>)}</section> : null; })}
           </nav>
           <footer><i /><span>{t("Бодит илгээлт идэвхгүй", "Live sending disabled")}</span></footer>
         </aside>
@@ -324,9 +456,9 @@ export default function MarketingAiPage() {
           {section === "dashboard" ? <>
             <div className="marketing-ai-section-head"><div><span>01 · CONTROL OVERVIEW</span><h2>{t("Хяналтын самбар", "Dashboard")}</h2></div><em>{t("Суурь хувилбар", "Foundation release")}</em></div>
             <div className="marketing-ai-stats">
-              <article><small>{t("Идэвхтэй кампанит ажил", "Active campaigns")}</small><strong>0</strong><span>{t("Суваг холбогдоогүй", "Channels not connected")}</span></article>
+              <article><small>{t("Батлагдсан кампанит ажил", "Approved campaigns")}</small><strong>{control?.recordCounts?.campaigns?.approved || 0}</strong><span>{t("Гадагш зарцуулалт хаалттай", "External spend locked")}</span></article>
               <article><small>{t("Хүлээгдэж буй зөвшөөрөл", "Pending approvals")}</small><strong>{control?.draftCounts?.review || 0}</strong><span>{t("Гадагш үйлдэл хаалттай", "Outbound actions locked")}</span></article>
-              <article><small>{t("Холбогдсон суваг", "Connected channels")}</small><strong>1 / 4</strong><span>{t("Зөвхөн iBeX веб суурь", "iBeX website foundation only")}</span></article>
+              <article><small>{t("Холболтын бэлэн байдал", "Channel readiness")}</small><strong>{1 + Number(Boolean(control?.status.emailConnected)) + Number(Boolean(control?.status.socialConnected))} / 3</strong><span>{t("Веб + server-side OAuth secret", "Website + server-side OAuth secrets")}</span></article>
               <article><small>{t("AI сарын төсөв", "Monthly AI budget")}</small><strong>${(control?.usage.estimatedCostUsd || 0).toFixed(4)} / ${controlSettings.monthlyBudgetUsd}</strong><span>{t("App guard · OpenAI hard limit тусдаа", "App guard · separate OpenAI hard limit")}</span></article>
             </div>
             <div className="marketing-ai-dashboard-grid">
@@ -371,7 +503,12 @@ export default function MarketingAiPage() {
                   <label>{t("Fallback model", "Fallback model")}<input value={controlSettings.fallbackModel} onChange={event => setControlSettings(current => ({ ...current, fallbackModel: event.target.value }))} /></label>
                   <label>{t("Prompt profile", "Prompt profile")}<select value={controlSettings.defaultPromptProfile} onChange={event => setControlSettings(current => ({ ...current, defaultPromptProfile: event.target.value as MarketingAiControlSettings["defaultPromptProfile"] }))}><option value="general">General</option><option value="content">Content</option><option value="campaign">Campaign</option><option value="lead_followup">Lead follow-up</option><option value="report">Report</option></select></label>
                   <label>{t("Reasoning", "Reasoning")}<select value={controlSettings.reasoningEffort} onChange={event => setControlSettings(current => ({ ...current, reasoningEffort: event.target.value as MarketingAiControlSettings["reasoningEffort"] }))}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
-                  <label>{t("Max output token", "Max output tokens")}<input type="number" min="120" max="4000" value={controlSettings.maxOutputTokens} onChange={event => setControlSettings(current => ({ ...current, maxOutputTokens: Number(event.target.value) }))} /></label>
+                  <label>{t("General token", "General tokens")}<input type="number" min="120" max="4000" value={controlSettings.tokenPolicy.general} onChange={event => setControlSettings(current => ({ ...current, maxOutputTokens: Number(event.target.value), tokenPolicy: { ...current.tokenPolicy, general: Number(event.target.value) } }))} /></label>
+                  <label>{t("Content token", "Content tokens")}<input type="number" min="120" max="4000" value={controlSettings.tokenPolicy.content} onChange={event => setControlSettings(current => ({ ...current, tokenPolicy: { ...current.tokenPolicy, content: Number(event.target.value) } }))} /></label>
+                  <label>{t("Campaign token", "Campaign tokens")}<input type="number" min="120" max="4000" value={controlSettings.tokenPolicy.campaign} onChange={event => setControlSettings(current => ({ ...current, tokenPolicy: { ...current.tokenPolicy, campaign: Number(event.target.value) } }))} /></label>
+                  <label>{t("Lead token", "Lead tokens")}<input type="number" min="120" max="4000" value={controlSettings.tokenPolicy.lead_followup} onChange={event => setControlSettings(current => ({ ...current, tokenPolicy: { ...current.tokenPolicy, lead_followup: Number(event.target.value) } }))} /></label>
+                  <label>{t("Report token", "Report tokens")}<input type="number" min="120" max="4000" value={controlSettings.tokenPolicy.report} onChange={event => setControlSettings(current => ({ ...current, tokenPolicy: { ...current.tokenPolicy, report: Number(event.target.value) } }))} /></label>
+                  <label>{t("Тасарсан хариултын retry", "Incomplete-output retry")}<select value={controlSettings.incompleteRetryLimit} onChange={event => setControlSettings(current => ({ ...current, incompleteRetryLimit: Number(event.target.value) }))}><option value={0}>{t("Унтраалттай", "Disabled")}</option><option value={1}>{t("1 удаа", "Once")}</option></select></label>
                   <label>{t("Өдрийн хүсэлт", "Daily requests")}<input type="number" min="1" max="1000" value={controlSettings.requestsPerDay} onChange={event => setControlSettings(current => ({ ...current, requestsPerDay: Number(event.target.value) }))} /></label>
                 </div>
                 <div className="marketing-ai-prompt-fields"><label>{t("Брэндийн өнгө аяс", "Brand tone")}<textarea value={controlSettings.brandTone} maxLength={500} onChange={event => setControlSettings(current => ({ ...current, brandTone: event.target.value }))} /></label><label>{t("Баталгаажсан мэдэгдэл", "Approved claims")}<textarea value={controlSettings.approvedClaims} maxLength={4000} onChange={event => setControlSettings(current => ({ ...current, approvedClaims: event.target.value }))} /></label><label>{t("Хориглосон мэдэгдэл", "Prohibited claims")}<textarea value={controlSettings.prohibitedClaims} maxLength={4000} onChange={event => setControlSettings(current => ({ ...current, prohibitedClaims: event.target.value }))} /></label></div>
@@ -389,18 +526,20 @@ export default function MarketingAiPage() {
               </section>
               <footer><span>{control?.status.tested ? t(`Сүүлийн амжилттай тест: ${new Date(control.status.testedAt).toLocaleString()}`, `Last successful test: ${new Date(control.status.testedAt).toLocaleString()}`) : t("Хадгалаад бүх model, prompt болон хамгаалалтыг тестлэнэ.", "Save, then test every model, prompt, and safeguard.")}</span><div className="marketing-ai-footer-actions"><button type="button" className="secondary" onClick={testControl} disabled={testingControl || dirty || controlSettings.mode === "disabled"}>{testingControl ? t("Тестэлж байна…", "Testing…") : t("Бүх тохиргоог тестлэх", "Test configuration")}</button><button type="submit" disabled={savingControl || !dirty}>{savingControl ? t("Хадгалж байна…", "Saving…") : t("Тохиргоо хадгалах", "Save settings")}</button></div></footer>
             </form>
+            {control?.settingsHistory?.length ? <section className="marketing-ai-history"><header><div><span>SETTINGS REVISION HISTORY</span><h3>{t("Тохиргооны сүүлийн хувилбарууд", "Recent settings revisions")}</h3></div></header><ol>{control.settingsHistory.map(row => <li key={`${row.revision}-${row.createdAt}`}><b>r{row.revision} · {row.changeType}</b><span>{new Date(row.createdAt).toLocaleString()} · {row.changedBy}</span></li>)}</ol></section> : null}
           </> : null}
 
           {section === "approvals" ? <>
             <div className="marketing-ai-section-head"><div><span>08 · HUMAN REVIEW</span><h2>{t("Draft ба зөвшөөрлийн төв", "Draft & approval center")}</h2></div><em>{t("Гадагш үйлдэл хаалттай", "Outbound locked")}</em></div>
             {controlError ? <div className="marketing-ai-control-alert error" role="alert">{controlError}</div> : null}
             {controlMessage ? <div className="marketing-ai-control-alert success" role="status">{controlMessage}</div> : null}
+            {draftHistory ? <section className="marketing-ai-history"><header><div><span>DRAFT REVISION HISTORY</span><h3>{draftHistory.title}</h3></div><button type="button" onClick={() => setDraftHistory(null)}>{t("Хаах", "Close")}</button></header><ol>{draftHistory.rows.map(row => <li key={`${row.revision}-${row.createdAt}`}><b>r{row.revision} · {row.changeType}</b><span>{new Date(row.createdAt).toLocaleString()} · {row.changedBy}</span>{row.note ? <small>{row.note}</small> : null}</li>)}</ol></section> : null}
             <div className="marketing-ai-draft-list">
               {drafts.length ? drafts.map(draft => <article key={draft.id}>
                 <header><div><span>{draft.status.toUpperCase()} · {draft.promptProfile} · r{draft.revision}</span><h3>{draft.title}</h3></div><small>{draft.model} · {new Date(draft.updatedAt).toLocaleString()}</small></header>
                 <p>{draft.content}</p>
                 {draft.missingInputs.length ? <ul>{draft.missingInputs.map(item => <li key={item}>{item}</li>)}</ul> : null}
-                <footer><small>{draft.promptVersion} · ${Number(draft.estimatedCostUsd || 0).toFixed(6)}</small><div>{canDraft && draft.status === "draft" ? <button type="button" onClick={() => decideDraft(draft, "submit")}>{t("Review-д илгээх", "Submit for review")}</button> : null}{canApprove && draft.status === "review" ? <><button type="button" onClick={() => decideDraft(draft, "approve")}>{t("Батлах", "Approve")}</button><button type="button" className="danger" onClick={() => decideDraft(draft, "reject")}>{t("Татгалзах", "Reject")}</button></> : null}{canApprove && (draft.status === "approved" || draft.status === "rejected") ? <button type="button" className="secondary" onClick={() => decideDraft(draft, "return_to_draft")}>{t("Draft болгох", "Return to draft")}</button> : null}</div></footer>
+                <footer><small>{draft.promptVersion} · ${Number(draft.estimatedCostUsd || 0).toFixed(6)}</small><div><button type="button" className="secondary" onClick={() => showDraftHistory(draft)}>{t("Түүх", "History")}</button>{canDraft && (draft.status === "draft" || draft.status === "rejected") ? <button type="button" className="secondary" onClick={() => editDraft(draft)}>{t("Засах", "Edit")}</button> : null}{canDraft && draft.status === "draft" ? <button type="button" onClick={() => decideDraft(draft, "submit")}>{t("Review-д илгээх", "Submit for review")}</button> : null}{canApprove && draft.status === "review" ? <><button type="button" onClick={() => decideDraft(draft, "approve")}>{t("Батлах", "Approve")}</button><button type="button" className="danger" onClick={() => decideDraft(draft, "reject")}>{t("Татгалзах", "Reject")}</button></> : null}{canApprove && (draft.status === "approved" || draft.status === "rejected") ? <button type="button" className="secondary" onClick={() => decideDraft(draft, "return_to_draft")}>{t("Draft болгох", "Return to draft")}</button> : null}</div></footer>
               </article>) : <section className="marketing-ai-empty-state"><strong>{t("Draft үүсээгүй байна", "No drafts yet")}</strong><p>{t("AI командын төвөөс Draft үүсгэхэд энд хадгалагдаж, Review → Approved/Rejected урсгалаар шийдвэрлэгдэнэ.", "Drafts created in the command center are stored here and move through Review → Approved/Rejected.")}</p></section>}
             </div>
           </> : null}
@@ -414,13 +553,54 @@ export default function MarketingAiPage() {
 
           {section === "audit" ? <>
             <div className="marketing-ai-section-head"><div><span>13 · GOVERNANCE</span><h2>Audit log</h2></div><em>{t("Prompt агуулгагүй", "No prompt content")}</em></div>
-            <div className="marketing-ai-audit-list">{control?.audit.length ? control.audit.map((row, index) => <article key={`${row.createdAt}-${index}`}><span><b>{row.status}</b>{row.eventType}</span><small>{row.model || "local"} · {new Date(row.createdAt).toLocaleString()}</small></article>) : <section className="marketing-ai-empty-state"><strong>{t("Audit event бүртгэгдээгүй", "No audit events")}</strong><p>{t("OpenAI Draft үүсгэсний дараа model, төлөв, token, зардлын metadata энд харагдана. Түүхий prompt хадгалахгүй.", "After an OpenAI draft is created, model, status, token and cost metadata appears here. Raw prompts are not stored.")}</p></section>}</div>
+            <div className="marketing-ai-audit-list">{control?.audit.length ? control.audit.map((row, index) => <article key={`${row.createdAt}-${index}`}><span><b>{row.status}</b>{row.eventType}<small>{row.metadata ? Object.entries(row.metadata).filter(([key]) => !/prompt|content/i.test(key)).slice(0, 6).map(([key, value]) => `${key}: ${typeof value === "object" ? "recorded" : String(value)}`).join(" · ") : ""}</small></span><small>{row.model || "local"} · {new Date(row.createdAt).toLocaleString()}</small></article>) : <section className="marketing-ai-empty-state"><strong>{t("Audit event бүртгэгдээгүй", "No audit events")}</strong><p>{t("OpenAI Draft үүсгэсний дараа model, төлөв, token, зардлын metadata энд харагдана. Түүхий prompt хадгалахгүй.", "After an OpenAI draft is created, model, status, token and cost metadata appears here. Raw prompts are not stored.")}</p></section>}</div>
           </> : null}
 
-          {section !== "dashboard" && section !== "command" && section !== "integrations" && section !== "budget" && section !== "approvals" && section !== "audit" ? <>
-            <div className="marketing-ai-section-head"><div><span>{active.code} · MARKETING CONTROL</span><h2>{t(active.mn, active.en)}</h2></div><em>{t("Архитектурын суурь", "Architecture foundation")}</em></div>
-            <div className="marketing-ai-area-grid">{cards.map((card) => <article key={card.titleEn}><span>{t(card.stateMn, card.stateEn)}</span><h3>{t(card.titleMn, card.titleEn)}</h3><p>{t(card.bodyMn, card.bodyEn)}</p></article>)}</div>
-            <section className="marketing-ai-empty-state"><strong>{t("Бодит ажиллагаа одоогоор идэвхгүй", "Live operation is currently disabled")}</strong><p>{t("Энэ хэсгийн бүтэц, эрх болон хамгаалалтын хүрээг бэлтгэсэн. Холбогдох өгөгдлийн эх үүсвэр, API/OAuth эрх, батлагдсан төсөв болон workflow-ийн дараа бодит үйлдлийг үе шаттай идэвхжүүлнэ.", "The structure, permissions and safeguards are prepared. Live actions will be enabled in stages only after data sources, API/OAuth authorization, an approved budget and workflows are configured.")}</p></section>
+          {workspaceDomain ? <>
+            <div className="marketing-ai-section-head"><div><span>{active.code} · GOVERNED WORKSPACE</span><h2>{t(active.mn, active.en)}</h2></div><em>{Object.values(workspaceSummary[workspaceDomain] || {}).reduce((sum, value) => sum + value, 0)} {t("record", "records")}</em></div>
+            {controlError ? <div className="marketing-ai-control-alert error" role="alert">{controlError}</div> : null}
+            {controlMessage ? <div className="marketing-ai-control-alert success" role="status">{controlMessage}</div> : null}
+            <div className="marketing-ai-area-grid compact">{cards.map((card) => <article key={card.titleEn}><span>{t(card.stateMn, card.stateEn)}</span><h3>{t(card.titleMn, card.titleEn)}</h3><p>{t(card.bodyMn, card.bodyEn)}</p></article>)}</div>
+            <form className="marketing-ai-record-form" onSubmit={createWorkspaceRecord}>
+              <div className="marketing-ai-card-head"><div><span>{workspaceEditing ? "EDIT GOVERNED RECORD" : "NEW GOVERNED RECORD"}</span><h3>{workspaceEditing ? t("Draft засварлах", "Edit draft") : t("Шинэ Draft үүсгэх", "Create a new draft")}</h3></div><b>{t("Revision + Audit", "Revision + audit")}</b></div>
+              <div className="marketing-ai-record-fields">
+                <label>{t("Төрөл", "Type")}<select value={workspaceKind} onChange={event => setWorkspaceKind(event.target.value)}>{workspaceKindOptions[workspaceDomain].map(option => <option key={option[0]} value={option[0]}>{t(option[1], option[2])}</option>)}</select></label>
+                <label>{t(workspaceConfigs[workspaceDomain].titleMn, workspaceConfigs[workspaceDomain].titleEn)}<input value={workspaceTitle} maxLength={180} onChange={event => setWorkspaceTitle(event.target.value)} required /></label>
+                {workspaceConfigs[workspaceDomain].fields.map(field => <label key={field.key} className={field.type === "textarea" ? "wide" : field.type === "checkbox" ? "check" : ""}>{field.type === "checkbox" ? <><input type="checkbox" checked={Boolean(workspaceData[field.key])} onChange={event => setWorkspaceData(current => ({ ...current, [field.key]: event.target.checked }))} />{t(field.mn, field.en)}</> : <>{t(field.mn, field.en)}{field.type === "textarea" ? <textarea value={String(workspaceData[field.key] || "")} onChange={event => setWorkspaceData(current => ({ ...current, [field.key]: event.target.value }))} /> : field.type === "select" ? <select value={String(workspaceData[field.key] || field.options?.[0]?.[0] || "")} onChange={event => setWorkspaceData(current => ({ ...current, [field.key]: event.target.value }))}>{field.options?.map(option => <option key={option[0]} value={option[0]}>{t(option[1], option[2])}</option>)}</select> : <input type={field.type || "text"} value={String(workspaceData[field.key] || "")} onChange={event => setWorkspaceData(current => ({ ...current, [field.key]: field.type === "number" ? Number(event.target.value) : event.target.value }))} />}</>}</label>)}
+              </div>
+              <footer><span>{t("Нууц үг, API key, access token энд хадгалахгүй.", "Passwords, API keys and access tokens are never stored here.")}</span><div className="marketing-ai-footer-actions">{workspaceEditing ? <button type="button" className="secondary" onClick={() => { setWorkspaceEditing(null); setWorkspaceTitle(""); setWorkspaceData(workspaceDefaults[workspaceDomain]); }}>{t("Цуцлах", "Cancel")}</button> : null}<button type="submit" disabled={workspaceBusy || workspaceTitle.trim().length < 2}>{workspaceBusy ? t("Хадгалж байна…", "Saving…") : workspaceEditing ? t("Шинэ revision хадгалах", "Save revision") : t("Draft хадгалах", "Save draft")}</button></div></footer>
+            </form>
+            {workspaceHistory ? <section className="marketing-ai-history"><header><div><span>REVISION HISTORY</span><h3>{workspaceHistory.title}</h3></div><button type="button" onClick={() => setWorkspaceHistory(null)}>{t("Хаах", "Close")}</button></header><ol>{workspaceHistory.rows.map(row => <li key={`${row.revision}-${row.createdAt}`}><b>r{row.revision} · {row.changeType}</b><span>{new Date(row.createdAt).toLocaleString()} · {row.changedBy}</span>{row.note ? <small>{row.note}</small> : null}</li>)}</ol></section> : null}
+            <div className="marketing-ai-record-list">
+              {workspaceRecords.length ? workspaceRecords.map(record => <article key={record.id}>
+                <header><div><span>{record.status.toUpperCase()} · {record.kind} · r{record.revision}</span><h3>{record.title}</h3></div><small>{new Date(record.updatedAt).toLocaleString()}</small></header>
+                <dl>{Object.entries(record.data).filter(([, value]) => value !== "" && value !== false && value != null).slice(0, 12).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{Array.isArray(value) ? value.join(", ") : String(value)}</dd></div>)}</dl>
+                <footer><small>{record.approvedAt ? `${t("Батлагдсан", "Approved")}: ${new Date(record.approvedAt).toLocaleString()}` : t("Гадагш үйлдэл хийгдээгүй", "No outbound action executed")}</small><div>
+                  <button type="button" className="secondary" onClick={() => showWorkspaceHistory(record)} disabled={workspaceBusy}>{t("Түүх", "History")}</button>
+                  {["leads", "content", "campaigns"].includes(workspaceDomain) ? <button type="button" className="secondary" onClick={() => prepareRecordCommand(record)}>{t("AI Draft бэлтгэх", "Prepare AI draft")}</button> : null}
+                  {["draft", "rejected"].includes(record.status) && canWorkspaceWrite ? <button type="button" className="secondary" onClick={() => startWorkspaceEdit(record)} disabled={workspaceBusy}>{t("Засах", "Edit")}</button> : null}
+                  {record.status === "draft" && canWorkspaceWrite ? <button type="button" onClick={() => changeWorkspaceRecord(record, "submit")} disabled={workspaceBusy}>{t("Review-д илгээх", "Submit for review")}</button> : null}
+                  {record.status === "review" && canApprove ? <><button type="button" onClick={() => changeWorkspaceRecord(record, "approve")} disabled={workspaceBusy}>{t("Батлах", "Approve")}</button><button type="button" className="danger" onClick={() => changeWorkspaceRecord(record, "reject")} disabled={workspaceBusy}>{t("Татгалзах", "Reject")}</button></> : null}
+                  {record.status === "approved" && workspaceDomain === "knowledge" && canApprove ? <button type="button" onClick={() => changeWorkspaceRecord(record, "publish")} disabled={workspaceBusy}>{t("Published болгох", "Publish internally")}</button> : null}
+                  {record.status === "approved" && workspaceDomain === "channels" && canConfigure ? <button type="button" onClick={() => changeWorkspaceRecord(record, "verify")} disabled={workspaceBusy}>{t("Холболтын бэлэн байдлыг шалгах", "Verify readiness")}</button> : null}
+                  {record.status === "approved" && workspaceDomain === "automation" && canConfigure ? <button type="button" onClick={() => changeWorkspaceRecord(record, "test")} disabled={workspaceBusy}>{t("Draft-only тест", "Draft-only test")}</button> : null}
+                  {["approved", "rejected", "archived"].includes(record.status) && canApprove ? <button type="button" className="secondary" onClick={() => changeWorkspaceRecord(record, "return_to_draft")} disabled={workspaceBusy}>{t("Draft болгох", "Return to draft")}</button> : null}
+                  {record.status !== "archived" && canApprove ? <button type="button" className="secondary" onClick={() => changeWorkspaceRecord(record, "archive")} disabled={workspaceBusy}>{t("Архивлах", "Archive")}</button> : null}
+                </div></footer>
+              </article>) : <section className="marketing-ai-empty-state"><strong>{t("Record байхгүй байна", "No records yet")}</strong><p>{t("Дээрх формоор эхний Draft record-оо үүсгэнэ үү.", "Use the form above to create the first draft record.")}</p></section>}
+            </div>
+          </> : null}
+
+          {section === "analytics" ? <>
+            <div className="marketing-ai-section-head"><div><span>10 · VERIFIED METRICS</span><h2>{t("Аналитик ба тайлан", "Analytics & reports")}</h2></div><em>{control?.usage.month}</em></div>
+            <div className="marketing-ai-stats">
+              <article><small>Lead</small><strong>{Object.values(control?.recordCounts?.leads || {}).reduce((sum, value) => sum + value, 0)}</strong><span>{t("Бүртгэгдсэн нийт", "Total registered")}</span></article>
+              <article><small>{t("Контент", "Content")}</small><strong>{Object.values(control?.recordCounts?.content || {}).reduce((sum, value) => sum + value, 0)}</strong><span>{t("Бүх төлөв", "All statuses")}</span></article>
+              <article><small>{t("Кампанит ажил", "Campaigns")}</small><strong>{Object.values(control?.recordCounts?.campaigns || {}).reduce((sum, value) => sum + value, 0)}</strong><span>{t("Бүх төлөв", "All statuses")}</span></article>
+              <article><small>{t("Баталгаажуулалт хүлээж буй", "Pending review")}</small><strong>{control?.draftCounts?.review || 0}</strong><span>{t("AI Draft", "AI drafts")}</span></article>
+            </div>
+            <div className="marketing-ai-area-grid">{cards.map(card => <article key={card.titleEn}><span>{t("Баталгаажсан record-д суурилна", "Based on governed records")}</span><h3>{t(card.titleMn, card.titleEn)}</h3><p>{t(card.bodyMn, card.bodyEn)}</p></article>)}</div>
+            <section className="marketing-ai-empty-state"><strong>{t("Тайлангийн дүрэм", "Reporting rule")}</strong><p>{t("AI usage нь token audit-аас, бизнесийн үзүүлэлт нь дээрх domain record-оос тооцогдоно. Таамаг болон баталгаажсан хэмжүүрийг холихгүй.", "AI usage comes from token audit and business metrics come from governed domain records. Forecasts are never mixed with verified measurements.")}</p></section>
           </> : null}
         </section>
       </div>

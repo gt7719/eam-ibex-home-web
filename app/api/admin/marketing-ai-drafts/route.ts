@@ -21,9 +21,17 @@ function present(row: DraftRow) {
     decidedBy: row.decided_by, decidedAt: row.decided_at, decisionNote: row.decision_note, createdAt: row.created_at, updatedAt: row.updated_at };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const auth = await authorize(); if (auth.error) return auth.error;
   const runtime = env as unknown as Runtime;
+  const historyId = new URL(request.url).searchParams.get("history");
+  if (historyId) {
+    const target = await runtime.DB.prepare("SELECT id FROM marketing_ai_drafts WHERE id=? LIMIT 1").bind(historyId.slice(0, 100)).first<{ id: string }>();
+    if (!target) return reply({ error: "Draft олдсонгүй." }, 404);
+    const history = await runtime.DB.prepare("SELECT revision,change_type,changed_by,note,created_at FROM marketing_ai_revisions WHERE entity_type='draft' AND entity_id=? ORDER BY revision DESC LIMIT 50")
+      .bind(target.id).all<{ revision: number; change_type: string; changed_by: string; note: string | null; created_at: string }>();
+    return reply({ history: (history.results || []).map(row => ({ revision: row.revision, changeType: row.change_type, changedBy: row.changed_by, note: row.note, createdAt: row.created_at })) });
+  }
   const result = await runtime.DB.prepare("SELECT id,admin_id,title,task_type,prompt_profile,prompt_version,model,content,missing_inputs_json,status,revision,estimated_cost_usd,submitted_at,decided_by,decided_at,decision_note,created_at,updated_at FROM marketing_ai_drafts ORDER BY updated_at DESC LIMIT 60").all<DraftRow>();
   return reply({ drafts: (result.results || []).map(present), outboundEnabled: false });
 }
@@ -31,22 +39,31 @@ export async function GET() {
 export async function PATCH(request: Request) {
   if (!hasTrustedOrigin(request)) return reply({ error: "Origin mismatch" }, 403);
   const auth = await authorize(); if (auth.error || !auth.user) return auth.error;
-  const body = await request.json().catch(() => null) as { id?: string; revision?: number; action?: "submit" | "approve" | "reject" | "return_to_draft"; note?: string } | null;
+  const body = await request.json().catch(() => null) as { id?: string; revision?: number; action?: "edit" | "submit" | "approve" | "reject" | "return_to_draft"; note?: string; title?: string; content?: string } | null;
   if (!body?.id || !Number.isInteger(body.revision) || !body.action) return reply({ error: "Draft, revision эсвэл шийдвэр дутуу байна." }, 400);
-  if (body.action === "submit" && !hasMarketingAdminPermission(auth.user, "marketing.draft")) return reply({ error: "Draft-ийг Review-д илгээх эрхгүй байна." }, 403);
-  if (body.action !== "submit" && !hasMarketingAdminPermission(auth.user, "marketing.approve")) return reply({ error: "Draft батлах эсвэл татгалзах эрхгүй байна." }, 403);
+  if (["edit", "submit"].includes(body.action) && !hasMarketingAdminPermission(auth.user, "marketing.draft")) return reply({ error: "Draft засах эсвэл Review-д илгээх эрхгүй байна." }, 403);
+  if (!["edit", "submit"].includes(body.action) && !hasMarketingAdminPermission(auth.user, "marketing.approve")) return reply({ error: "Draft батлах эсвэл татгалзах эрхгүй байна." }, 403);
   const runtime = env as unknown as Runtime;
   const current = await runtime.DB.prepare("SELECT id,admin_id,title,task_type,prompt_profile,prompt_version,model,content,missing_inputs_json,status,revision,estimated_cost_usd,submitted_at,decided_by,decided_at,decision_note,created_at,updated_at FROM marketing_ai_drafts WHERE id=? LIMIT 1").bind(body.id).first<DraftRow>();
   if (!current) return reply({ error: "Draft олдсонгүй." }, 404);
   const allowed: Record<string, string[]> = { draft: ["submit"], review: ["approve", "reject", "return_to_draft"], rejected: ["return_to_draft"], approved: ["return_to_draft"] };
-  if (!(allowed[current.status] || []).includes(body.action)) return reply({ error: `Энэ төлөвөөс ${body.action} шийдвэр хийх боломжгүй.` }, 409);
-  const nextStatus = body.action === "submit" ? "review" : body.action === "approve" ? "approved" : body.action === "reject" ? "rejected" : "draft";
+  const editAllowed = body.action === "edit" && ["draft", "rejected"].includes(current.status);
+  if (!editAllowed && !(allowed[current.status] || []).includes(body.action)) return reply({ error: `Энэ төлөвөөс ${body.action} шийдвэр хийх боломжгүй.` }, 409);
+  const nextStatus = body.action === "edit" ? current.status : body.action === "submit" ? "review" : body.action === "approve" ? "approved" : body.action === "reject" ? "rejected" : "draft";
   const now = new Date().toISOString(), note = typeof body.note === "string" ? body.note.trim().slice(0, 1_000) : "";
-  const result = await runtime.DB.prepare("UPDATE marketing_ai_drafts SET status=?,revision=revision+1,submitted_at=CASE WHEN ?='review' THEN ? ELSE submitted_at END,decided_by=CASE WHEN ? IN ('approved','rejected') THEN ? ELSE NULL END,decided_at=CASE WHEN ? IN ('approved','rejected') THEN ? ELSE NULL END,decision_note=?,updated_at=? WHERE id=? AND revision=?")
-    .bind(nextStatus, nextStatus, now, nextStatus, auth.user.id, nextStatus, now, note || null, now, body.id, body.revision).run();
+  const title = body.action === "edit" && typeof body.title === "string" ? body.title.trim().slice(0, 160) : current.title;
+  const content = body.action === "edit" && typeof body.content === "string" ? body.content.trim().slice(0, 12_000) : current.content;
+  if (!title || !content) return reply({ error: "Draft-ийн нэр болон агуулга хоосон байж болохгүй." }, 400);
+  const result = await runtime.DB.prepare("UPDATE marketing_ai_drafts SET title=?,content=?,status=?,revision=revision+1,submitted_at=CASE WHEN ?='review' THEN ? ELSE submitted_at END,decided_by=CASE WHEN ? IN ('approved','rejected') THEN ? ELSE NULL END,decided_at=CASE WHEN ? IN ('approved','rejected') THEN ? ELSE NULL END,decision_note=?,updated_at=? WHERE id=? AND revision=?")
+    .bind(title, content, nextStatus, nextStatus, now, nextStatus, auth.user.id, nextStatus, now, note || null, now, body.id, body.revision).run() as { meta?: { changes?: number } };
   if (result.meta?.changes !== undefined && Number(result.meta.changes) !== 1) return reply({ error: "Draft өөр админаар шинэчлэгдсэн байна. Дахин ачаална уу." }, 409);
-  await runtime.DB.prepare("INSERT INTO marketing_ai_audit_events (id,admin_id,event_type,model,status,metadata_json,created_at) VALUES (?,?,?,?,?,?,?)")
-    .bind(crypto.randomUUID(), auth.user.id, "marketing_ai.approval_decision", current.model, nextStatus, JSON.stringify({ draftId: current.id, from: current.status, to: nextStatus, revision: Number(body.revision) + 1, outboundExecuted: false }), now).run();
+  const nextRevision = Number(body.revision) + 1;
+  await runtime.DB.batch([
+    runtime.DB.prepare("INSERT INTO marketing_ai_revisions (id,entity_type,entity_id,revision,change_type,snapshot_json,changed_by,note,created_at) VALUES (?,'draft',?,?,?,?,?,?,?)")
+      .bind(crypto.randomUUID(), current.id, nextRevision, body.action, JSON.stringify({ title, content, status: nextStatus, taskType: current.task_type, promptProfile: current.prompt_profile, promptVersion: current.prompt_version, model: current.model, revision: nextRevision }), auth.user.id, note || null, now),
+    runtime.DB.prepare("INSERT INTO marketing_ai_audit_events (id,admin_id,event_type,model,status,metadata_json,created_at) VALUES (?,?,?,?,?,?,?)")
+      .bind(crypto.randomUUID(), auth.user.id, body.action === "edit" ? "marketing_ai.draft_edited" : "marketing_ai.approval_decision", current.model, nextStatus, JSON.stringify({ draftId: current.id, action: body.action, from: current.status, to: nextStatus, revision: nextRevision, outboundExecuted: false }), now),
+  ]);
   const updated = await runtime.DB.prepare("SELECT id,admin_id,title,task_type,prompt_profile,prompt_version,model,content,missing_inputs_json,status,revision,estimated_cost_usd,submitted_at,decided_by,decided_at,decision_note,created_at,updated_at FROM marketing_ai_drafts WHERE id=? LIMIT 1").bind(body.id).first<DraftRow>();
   return reply({ updated: updated ? present(updated) : null, outboundExecuted: false });
 }

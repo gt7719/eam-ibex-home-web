@@ -4,7 +4,7 @@ export type MarketingAiMode = "disabled" | "test" | "production";
 export type MarketingAiPromptProfile = "general" | "content" | "campaign" | "lead_followup" | "report";
 
 export type MarketingAiControlSettings = {
-  schemaVersion: 2;
+  schemaVersion: 3;
   mode: MarketingAiMode;
   model: string;
   fastModel: string;
@@ -22,6 +22,8 @@ export type MarketingAiControlSettings = {
   requestsPerMinute: number;
   requestsPerDay: number;
   maxOutputTokens: number;
+  tokenPolicy: Record<MarketingAiPromptProfile, number>;
+  incompleteRetryLimit: number;
   testedAt: string;
   testedFingerprint: string;
   testedBy: string;
@@ -33,10 +35,11 @@ export const MARKETING_AI_SETTINGS_KEY = "marketingAiControl";
 export const MARKETING_AI_PROMPT_VERSION = "marketing-admin-v2";
 
 export const DEFAULT_MARKETING_AI_SETTINGS: MarketingAiControlSettings = {
-  schemaVersion: 2, mode: "disabled", model: "gpt-5.6-luna", fastModel: "gpt-5.6-luna",
+  schemaVersion: 3, mode: "disabled", model: "gpt-5.6-luna", fastModel: "gpt-5.6-luna",
   detailedModel: "gpt-5.6-terra", fallbackModel: "gpt-5.6-luna", reasoningEffort: "medium", verbosity: "medium",
   defaultPromptProfile: "general", brandTone: "Мэргэжлийн, ойлгомжтой, баримтад тулгуурласан", approvedClaims: "", prohibitedClaims: "",
   monthlyBudgetUsd: 10, warningBudgetUsd: 5, criticalBudgetUsd: 8, requestsPerMinute: 4, requestsPerDay: 30, maxOutputTokens: 700,
+  tokenPolicy: { general: 700, content: 900, campaign: 1400, lead_followup: 700, report: 1600 }, incompleteRetryLimit: 1,
   testedAt: "", testedFingerprint: "", testedBy: "", humanApprovalRequired: true, outboundEnabled: false,
 };
 
@@ -58,15 +61,20 @@ export function normalizeMarketingAiSettings(value: unknown): MarketingAiControl
   const reasoningEffort = ["low", "medium", "high"].includes(String(row.reasoningEffort)) ? row.reasoningEffort as MarketingAiControlSettings["reasoningEffort"] : DEFAULT_MARKETING_AI_SETTINGS.reasoningEffort;
   const verbosity = ["low", "medium", "high"].includes(String(row.verbosity)) ? row.verbosity as MarketingAiControlSettings["verbosity"] : DEFAULT_MARKETING_AI_SETTINGS.verbosity;
   const fastModel = safeModel(row.fastModel, legacyModel);
+  const rawTokenPolicy = row.tokenPolicy && typeof row.tokenPolicy === "object" && !Array.isArray(row.tokenPolicy) ? row.tokenPolicy as Record<string, unknown> : {};
+  const legacyMax = Math.round(boundedNumber(row.maxOutputTokens, DEFAULT_MARKETING_AI_SETTINGS.maxOutputTokens, 120, 4_000));
+  const tokenPolicy = Object.fromEntries((["general", "content", "campaign", "lead_followup", "report"] as MarketingAiPromptProfile[]).map(profile => [profile,
+    Math.round(boundedNumber(rawTokenPolicy[profile], row.schemaVersion === 3 ? DEFAULT_MARKETING_AI_SETTINGS.tokenPolicy[profile] : legacyMax, 120, 4_000))])) as Record<MarketingAiPromptProfile, number>;
   return {
-    schemaVersion: 2, mode, model: fastModel, fastModel,
+    schemaVersion: 3, mode, model: fastModel, fastModel,
     detailedModel: safeModel(row.detailedModel, DEFAULT_MARKETING_AI_SETTINGS.detailedModel), fallbackModel: safeModel(row.fallbackModel, fastModel),
     reasoningEffort, verbosity, defaultPromptProfile: profile,
     brandTone: safeText(row.brandTone, DEFAULT_MARKETING_AI_SETTINGS.brandTone, 500), approvedClaims: safeText(row.approvedClaims, "", 4_000), prohibitedClaims: safeText(row.prohibitedClaims, "", 4_000),
     monthlyBudgetUsd, warningBudgetUsd, criticalBudgetUsd,
     requestsPerMinute: Math.round(boundedNumber(row.requestsPerMinute, DEFAULT_MARKETING_AI_SETTINGS.requestsPerMinute, 1, 60)),
     requestsPerDay: Math.round(boundedNumber(row.requestsPerDay, DEFAULT_MARKETING_AI_SETTINGS.requestsPerDay, 1, 1_000)),
-    maxOutputTokens: Math.round(boundedNumber(row.maxOutputTokens, DEFAULT_MARKETING_AI_SETTINGS.maxOutputTokens, 120, 4_000)),
+    maxOutputTokens: tokenPolicy.general, tokenPolicy,
+    incompleteRetryLimit: Math.round(boundedNumber(row.incompleteRetryLimit, DEFAULT_MARKETING_AI_SETTINGS.incompleteRetryLimit, 0, 1)),
     testedAt: safeText(row.testedAt, "", 80), testedFingerprint: safeText(row.testedFingerprint, "", 128), testedBy: safeText(row.testedBy, "", 100),
     humanApprovalRequired: true, outboundEnabled: false,
   };
@@ -75,7 +83,13 @@ export function normalizeMarketingAiSettings(value: unknown): MarketingAiControl
 function fingerprintInput(settings: MarketingAiControlSettings) {
   return JSON.stringify({ promptVersion: MARKETING_AI_PROMPT_VERSION, fastModel: settings.fastModel, detailedModel: settings.detailedModel, fallbackModel: settings.fallbackModel,
     reasoningEffort: settings.reasoningEffort, verbosity: settings.verbosity, defaultPromptProfile: settings.defaultPromptProfile, brandTone: settings.brandTone,
-    approvedClaims: settings.approvedClaims, prohibitedClaims: settings.prohibitedClaims, maxOutputTokens: settings.maxOutputTokens, humanApprovalRequired: true, outboundEnabled: false });
+    approvedClaims: settings.approvedClaims, prohibitedClaims: settings.prohibitedClaims, tokenPolicy: settings.tokenPolicy,
+    incompleteRetryLimit: settings.incompleteRetryLimit, humanApprovalRequired: true, outboundEnabled: false });
+}
+
+export function marketingAiTokenBudget(settings: MarketingAiControlSettings, profile: MarketingAiPromptProfile, attempt = 0) {
+  const configured = settings.tokenPolicy[profile] || settings.maxOutputTokens;
+  return Math.min(4_000, Math.max(120, attempt > 0 ? Math.round(configured * 1.35) : configured));
 }
 export async function marketingAiSettingsFingerprint(settings: MarketingAiControlSettings) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(fingerprintInput(settings)));

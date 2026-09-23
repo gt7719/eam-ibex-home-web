@@ -31,10 +31,17 @@ export async function POST(request: Request) {
       return { model, message: marketingAiOutputText(payload).slice(0, 300), inputTokens: Number(payload.usage?.input_tokens || 0), outputTokens: Number(payload.usage?.output_tokens || 0) };
     }));
     const testedAt = new Date().toISOString(), testedFingerprint = await marketingAiSettingsFingerprint(settings);
-    const savedRevision = await saveContentWithRevision({ key: MARKETING_AI_SETTINGS_KEY, value: { ...settings, testedAt, testedFingerprint, testedBy: user.id }, userId: user.id, expectedRevision: revision });
+    const testedSettings = { ...settings, testedAt, testedFingerprint, testedBy: user.id };
+    const savedRevision = await saveContentWithRevision({ key: MARKETING_AI_SETTINGS_KEY, value: testedSettings, userId: user.id, expectedRevision: revision });
     if (!savedRevision) return NextResponse.json({ error: "Тестийн үед тохиргоо өөрчлөгдсөн байна. Шинэчлээд дахин тестлэнэ үү.", code: "SETTINGS_CONFLICT" }, { status: 409 });
-    await runtime.DB.prepare("INSERT INTO marketing_ai_audit_events (id,admin_id,event_type,model,status,metadata_json,created_at) VALUES (?,?,?,?,?,?,?)")
-      .bind(crypto.randomUUID(), user.id, "marketing_ai.configuration_test", models.join(","), "completed", JSON.stringify({ promptVersion: MARKETING_AI_PROMPT_VERSION, models, outboundExecuted: false, humanApprovalRequired: true }), testedAt).run();
+    const latestRevision = await runtime.DB.prepare("SELECT COALESCE(MAX(revision),0) AS revision FROM marketing_ai_revisions WHERE entity_type='settings' AND entity_id=?")
+      .bind(MARKETING_AI_SETTINGS_KEY).first<{ revision: number }>();
+    await runtime.DB.batch([
+      runtime.DB.prepare("INSERT INTO marketing_ai_revisions (id,entity_type,entity_id,revision,change_type,snapshot_json,changed_by,note,created_at) VALUES (?,'settings',?,?,'configuration_test',?,?,NULL,?)")
+        .bind(crypto.randomUUID(), MARKETING_AI_SETTINGS_KEY, Number(latestRevision?.revision || 0) + 1, JSON.stringify(testedSettings), user.id, testedAt),
+      runtime.DB.prepare("INSERT INTO marketing_ai_audit_events (id,admin_id,event_type,model,status,metadata_json,created_at) VALUES (?,?,?,?,?,?,?)")
+        .bind(crypto.randomUUID(), user.id, "marketing_ai.configuration_test", models.join(","), "completed", JSON.stringify({ promptVersion: MARKETING_AI_PROMPT_VERSION, models, outboundExecuted: false, humanApprovalRequired: true }), testedAt),
+    ]);
     return NextResponse.json({ ok: true, testedAt, promptVersion: MARKETING_AI_PROMPT_VERSION, latencyMs: Date.now() - started, checks, safety: { outboundLocked: true, humanApprovalRequired: true, isolated: true } }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const problem = normalizeMarketingAiOpenAiError(error);

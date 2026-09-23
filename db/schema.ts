@@ -308,6 +308,53 @@ export const marketingAiDrafts = sqliteTable(
   table => [index("marketing_ai_drafts_status_updated_idx").on(table.status, table.updatedAt), index("marketing_ai_drafts_admin_updated_idx").on(table.adminId, table.updatedAt)],
 );
 
+// Marketing administration records share one governed envelope while keeping
+// their domain payloads isolated and versioned. This supports knowledge,
+// leads, content, campaigns, channel readiness and automation without allowing
+// any of those records to execute an outbound action.
+export const marketingAiRecords = sqliteTable(
+  "marketing_ai_records",
+  {
+    id: text("id").primaryKey(),
+    domain: text("domain").notNull(),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    status: text("status").notNull().default("draft"),
+    dataJson: text("data_json").notNull().default("{}"),
+    revision: integer("revision").notNull().default(1),
+    ownerId: text("owner_id").notNull(),
+    approvedBy: text("approved_by"),
+    approvedAt: text("approved_at"),
+    publishedAt: text("published_at"),
+    archivedAt: text("archived_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("marketing_ai_records_domain_status_idx").on(table.domain, table.status, table.updatedAt),
+    index("marketing_ai_records_owner_updated_idx").on(table.ownerId, table.updatedAt),
+  ],
+);
+
+export const marketingAiRevisions = sqliteTable(
+  "marketing_ai_revisions",
+  {
+    id: text("id").primaryKey(),
+    entityType: text("entity_type").notNull(),
+    entityId: text("entity_id").notNull(),
+    revision: integer("revision").notNull(),
+    changeType: text("change_type").notNull(),
+    snapshotJson: text("snapshot_json").notNull(),
+    changedBy: text("changed_by").notNull(),
+    note: text("note"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("marketing_ai_revisions_entity_revision_unique").on(table.entityType, table.entityId, table.revision),
+    index("marketing_ai_revisions_entity_created_idx").on(table.entityType, table.entityId, table.createdAt),
+  ],
+);
+
 // Public website accounts are intentionally separate from both admin_users
 // and the tenant users of the core iBeX product.
 export const siteUsers = sqliteTable(

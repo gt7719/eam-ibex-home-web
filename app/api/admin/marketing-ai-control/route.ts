@@ -19,10 +19,12 @@ export async function GET() {
   const auth = await authorize(); if (auth.error) return auth.error;
   const runtime = env as unknown as Runtime, month = new Date().toISOString().slice(0, 7);
   const { settings, revision } = await readMarketingAiSettings(runtime.DB);
-  const [usage, auditResult, draftCounts] = await Promise.all([
+  const [usage, auditResult, draftCounts, recordCounts, settingsHistory] = await Promise.all([
     runtime.DB.prepare("SELECT COALESCE(SUM(request_count),0) AS requests, COALESCE(SUM(input_tokens),0) AS input_tokens, COALESCE(SUM(output_tokens),0) AS output_tokens, COALESCE(SUM(estimated_cost_usd),0) AS estimated_cost_usd FROM marketing_ai_monthly_usage WHERE month_key=?").bind(month).first<{ requests: number; input_tokens: number; output_tokens: number; estimated_cost_usd: number }>(),
     runtime.DB.prepare("SELECT event_type, model, status, metadata_json, created_at FROM marketing_ai_audit_events ORDER BY created_at DESC LIMIT 30").all<{ event_type: string; model: string | null; status: string; metadata_json: string; created_at: string }>(),
     runtime.DB.prepare("SELECT status, COUNT(*) AS total FROM marketing_ai_drafts GROUP BY status").all<{ status: string; total: number }>(),
+    runtime.DB.prepare("SELECT domain,status,COUNT(*) AS total FROM marketing_ai_records GROUP BY domain,status").all<{ domain: string; status: string; total: number }>(),
+    runtime.DB.prepare("SELECT revision,change_type,changed_by,created_at FROM marketing_ai_revisions WHERE entity_type='settings' AND entity_id=? ORDER BY revision DESC LIMIT 10").bind(MARKETING_AI_SETTINGS_KEY).all<{ revision: number; change_type: string; changed_by: string; created_at: string }>(),
   ]);
   const keyConfigured = Boolean(runtime.OPENAI_MARKETING_API_KEY?.trim()), tested = await marketingAiSettingsIsTested(settings);
   const spent = Number(usage?.estimated_cost_usd || 0);
@@ -32,7 +34,9 @@ export async function GET() {
     status: { keyConfigured, tested, testedAt: tested ? settings.testedAt : "", emailConnected: Boolean(runtime.MARKETING_EMAIL_OAUTH_TOKEN?.trim()), socialConnected: Boolean(runtime.MARKETING_SOCIAL_OAUTH_TOKEN?.trim()), draftReady: keyConfigured && settings.mode !== "disabled", productionReady: keyConfigured && tested, outboundReady: false, humanApprovalRequired: true, separateFromHomeAi: true, separateFromIntelligentAi: true, budgetState },
     usage: { month, requests: Number(usage?.requests || 0), inputTokens: Number(usage?.input_tokens || 0), outputTokens: Number(usage?.output_tokens || 0), estimatedCostUsd: spent, authoritativeBilling: "OpenAI Marketing project budget" },
     draftCounts: Object.fromEntries((draftCounts.results || []).map(row => [row.status, Number(row.total || 0)])),
-    audit: (auditResult.results || []).map(row => ({ eventType: row.event_type, model: row.model, status: row.status, createdAt: row.created_at })),
+    recordCounts: (recordCounts.results || []).reduce<Record<string, Record<string, number>>>((result, row) => { result[row.domain] ||= {}; result[row.domain][row.status] = Number(row.total || 0); return result; }, {}),
+    settingsHistory: (settingsHistory.results || []).map(row => ({ revision: row.revision, changeType: row.change_type, changedBy: row.changed_by, createdAt: row.created_at })),
+    audit: (auditResult.results || []).map(row => { let metadata: Record<string, unknown> = {}; try { metadata = JSON.parse(row.metadata_json); } catch {} return { eventType: row.event_type, model: row.model, status: row.status, metadata, createdAt: row.created_at }; }),
   });
 }
 
@@ -53,7 +57,14 @@ export async function PUT(request: Request) {
   if (settings.mode === "production" && !await marketingAiSettingsIsTested(settings)) return reply({ error: "Production Draft горимын өмнө одоогийн model, prompt болон хамгаалалтын тохиргоог Test center-ээр амжилттай шалгана уу." }, 409);
   const revision = await saveContentWithRevision({ key: MARKETING_AI_SETTINGS_KEY, value: settings, userId: auth.user.id, expectedRevision: raw.revision ?? null });
   if (!revision) return reply({ error: conflictMessage() }, 409);
-  await runtime.DB.prepare("INSERT INTO marketing_ai_audit_events (id,admin_id,event_type,model,status,metadata_json,created_at) VALUES (?,?,?,?,?,?,?)")
-    .bind(crypto.randomUUID(), auth.user.id, "marketing_ai.settings_changed", null, "completed", JSON.stringify({ mode: settings.mode, tested: await marketingAiSettingsIsTested(settings), outboundEnabled: false }), new Date().toISOString()).run();
+  const now = new Date().toISOString();
+  const latestRevision = await runtime.DB.prepare("SELECT COALESCE(MAX(revision),0) AS revision FROM marketing_ai_revisions WHERE entity_type='settings' AND entity_id=?")
+    .bind(MARKETING_AI_SETTINGS_KEY).first<{ revision: number }>();
+  await runtime.DB.batch([
+    runtime.DB.prepare("INSERT INTO marketing_ai_revisions (id,entity_type,entity_id,revision,change_type,snapshot_json,changed_by,note,created_at) VALUES (?,'settings',?,?,'updated',?,?,NULL,?)")
+      .bind(crypto.randomUUID(), MARKETING_AI_SETTINGS_KEY, Number(latestRevision?.revision || 0) + 1, JSON.stringify(settings), auth.user.id, now),
+    runtime.DB.prepare("INSERT INTO marketing_ai_audit_events (id,admin_id,event_type,model,status,metadata_json,created_at) VALUES (?,?,?,?,?,?,?)")
+      .bind(crypto.randomUUID(), auth.user.id, "marketing_ai.settings_changed", null, "completed", JSON.stringify({ mode: settings.mode, tested: await marketingAiSettingsIsTested(settings), tokenPolicy: settings.tokenPolicy, outboundEnabled: false }), now),
+  ]);
   return reply({ saved: true, settings, revision });
 }
