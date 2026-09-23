@@ -10,6 +10,10 @@ export const ADMIN_PERMISSIONS = [
   "people.manage",
   "knowledge.manage",
   "marketing.manage",
+  "marketing.settings",
+  "marketing.draft",
+  "marketing.approve",
+  "marketing.audit",
   "social.manage",
   "accounts.manage",
   "media.upload",
@@ -21,6 +25,10 @@ export const ADMIN_CONTENT_PERMISSIONS = [
   "people.manage",
   "knowledge.manage",
   "marketing.manage",
+  "marketing.settings",
+  "marketing.draft",
+  "marketing.approve",
+  "marketing.audit",
   "social.manage",
   "accounts.manage",
 ] as const;
@@ -163,6 +171,11 @@ export function hasAdminPermission(
   permission: AdminPermission,
 ) {
   return user.role === "owner" || user.permissions.includes(permission);
+}
+
+export type MarketingAdminPermission = "marketing.settings" | "marketing.draft" | "marketing.approve" | "marketing.audit";
+export function hasMarketingAdminPermission(user: { role: "owner" | "editor"; permissions: AdminPermission[] }, permission?: MarketingAdminPermission) {
+  return hasAdminPermission(user, "marketing.manage") || (permission ? hasAdminPermission(user, permission) : user.role === "owner" || user.permissions.some(value => value.startsWith("marketing.")));
 }
 
 export async function countAdmins() {

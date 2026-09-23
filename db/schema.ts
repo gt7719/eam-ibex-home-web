@@ -296,6 +296,18 @@ export const marketingAiAuditEvents = sqliteTable(
   (table) => [index("marketing_ai_audit_created_idx").on(table.createdAt)],
 );
 
+export const marketingAiDrafts = sqliteTable(
+  "marketing_ai_drafts",
+  {
+    id: text("id").primaryKey(), adminId: text("admin_id").notNull(), title: text("title").notNull(), taskType: text("task_type").notNull(),
+    promptProfile: text("prompt_profile").notNull(), promptVersion: text("prompt_version").notNull(), model: text("model").notNull(), content: text("content").notNull(),
+    missingInputsJson: text("missing_inputs_json").notNull().default("[]"), status: text("status").notNull().default("draft"), revision: integer("revision").notNull().default(1),
+    estimatedCostUsd: real("estimated_cost_usd").notNull().default(0), submittedAt: text("submitted_at"), decidedBy: text("decided_by"), decidedAt: text("decided_at"),
+    decisionNote: text("decision_note"), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
+  },
+  table => [index("marketing_ai_drafts_status_updated_idx").on(table.status, table.updatedAt), index("marketing_ai_drafts_admin_updated_idx").on(table.adminId, table.updatedAt)],
+);
+
 // Public website accounts are intentionally separate from both admin_users
 // and the tenant users of the core iBeX product.
 export const siteUsers = sqliteTable(

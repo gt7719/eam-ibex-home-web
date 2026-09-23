@@ -36,16 +36,20 @@ type ChatMessage = {
 type MarketingControl = {
   settings: MarketingAiControlSettings;
   revision: string | null;
-  status: { keyConfigured: boolean; emailConnected: boolean; socialConnected: boolean; draftReady: boolean; outboundReady: false; humanApprovalRequired: true };
+  status: { keyConfigured: boolean; tested: boolean; testedAt: string; emailConnected: boolean; socialConnected: boolean; draftReady: boolean; productionReady: boolean; outboundReady: false; humanApprovalRequired: true; budgetState: "normal" | "warning" | "critical" | "exhausted" };
   usage: { month: string; requests: number; inputTokens: number; outputTokens: number; estimatedCostUsd: number };
+  draftCounts: Record<string, number>;
   audit: Array<{ eventType: string; model: string | null; status: string; createdAt: string }>;
 };
 
 const defaultControlSettings: MarketingAiControlSettings = {
-  mode: "disabled", model: "gpt-5.6-luna", monthlyBudgetUsd: 10, warningBudgetUsd: 5,
-  criticalBudgetUsd: 8, requestsPerMinute: 4, requestsPerDay: 30, maxOutputTokens: 700,
-  humanApprovalRequired: true, outboundEnabled: false,
+  schemaVersion: 2, mode: "disabled", model: "gpt-5.6-luna", fastModel: "gpt-5.6-luna", detailedModel: "gpt-5.6-terra", fallbackModel: "gpt-5.6-luna",
+  reasoningEffort: "medium", verbosity: "medium", defaultPromptProfile: "general", brandTone: "Мэргэжлийн, ойлгомжтой, баримтад тулгуурласан", approvedClaims: "", prohibitedClaims: "",
+  monthlyBudgetUsd: 10, warningBudgetUsd: 5, criticalBudgetUsd: 8, requestsPerMinute: 4, requestsPerDay: 30, maxOutputTokens: 700,
+  testedAt: "", testedFingerprint: "", testedBy: "", humanApprovalRequired: true, outboundEnabled: false,
 };
+
+type MarketingDraft = { id: string; title: string; taskType: string; promptProfile: string; promptVersion: string; model: string; content: string; missingInputs: string[]; status: "draft" | "review" | "approved" | "rejected"; revision: number; estimatedCostUsd: number; updatedAt: string; decisionNote?: string | null };
 
 const sections: Array<{ id: SectionId; code: string; mn: string; en: string }> = [
   { id: "dashboard", code: "01", mn: "Хяналтын самбар", en: "Dashboard" },
@@ -63,10 +67,11 @@ const sections: Array<{ id: SectionId; code: string; mn: string; en: string }> =
   { id: "audit", code: "13", mn: "Audit log", en: "Audit log" },
 ];
 const sectionGroups = [
-  { mn: "Ерөнхий", en: "Overview", ids: ["dashboard", "command"] },
-  { mn: "Маркетингийн ажиллагаа", en: "Marketing operations", ids: ["leads", "content", "campaigns", "channels"] },
-  { mn: "Хяналт", en: "Governance", ids: ["automation", "approvals", "budget", "analytics"] },
-  { mn: "Систем", en: "System", ids: ["knowledge", "integrations", "audit"] },
+  { mn: "Ерөнхий", en: "Overview", ids: ["dashboard"] },
+  { mn: "Маркетингийн ажил", en: "Marketing work", ids: ["command", "leads", "content", "campaigns"] },
+  { mn: "Хяналт ба нийтлэлт", en: "Control & publishing", ids: ["channels", "automation", "approvals"] },
+  { mn: "AI тохиргоо", en: "AI settings", ids: ["knowledge", "integrations", "budget"] },
+  { mn: "Засаглал", en: "Governance", ids: ["analytics", "audit"] },
 ] as const;
 
 const initialMessages: ChatMessage[] = [
@@ -183,6 +188,9 @@ export default function MarketingAiPage() {
   const [controlSettings, setControlSettings] = useState<MarketingAiControlSettings>(defaultControlSettings);
   const [controlMessage, setControlMessage] = useState(""), [controlError, setControlError] = useState("");
   const [savingControl, setSavingControl] = useState(false), [running, setRunning] = useState(false);
+  const [testingControl, setTestingControl] = useState(false);
+  const [drafts, setDrafts] = useState<MarketingDraft[]>([]);
+  const dirty = Boolean(control && JSON.stringify(control.settings) !== JSON.stringify(controlSettings));
 
   const loadControl = useCallback(async () => {
     const response = await fetch("/api/admin/marketing-ai-control", { cache: "no-store" }).catch(() => null);
@@ -190,6 +198,11 @@ export default function MarketingAiPage() {
     if (response?.ok) { setControl(payload); setControlSettings(payload.settings); }
     else if (response?.status !== 401 && response?.status !== 403) setControlError(payload.error || t("Marketing AI тохиргоог ачаалж чадсангүй.", "Could not load Marketing AI settings."));
   }, [t]);
+
+  const loadDrafts = useCallback(async () => {
+    const response = await fetch("/api/admin/marketing-ai-drafts", { cache: "no-store" }).catch(() => null);
+    if (response?.ok) setDrafts((await response.json()).drafts || []);
+  }, []);
 
   useEffect(() => {
     fetch("/api/admin/session", { cache: "no-store" })
@@ -200,17 +213,33 @@ export default function MarketingAiPage() {
         }
         const payload = await response.json();
         const next = payload.user as SessionUser;
-        const canAccess = Boolean(next.permissions?.includes("marketing.manage"));
+        const canAccess = Boolean(next.permissions?.some(permission => permission.startsWith("marketing.")));
         setUser(next);
         setAuthorized(canAccess);
         setChecking(false);
-        if (canAccess) void loadControl();
+        if (canAccess) { void loadControl(); void loadDrafts(); }
         if (!canAccess) window.location.replace("/admin");
       })
       .catch(() => window.location.replace("/admin/login"));
-  }, [loadControl]);
+  }, [loadControl, loadDrafts]);
 
-  const active = sections.find((item) => item.id === section) || sections[0];
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => { if (!dirty) return; event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    window.parent.postMessage({ type: "ibex-admin-dirty", dirty }, location.origin);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  const hasScope = (permission: string) => Boolean(user?.permissions?.includes("marketing.manage") || user?.permissions?.includes(permission));
+  const canDraft = hasScope("marketing.draft"), canApprove = hasScope("marketing.approve"), canConfigure = hasScope("marketing.settings"), canAudit = hasScope("marketing.audit");
+  const visibleSections = sections.filter(item => {
+    if (["command", "leads", "content", "campaigns"].includes(item.id)) return canDraft;
+    if (item.id === "approvals") return canDraft || canApprove;
+    if (["channels", "automation", "knowledge", "integrations", "budget"].includes(item.id)) return canConfigure;
+    if (["analytics", "audit"].includes(item.id)) return canAudit;
+    return true;
+  });
+  const active = visibleSections.find((item) => item.id === section) || visibleSections[0];
   const cards = useMemo(() => section !== "dashboard" && section !== "command" ? areaCards[section] : [], [section]);
 
   async function submitCommand(event: FormEvent) {
@@ -231,7 +260,7 @@ export default function MarketingAiPage() {
     const text = response?.ok ? String(payload.draft || "") : String(payload.error || t("Marketing AI Draft бэлтгэж чадсангүй.", "Marketing AI could not prepare the draft."));
     setMessages((current) => [...current, { id: `assistant-${now}`, role: "assistant", status: response?.ok ? "draft" : "notice", textMn: text, textEn: text }]);
     setRunning(false);
-    if (response?.ok) void loadControl();
+    if (response?.ok) { void loadControl(); void loadDrafts(); }
   }
 
   async function saveControl(event: FormEvent) {
@@ -241,6 +270,24 @@ export default function MarketingAiPage() {
     if (!response?.ok) setControlError(payload.error || t("Тохиргоог хадгалж чадсангүй.", "Could not save settings."));
     else { setControlMessage(t("Marketing AI тохиргоог хадгаллаа.", "Marketing AI settings saved.")); await loadControl(); }
     setSavingControl(false);
+  }
+
+  async function testControl() {
+    setTestingControl(true); setControlMessage(""); setControlError("");
+    if (dirty) { setControlError(t("Тестлэхийн өмнө одоогийн тохиргоог хадгална уу.", "Save the current settings before testing.")); setTestingControl(false); return; }
+    const response = await fetch("/api/admin/marketing-ai-control/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(() => null);
+    const payload = response ? await response.json().catch(() => ({})) : {};
+    if (!response?.ok) setControlError(payload.error || t("Тохиргооны тест амжилтгүй.", "Configuration test failed."));
+    else { setControlMessage(t(`OpenAI, ${payload.checks?.length || 0} model, code-managed prompt болон Draft хамгаалалтыг амжилттай шалгалаа.`, `OpenAI, ${payload.checks?.length || 0} models, the code-managed prompt, and draft safeguards passed.`)); await loadControl(); }
+    setTestingControl(false);
+  }
+
+  async function decideDraft(draft: MarketingDraft, action: "submit" | "approve" | "reject" | "return_to_draft") {
+    const note = action === "reject" ? window.prompt(t("Татгалзсан шалтгаан", "Rejection reason")) || "" : "";
+    const response = await fetch("/api/admin/marketing-ai-drafts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: draft.id, revision: draft.revision, action, note }) }).catch(() => null);
+    const payload = response ? await response.json().catch(() => ({})) : {};
+    if (!response?.ok) setControlError(payload.error || t("Draft төлөвийг шинэчилж чадсангүй.", "Could not update the draft status."));
+    else { setControlMessage(t("Draft-ийн шийдвэрийг audit-д бүртгэлээ.", "The draft decision was recorded in the audit trail.")); await Promise.all([loadDrafts(), loadControl()]); }
   }
 
   if (checking || !authorized) return <main className="marketing-ai-state">{t("Маркетингийн админ эрхийг шалгаж байна…", "Checking marketing administration access…")}</main>;
@@ -268,7 +315,7 @@ export default function MarketingAiPage() {
       <div className="marketing-ai-workspace">
         <aside className="marketing-ai-sidebar">
           <nav aria-label={t("Маркетинг AI цэс", "Marketing AI menu")}>
-            {sectionGroups.map(group => <section className="marketing-ai-nav-group" key={group.en}><h3>{t(group.mn, group.en)}</h3>{sections.filter(item => (group.ids as readonly string[]).includes(item.id)).map((item) => <button key={item.id} type="button" className={item.id === section ? "active" : ""} onClick={() => setSection(item.id)}><small>{item.code}</small><span>{t(item.mn, item.en)}</span></button>)}</section>)}
+            {sectionGroups.map(group => { const items = visibleSections.filter(item => (group.ids as readonly string[]).includes(item.id)); return items.length ? <section className="marketing-ai-nav-group" key={group.en}><h3>{t(group.mn, group.en)}</h3>{items.map((item) => <button key={item.id} type="button" className={item.id === active.id ? "active" : ""} onClick={() => setSection(item.id)}><small>{item.code}</small><span>{t(item.mn, item.en)}</span></button>)}</section> : null; })}
           </nav>
           <footer><i /><span>{t("Бодит илгээлт идэвхгүй", "Live sending disabled")}</span></footer>
         </aside>
@@ -278,7 +325,7 @@ export default function MarketingAiPage() {
             <div className="marketing-ai-section-head"><div><span>01 · CONTROL OVERVIEW</span><h2>{t("Хяналтын самбар", "Dashboard")}</h2></div><em>{t("Суурь хувилбар", "Foundation release")}</em></div>
             <div className="marketing-ai-stats">
               <article><small>{t("Идэвхтэй кампанит ажил", "Active campaigns")}</small><strong>0</strong><span>{t("Суваг холбогдоогүй", "Channels not connected")}</span></article>
-              <article><small>{t("Хүлээгдэж буй зөвшөөрөл", "Pending approvals")}</small><strong>0</strong><span>{t("Гадагш үйлдэл хаалттай", "Outbound actions locked")}</span></article>
+              <article><small>{t("Хүлээгдэж буй зөвшөөрөл", "Pending approvals")}</small><strong>{control?.draftCounts?.review || 0}</strong><span>{t("Гадагш үйлдэл хаалттай", "Outbound actions locked")}</span></article>
               <article><small>{t("Холбогдсон суваг", "Connected channels")}</small><strong>1 / 4</strong><span>{t("Зөвхөн iBeX веб суурь", "iBeX website foundation only")}</span></article>
               <article><small>{t("AI сарын төсөв", "Monthly AI budget")}</small><strong>${(control?.usage.estimatedCostUsd || 0).toFixed(4)} / ${controlSettings.monthlyBudgetUsd}</strong><span>{t("App guard · OpenAI hard limit тусдаа", "App guard · separate OpenAI hard limit")}</span></article>
             </div>
@@ -289,7 +336,7 @@ export default function MarketingAiPage() {
               </article>
               <article className="marketing-ai-readiness">
                 <div className="marketing-ai-card-head"><div><span>READINESS</span><h3>{t("Холболтын төлөв", "Connection status")}</h3></div></div>
-                <ul><li className="ready"><span>{t("Админ permission", "Admin permission")}</span><b>{t("Бэлэн", "Ready")}</b></li><li className="ready"><span>{t("Зөвшөөрлийн gate", "Approval gate")}</span><b>{t("Бэлэн", "Ready")}</b></li><li className={control?.status.keyConfigured ? "ready" : ""}><span>OpenAI API</span><b>{control?.status.keyConfigured ? t("Холбогдсон", "Connected") : t("Холбогдоогүй", "Not connected")}</b></li><li className={control?.status.emailConnected && control?.status.socialConnected ? "ready" : ""}><span>Email / Social</span><b>{control?.status.emailConnected || control?.status.socialConnected ? t("Хэсэгчлэн", "Partial") : t("Холбогдоогүй", "Not connected")}</b></li><li className="ready"><span>{t("Сарын app төсөв", "Monthly app budget")}</span><b>${controlSettings.monthlyBudgetUsd}</b></li></ul>
+                <ul><li className="ready"><span>{t("Админ permission", "Admin permission")}</span><b>{t("Бэлэн", "Ready")}</b></li><li className="ready"><span>Draft → Review → Decision</span><b>{t("Бэлэн", "Ready")}</b></li><li className={control?.status.keyConfigured ? "ready" : ""}><span>OpenAI API</span><b>{control?.status.keyConfigured ? t("Secret идэвхтэй", "Secret active") : t("Холбогдоогүй", "Not connected")}</b></li><li className={control?.status.tested ? "ready" : ""}><span>{t("Тохиргооны тест", "Configuration test")}</span><b>{control?.status.tested ? t("Амжилттай", "Passed") : t("Шаардлагатай", "Required")}</b></li><li className={control?.status.budgetState === "normal" ? "ready" : ""}><span>{t("Төсвийн төлөв", "Budget state")}</span><b>{control?.status.budgetState || "normal"}</b></li></ul>
               </article>
             </div>
           </> : null}
@@ -314,15 +361,20 @@ export default function MarketingAiPage() {
             <div className="marketing-ai-section-head"><div><span>12 · MARKETING CONTROL</span><h2>{t("Интеграц ба тохиргоо", "Integrations & settings")}</h2></div><em>{t("Тусгаарласан OpenAI", "Isolated OpenAI")}</em></div>
             {controlError ? <div className="marketing-ai-control-alert error" role="alert">{controlError}</div> : null}
             {controlMessage ? <div className="marketing-ai-control-alert success" role="status">{controlMessage}</div> : null}
-            <form className="marketing-ai-control-form" onSubmit={saveControl}>
+            <form id="marketing-ai-settings-form" className="marketing-ai-control-form" onSubmit={saveControl}>
               <section>
                 <div className="marketing-ai-card-head"><div><span>OPENAI PROJECT</span><h3>{t("Marketing AI ажиллагаа", "Marketing AI operation")}</h3></div><b className={control?.status.keyConfigured ? "connected" : "waiting"}>{control?.status.keyConfigured ? t("Холбогдсон", "Connected") : t("Key хүлээж байна", "Waiting for key")}</b></div>
                 <div className="marketing-ai-control-fields">
                   <label>{t("Ажиллах горим", "Operating mode")}<select value={controlSettings.mode} onChange={event => setControlSettings(current => ({ ...current, mode: event.target.value as MarketingAiControlSettings["mode"] }))}><option value="disabled">Disabled</option><option value="test">Test</option><option value="production">Production Draft</option></select></label>
-                  <label>OpenAI model<input value={controlSettings.model} onChange={event => setControlSettings(current => ({ ...current, model: event.target.value }))} /></label>
-                  <label>{t("Max output token", "Max output tokens")}<input type="number" min="120" max="2000" value={controlSettings.maxOutputTokens} onChange={event => setControlSettings(current => ({ ...current, maxOutputTokens: Number(event.target.value) }))} /></label>
+                  <label>{t("Хурдан model", "Fast model")}<input value={controlSettings.fastModel} onChange={event => setControlSettings(current => ({ ...current, model: event.target.value, fastModel: event.target.value }))} /></label>
+                  <label>{t("Нарийвчилсан model", "Detailed model")}<input value={controlSettings.detailedModel} onChange={event => setControlSettings(current => ({ ...current, detailedModel: event.target.value }))} /></label>
+                  <label>{t("Fallback model", "Fallback model")}<input value={controlSettings.fallbackModel} onChange={event => setControlSettings(current => ({ ...current, fallbackModel: event.target.value }))} /></label>
+                  <label>{t("Prompt profile", "Prompt profile")}<select value={controlSettings.defaultPromptProfile} onChange={event => setControlSettings(current => ({ ...current, defaultPromptProfile: event.target.value as MarketingAiControlSettings["defaultPromptProfile"] }))}><option value="general">General</option><option value="content">Content</option><option value="campaign">Campaign</option><option value="lead_followup">Lead follow-up</option><option value="report">Report</option></select></label>
+                  <label>{t("Reasoning", "Reasoning")}<select value={controlSettings.reasoningEffort} onChange={event => setControlSettings(current => ({ ...current, reasoningEffort: event.target.value as MarketingAiControlSettings["reasoningEffort"] }))}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
+                  <label>{t("Max output token", "Max output tokens")}<input type="number" min="120" max="4000" value={controlSettings.maxOutputTokens} onChange={event => setControlSettings(current => ({ ...current, maxOutputTokens: Number(event.target.value) }))} /></label>
                   <label>{t("Өдрийн хүсэлт", "Daily requests")}<input type="number" min="1" max="1000" value={controlSettings.requestsPerDay} onChange={event => setControlSettings(current => ({ ...current, requestsPerDay: Number(event.target.value) }))} /></label>
                 </div>
+                <div className="marketing-ai-prompt-fields"><label>{t("Брэндийн өнгө аяс", "Brand tone")}<textarea value={controlSettings.brandTone} maxLength={500} onChange={event => setControlSettings(current => ({ ...current, brandTone: event.target.value }))} /></label><label>{t("Баталгаажсан мэдэгдэл", "Approved claims")}<textarea value={controlSettings.approvedClaims} maxLength={4000} onChange={event => setControlSettings(current => ({ ...current, approvedClaims: event.target.value }))} /></label><label>{t("Хориглосон мэдэгдэл", "Prohibited claims")}<textarea value={controlSettings.prohibitedClaims} maxLength={4000} onChange={event => setControlSettings(current => ({ ...current, prohibitedClaims: event.target.value }))} /></label></div>
                 <p>{t("OPENAI_MARKETING_API_KEY нь Home AI-ийн key-ээс тусдаа Sites secret байна. Утгыг энэ дэлгэцэнд хэзээ ч харуулахгүй.", "OPENAI_MARKETING_API_KEY is a Sites secret separate from the Home AI key. Its value is never shown on this screen.")}</p>
               </section>
               <section>
@@ -335,8 +387,22 @@ export default function MarketingAiPage() {
                 </ul>
                 <p>{t("OpenAI холбогдсон ч email/social илгээхгүй. OAuth, хэрэглэгчийн сувгийн зөвшөөрөл, батлагдсан workflow болон delivery audit тусдаа бэлэн болсны дараа дараагийн хувилбараар нээнэ.", "Connecting OpenAI does not enable email or social sending. Outbound remains locked until OAuth, channel consent, an approved workflow and delivery audit are implemented separately.")}</p>
               </section>
-              <footer><span>{t("Эхлээд Test горимд Draft шалгаад, дараа Production Draft-ийг идэвхжүүлнэ.", "Validate drafts in Test mode before enabling Production Draft.")}</span><button type="submit" disabled={savingControl}>{savingControl ? t("Хадгалж байна…", "Saving…") : t("Тохиргоо хадгалах", "Save settings")}</button></footer>
+              <footer><span>{control?.status.tested ? t(`Сүүлийн амжилттай тест: ${new Date(control.status.testedAt).toLocaleString()}`, `Last successful test: ${new Date(control.status.testedAt).toLocaleString()}`) : t("Хадгалаад бүх model, prompt болон хамгаалалтыг тестлэнэ.", "Save, then test every model, prompt, and safeguard.")}</span><div className="marketing-ai-footer-actions"><button type="button" className="secondary" onClick={testControl} disabled={testingControl || dirty || controlSettings.mode === "disabled"}>{testingControl ? t("Тестэлж байна…", "Testing…") : t("Бүх тохиргоог тестлэх", "Test configuration")}</button><button type="submit" disabled={savingControl || !dirty}>{savingControl ? t("Хадгалж байна…", "Saving…") : t("Тохиргоо хадгалах", "Save settings")}</button></div></footer>
             </form>
+          </> : null}
+
+          {section === "approvals" ? <>
+            <div className="marketing-ai-section-head"><div><span>08 · HUMAN REVIEW</span><h2>{t("Draft ба зөвшөөрлийн төв", "Draft & approval center")}</h2></div><em>{t("Гадагш үйлдэл хаалттай", "Outbound locked")}</em></div>
+            {controlError ? <div className="marketing-ai-control-alert error" role="alert">{controlError}</div> : null}
+            {controlMessage ? <div className="marketing-ai-control-alert success" role="status">{controlMessage}</div> : null}
+            <div className="marketing-ai-draft-list">
+              {drafts.length ? drafts.map(draft => <article key={draft.id}>
+                <header><div><span>{draft.status.toUpperCase()} · {draft.promptProfile} · r{draft.revision}</span><h3>{draft.title}</h3></div><small>{draft.model} · {new Date(draft.updatedAt).toLocaleString()}</small></header>
+                <p>{draft.content}</p>
+                {draft.missingInputs.length ? <ul>{draft.missingInputs.map(item => <li key={item}>{item}</li>)}</ul> : null}
+                <footer><small>{draft.promptVersion} · ${Number(draft.estimatedCostUsd || 0).toFixed(6)}</small><div>{canDraft && draft.status === "draft" ? <button type="button" onClick={() => decideDraft(draft, "submit")}>{t("Review-д илгээх", "Submit for review")}</button> : null}{canApprove && draft.status === "review" ? <><button type="button" onClick={() => decideDraft(draft, "approve")}>{t("Батлах", "Approve")}</button><button type="button" className="danger" onClick={() => decideDraft(draft, "reject")}>{t("Татгалзах", "Reject")}</button></> : null}{canApprove && (draft.status === "approved" || draft.status === "rejected") ? <button type="button" className="secondary" onClick={() => decideDraft(draft, "return_to_draft")}>{t("Draft болгох", "Return to draft")}</button> : null}</div></footer>
+              </article>) : <section className="marketing-ai-empty-state"><strong>{t("Draft үүсээгүй байна", "No drafts yet")}</strong><p>{t("AI командын төвөөс Draft үүсгэхэд энд хадгалагдаж, Review → Approved/Rejected урсгалаар шийдвэрлэгдэнэ.", "Drafts created in the command center are stored here and move through Review → Approved/Rejected.")}</p></section>}
+            </div>
           </> : null}
 
           {section === "budget" ? <>
@@ -351,13 +417,14 @@ export default function MarketingAiPage() {
             <div className="marketing-ai-audit-list">{control?.audit.length ? control.audit.map((row, index) => <article key={`${row.createdAt}-${index}`}><span><b>{row.status}</b>{row.eventType}</span><small>{row.model || "local"} · {new Date(row.createdAt).toLocaleString()}</small></article>) : <section className="marketing-ai-empty-state"><strong>{t("Audit event бүртгэгдээгүй", "No audit events")}</strong><p>{t("OpenAI Draft үүсгэсний дараа model, төлөв, token, зардлын metadata энд харагдана. Түүхий prompt хадгалахгүй.", "After an OpenAI draft is created, model, status, token and cost metadata appears here. Raw prompts are not stored.")}</p></section>}</div>
           </> : null}
 
-          {section !== "dashboard" && section !== "command" && section !== "integrations" && section !== "budget" && section !== "audit" ? <>
+          {section !== "dashboard" && section !== "command" && section !== "integrations" && section !== "budget" && section !== "approvals" && section !== "audit" ? <>
             <div className="marketing-ai-section-head"><div><span>{active.code} · MARKETING CONTROL</span><h2>{t(active.mn, active.en)}</h2></div><em>{t("Архитектурын суурь", "Architecture foundation")}</em></div>
             <div className="marketing-ai-area-grid">{cards.map((card) => <article key={card.titleEn}><span>{t(card.stateMn, card.stateEn)}</span><h3>{t(card.titleMn, card.titleEn)}</h3><p>{t(card.bodyMn, card.bodyEn)}</p></article>)}</div>
             <section className="marketing-ai-empty-state"><strong>{t("Бодит ажиллагаа одоогоор идэвхгүй", "Live operation is currently disabled")}</strong><p>{t("Энэ хэсгийн бүтэц, эрх болон хамгаалалтын хүрээг бэлтгэсэн. Холбогдох өгөгдлийн эх үүсвэр, API/OAuth эрх, батлагдсан төсөв болон workflow-ийн дараа бодит үйлдлийг үе шаттай идэвхжүүлнэ.", "The structure, permissions and safeguards are prepared. Live actions will be enabled in stages only after data sources, API/OAuth authorization, an approved budget and workflows are configured.")}</p></section>
           </> : null}
         </section>
       </div>
+      {dirty ? <aside className="marketing-ai-save-bar"><span>{t("Хадгалаагүй тохиргоо байна. Model эсвэл prompt өөрчлөгдвөл Production тест хүчингүй болно.", "There are unsaved settings. Model or prompt changes invalidate the production test.")}</span><button type="button" onClick={() => void saveControl({ preventDefault() {} } as FormEvent)} disabled={savingControl}>{t("Өөрчлөлт хадгалах", "Save changes")}</button></aside> : null}
     </main>
   );
 }

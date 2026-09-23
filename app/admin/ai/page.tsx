@@ -16,7 +16,7 @@ export default function AiAdminPage() {
   useEffect(() => { fetch("/api/admin/session", { cache: "no-store" }).then(async response => {
     if (!response.ok) { window.location.replace("/admin/login"); return; }
     const payload = await response.json(), permissions: string[] = payload.user?.permissions || [];
-    const next = areas.filter(area => permissions.includes(area.permission)); setAllowed(next); setActive(next[0] || null); setChecking(false);
+    const next = areas.filter(area => area.id === "marketing" ? permissions.some(permission => permission.startsWith("marketing.")) : permissions.includes(area.permission)); setAllowed(next); setActive(next[0] || null); setChecking(false);
   }).catch(() => window.location.replace("/admin/login")); }, []);
   if (checking) return <main className="admin-gate">{t("AI удирдлагын эрхийг шалгаж байна…", "Checking AI management access…")}</main>;
   return <main className="ai-admin-page embedded-admin-page">

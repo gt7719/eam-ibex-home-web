@@ -39,6 +39,10 @@ const adminPermissions = new Set([
   "pricing.manage",
   "knowledge.manage",
   "marketing.manage",
+  "marketing.settings",
+  "marketing.draft",
+  "marketing.approve",
+  "marketing.audit",
   "ai.manage",
   "social.manage",
   "accounts.manage",
@@ -128,14 +132,14 @@ export default function AdminPage() {
     adminPermissions.has(permission),
   );
   const allowedSections = adminSections.filter((item) => {
-    if (item.id === "ai") return (user?.permissions || []).some(permission => permission === "knowledge.manage" || permission === "marketing.manage");
+    if (item.id === "ai") return (user?.permissions || []).some(permission => permission === "knowledge.manage" || permission.startsWith("marketing."));
     if (item.id === "implementers") return (user?.permissions || []).some(permission => permission === "partners.manage" || permission === "people.manage");
     return (user?.permissions || []).includes(item.permission);
   });
   const activeSection = allowedSections.find((item) => item.id === section) || allowedSections[0];
   const allowedImplementerAreas = implementerAreas.filter((item) => (user?.permissions || []).includes(item.permission));
   const activeImplementerArea = allowedImplementerAreas.find((item) => item.id === implementerArea) || allowedImplementerAreas[0];
-  const allowedAiAreas = aiAreas.filter((item) => (user?.permissions || []).includes(item.permission));
+  const allowedAiAreas = aiAreas.filter((item) => item.id === "marketing" ? (user?.permissions || []).some(permission => permission.startsWith("marketing.")) : (user?.permissions || []).includes(item.permission));
   const activeAiArea = allowedAiAreas.find((item) => item.id === aiArea) || allowedAiAreas[0];
   const ui = lang === "en"
     ? { users: "Admin users", home: "Home", logout: "Log out", empty: "You do not have permission to manage a content area." }

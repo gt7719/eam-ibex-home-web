@@ -1,6 +1,6 @@
 {
   "policyVersion": 1,
-  "baseline": { "siteVersion": 76, "commit": "6d1a9e7238d70ae2427ddd832c365d9f48e81fa4" },
+  "baseline": { "siteVersion": 77, "commit": "530d57a3b7ecdf4f1fab2bfb9b259619ee7a8116" },
   "features": [
     { "id": "V55-HOME-AI-BOUNDARY", "mustPreserve": ["server-only OpenAI key", "store:false", "privacy and prompt-injection guards", "fair-share budget", "audit", "external actions blocked"] },
     { "id": "V59-AI-CONTROLS", "mustPreserve": ["Home AI control", "Home AI knowledge", "Marketing AI separation", "three isolated OpenAI keys"] },
@@ -10,6 +10,7 @@
     { "id": "V76-PROJECT-IMPLEMENTERS", "mustPreserve": ["one Project implementers tab", "partner and team sub-tabs", "partners.manage and people.manage remain separate"] },
     { "id": "V76-ADMIN-PERMISSIONS", "mustPreserve": ["menu-aligned groups", "select all", "unsaved-change warning", "responsive day and night themes"] },
     { "id": "V76-WEB-VERIFICATION", "mustPreserve": ["Users", "Verification settings", "Delivery history", "provider readiness", "secret-safe UI", "activation gates", "masked last-100 delivery audit"] },
-    { "id": "V77-RELEASE-GOVERNANCE", "mustPreserve": ["latest published baseline", "controlled delta", "no silent removal", "immutable regression coverage", "exact commit deployment"] }
+    { "id": "V77-RELEASE-GOVERNANCE", "mustPreserve": ["latest published baseline", "controlled delta", "no silent removal", "immutable regression coverage", "exact commit deployment"] },
+    { "id": "V78-MARKETING-AI-ADMIN", "mustPreserve": ["admin-only isolated OpenAI project", "code-managed master policy", "versioned prompt profiles", "settings fingerprint test gate", "Draft to Review to Approved or Rejected workflow", "settings, draft, approver and audit role separation", "human approval required", "outbound and spend execution locked", "separate usage budget and audit", "secret-safe UI", "legacy marketing.manage permission compatibility"] }
   ]
 }

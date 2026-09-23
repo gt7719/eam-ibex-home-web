@@ -6,8 +6,8 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf
 
 test("approved feature registry keeps every accepted release contract explicit", () => {
   const registry = JSON.parse(read("APPROVED-FEATURES.json"));
-  assert.equal(registry.baseline.siteVersion, 76);
-  assert.equal(registry.baseline.commit, "6d1a9e7238d70ae2427ddd832c365d9f48e81fa4");
+  assert.equal(registry.baseline.siteVersion, 77);
+  assert.equal(registry.baseline.commit, "530d57a3b7ecdf4f1fab2bfb9b259619ee7a8116");
   const ids = new Set(registry.features.map((feature) => feature.id));
   for (const id of [
     "V55-HOME-AI-BOUNDARY",
@@ -19,6 +19,7 @@ test("approved feature registry keeps every accepted release contract explicit",
     "V76-ADMIN-PERMISSIONS",
     "V76-WEB-VERIFICATION",
     "V77-RELEASE-GOVERNANCE",
+    "V78-MARKETING-AI-ADMIN",
   ]) assert.ok(ids.has(id), `missing approved feature ${id}`);
   assert.ok(registry.features.every((feature) => feature.mustPreserve.length > 0));
 });

@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useSiteLanguage } from "../../lib/use-site-language";
 
-type AdminPermission = "navigation.manage" | "pricing.manage" | "partners.manage" | "people.manage" | "knowledge.manage" | "marketing.manage" | "social.manage" | "accounts.manage" | "media.upload";
+type AdminPermission = "navigation.manage" | "pricing.manage" | "partners.manage" | "people.manage" | "knowledge.manage" | "marketing.manage" | "marketing.settings" | "marketing.draft" | "marketing.approve" | "marketing.audit" | "social.manage" | "accounts.manage" | "media.upload";
 
 type PermissionOption = { id: AdminPermission; label: string; labelEn: string; detail: string; detailEn: string };
 
@@ -20,7 +20,11 @@ const permissionGroups: Array<{ label: string; labelEn: string; options: Permiss
   ] },
   { label: "AI удирдлага", labelEn: "AI management", options: [
     { id: "knowledge.manage", label: "Home AI удирдлага ба мэдлэгийн сан", labelEn: "Home AI control and knowledge", detail: "Ерөнхий AI мэдлэг, iBeX лавлагаа, төлөв, төсөв, лимит ба хувилбар", detailEn: "General AI knowledge, optional iBeX references, status, budget, limits and versions" },
-    { id: "marketing.manage", label: "Marketing AI", labelEn: "Marketing AI", detail: "Кампанит ажил, lead, контент, зөвшөөрөл, төсөв ба аналитикийн командын төв", detailEn: "Command center for campaigns, leads, content, approvals, budget and analytics" },
+    { id: "marketing.manage", label: "Marketing AI · бүрэн эрх", labelEn: "Marketing AI · full access", detail: "Өмнөх хувилбарын бүрэн удирдлагын эрх; бүх Marketing AI хэсэгт хандана", detailEn: "Backward-compatible full access to every Marketing AI area" },
+    { id: "marketing.settings", label: "Marketing AI · тохиргоо", labelEn: "Marketing AI · settings", detail: "Model, prompt profile, тест, горим, төсөв ба лимит", detailEn: "Models, prompt profiles, tests, mode, budget and limits" },
+    { id: "marketing.draft", label: "Marketing AI · Draft", labelEn: "Marketing AI · drafts", detail: "Командын төвд Draft үүсгэж Review-д илгээх", detailEn: "Create drafts in the command center and submit them for review" },
+    { id: "marketing.approve", label: "Marketing AI · батлагч", labelEn: "Marketing AI · approver", detail: "Review төлөвтэй Draft-ийг батлах эсвэл татгалзах", detailEn: "Approve or reject drafts in review" },
+    { id: "marketing.audit", label: "Marketing AI · тайлан", labelEn: "Marketing AI · audit", detail: "Хэрэглээ, зардал, шийдвэр болон audit log харах", detailEn: "View usage, cost, decisions and the audit trail" },
   ] },
   { label: "Мэдээ ба контент", labelEn: "News and content", options: [
     { id: "social.manage", label: "Мэдээ ба контент", labelEn: "News and content", detail: "Facebook пост, Reel холбоос, зураг болон нийтлэх төлөв", detailEn: "Facebook posts, Reels, images and publication status" },
