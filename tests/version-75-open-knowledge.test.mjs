@@ -31,18 +31,22 @@ test("Home AI uses general model knowledge and treats iBeX sources as optional r
   assert.match(accountDrawer, /OpenAI-ийн ерөнхий мэдлэг/);
 });
 
-test("production and admin tests use the same code-managed prompt", async () => {
+test("production and admin tests use the same selected prompt mode without restoring the source gate", async () => {
   const route = await read("app/api/assistant/chat/route.ts");
   const testRoute = await read("app/api/admin/home-ai-control/test/route.ts");
-  assert.match(route, /homeAiInstructions\(input\.lang\)/);
-  assert.match(testRoute, /homeAiInstructions\("mn"\)/);
-  assert.doesNotMatch(route, /prompt: \{ id:/);
-  assert.doesNotMatch(testRoute, /prompt: \{ id:/);
+  assert.match(route, /homeAiPromptRequest\(input\.settings, input\.lang\)/);
+  assert.match(testRoute, /homeAiPromptRequest\(settings, "mn"\)/);
+  assert.doesNotMatch(route, /Use only APPROVED EVIDENCE/);
+  assert.doesNotMatch(testRoute, /Use only APPROVED EVIDENCE/);
 });
 
 test("OpenAI failures are explicit instead of silently returning the old local answer", async () => {
   const route = await read("app/api/assistant/chat/route.ts");
-  assert.match(route, /code: "OPENAI_UNAVAILABLE"/);
-  assert.match(route, /status: "openai_error"/);
+  const errors = await read("app/lib/home-ai-openai.ts");
+  assert.match(route, /code: openAiError\.code/);
+  assert.match(route, /status: `openai_error_\$\{openAiError\.code\.toLowerCase\(\)\}`/);
+  assert.match(errors, /"OUTPUT_INCOMPLETE"/);
+  assert.match(errors, /"PROMPT_NOT_FOUND"/);
+  assert.match(errors, /"PROMPT_VERSION_INVALID"/);
   assert.doesNotMatch(route, /approved_fallback/);
 });

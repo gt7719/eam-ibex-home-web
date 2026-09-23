@@ -1,6 +1,7 @@
 import type { CustomerAiDatabase } from "./customer-ai";
 
 export type HomeAiMode = "disabled" | "test" | "production";
+export type HomeAiPromptMode = "published" | "code";
 
 export type HomeAiControlSettings = {
   mode: HomeAiMode;
@@ -13,7 +14,12 @@ export type HomeAiControlSettings = {
   requestsPerMinute: number;
   requestsPerDay: number;
   maxOutputTokens: number;
+  promptMode: HomeAiPromptMode;
   publishedPromptId: string;
+  publishedPromptVersion: string;
+  publishedPromptTestedAt: string;
+  publishedPromptTestedId: string;
+  publishedPromptTestedVersion: string;
   historyRetentionDays: number;
 };
 
@@ -30,7 +36,12 @@ export const DEFAULT_HOME_AI_SETTINGS: HomeAiControlSettings = {
   requestsPerMinute: 6,
   requestsPerDay: 10,
   maxOutputTokens: 520,
+  promptMode: "code",
   publishedPromptId: "",
+  publishedPromptVersion: "",
+  publishedPromptTestedAt: "",
+  publishedPromptTestedId: "",
+  publishedPromptTestedVersion: "",
   historyRetentionDays: 90,
 };
 
@@ -49,9 +60,29 @@ function safePromptId(value: unknown) {
   return !promptId || /^pmpt_[a-zA-Z0-9_-]{6,200}$/.test(promptId) ? promptId : "";
 }
 
+function safePromptVersion(value: unknown) {
+  const version = typeof value === "string" ? value.trim() : "";
+  return !version || /^\d{1,20}$/.test(version) ? version : "";
+}
+
+function safeTimestamp(value: unknown) {
+  const timestamp = typeof value === "string" ? value.trim() : "";
+  return timestamp && Number.isFinite(Date.parse(timestamp)) ? timestamp : "";
+}
+
+export function publishedPromptIsTested(settings: HomeAiControlSettings) {
+  return Boolean(
+    settings.publishedPromptId
+      && settings.publishedPromptTestedAt
+      && settings.publishedPromptTestedId === settings.publishedPromptId
+      && settings.publishedPromptTestedVersion === settings.publishedPromptVersion,
+  );
+}
+
 export function normalizeHomeAiSettings(value: unknown): HomeAiControlSettings {
   const row = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
   const mode: HomeAiMode = row.mode === "disabled" || row.mode === "production" || row.mode === "test" ? row.mode : DEFAULT_HOME_AI_SETTINGS.mode;
+  const promptMode: HomeAiPromptMode = row.promptMode === "published" || row.promptMode === "code" ? row.promptMode : DEFAULT_HOME_AI_SETTINGS.promptMode;
   const monthlyBudgetUsd = boundedNumber(row.monthlyBudgetUsd, DEFAULT_HOME_AI_SETTINGS.monthlyBudgetUsd, 1, 1_000_000);
   const warningBudgetUsd = boundedNumber(row.warningBudgetUsd, DEFAULT_HOME_AI_SETTINGS.warningBudgetUsd, 0.01, monthlyBudgetUsd);
   const criticalBudgetUsd = boundedNumber(row.criticalBudgetUsd, DEFAULT_HOME_AI_SETTINGS.criticalBudgetUsd, warningBudgetUsd, monthlyBudgetUsd);
@@ -66,7 +97,12 @@ export function normalizeHomeAiSettings(value: unknown): HomeAiControlSettings {
     requestsPerMinute: Math.round(boundedNumber(row.requestsPerMinute, DEFAULT_HOME_AI_SETTINGS.requestsPerMinute, 1, 120)),
     requestsPerDay: Math.round(boundedNumber(row.requestsPerDay, DEFAULT_HOME_AI_SETTINGS.requestsPerDay, 1, 10_000)),
     maxOutputTokens: Math.round(boundedNumber(row.maxOutputTokens, DEFAULT_HOME_AI_SETTINGS.maxOutputTokens, 120, 2_000)),
+    promptMode,
     publishedPromptId: safePromptId(row.publishedPromptId),
+    publishedPromptVersion: safePromptVersion(row.publishedPromptVersion),
+    publishedPromptTestedAt: safeTimestamp(row.publishedPromptTestedAt),
+    publishedPromptTestedId: safePromptId(row.publishedPromptTestedId),
+    publishedPromptTestedVersion: safePromptVersion(row.publishedPromptTestedVersion),
     historyRetentionDays: Math.round(boundedNumber(row.historyRetentionDays, DEFAULT_HOME_AI_SETTINGS.historyRetentionDays, 1, 365)),
   };
 }

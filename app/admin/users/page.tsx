@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useSiteLanguage } from "../../lib/use-site-language";
 
 type AdminPermission = "navigation.manage" | "pricing.manage" | "partners.manage" | "people.manage" | "knowledge.manage" | "marketing.manage" | "social.manage" | "accounts.manage" | "media.upload";
@@ -37,6 +37,10 @@ const permissionOptions = permissionGroups.flatMap((group) => group.options);
 
 const defaultPermissions = permissionOptions.map((permission) => permission.id);
 
+function samePermissions(left: AdminPermission[], right: AdminPermission[]) {
+  return [...left].sort().join("|") === [...right].sort().join("|");
+}
+
 type SessionUser = {
   email: string;
   name: string;
@@ -69,6 +73,9 @@ export default function AdminUsersPage() {
   const [inviteEnabled, setInviteEnabled] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const managedPermissionsDirty = useMemo(() => users.some((user) => !samePermissions(user.permissions || [], permissionDrafts[user.id] || [])), [permissionDrafts, users]);
+  const inviteDirty = Boolean(email || name || password || !samePermissions(invitePermissions, defaultPermissions));
+  const hasUnsavedChanges = inviteDirty || managedPermissionsDirty;
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -105,6 +112,16 @@ export default function AdminUsersPage() {
       .catch(() => window.location.replace("/admin/login"));
   }, [loadUsers]);
 
+  useEffect(() => {
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasUnsavedChanges) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [hasUnsavedChanges]);
+
   async function invite(event: FormEvent) {
     event.preventDefault();
     setWorking(true);
@@ -138,6 +155,10 @@ export default function AdminUsersPage() {
     );
   }
 
+  function toggleAllInvitePermissions() {
+    setInvitePermissions((current) => current.length === defaultPermissions.length ? [] : defaultPermissions);
+  }
+
   function toggleManagedPermission(userId: string, permission: AdminPermission) {
     setPermissionDrafts((current) => {
       const permissions = current[userId] || [];
@@ -148,6 +169,13 @@ export default function AdminUsersPage() {
           : [...permissions, permission],
       };
     });
+  }
+
+  function toggleAllManagedPermissions(userId: string) {
+    setPermissionDrafts((current) => ({
+      ...current,
+      [userId]: (current[userId] || []).length === defaultPermissions.length ? [] : defaultPermissions,
+    }));
   }
 
   async function savePermissions(user: ManagedAdmin) {
@@ -195,7 +223,7 @@ export default function AdminUsersPage() {
   return (
     <main className="admin-users-page">
       <header className="admin-users-header">
-        <a href="/admin" className="admin-users-back">← {t("Сайтын админ", "Site administration")}</a>
+        <a href="/admin" className="admin-users-back" onClick={(event) => { if (hasUnsavedChanges && !window.confirm(t("Хадгалаагүй өөрчлөлтийг цуцлах уу?", "Discard unsaved changes?"))) event.preventDefault(); }}>← {t("Сайтын админ", "Site administration")}</a>
         <div>
           <span className="admin-auth-kicker">ACCESS MANAGEMENT</span>
           <h1>{t("Админ хэрэглэгчид", "Administrators")}</h1>
@@ -219,6 +247,7 @@ export default function AdminUsersPage() {
           </div>
           <fieldset className="admin-permission-fieldset">
             <legend>{t("Өөрчлөлт хийх эрх", "Edit permissions")}</legend>
+            <div className="admin-permission-toolbar"><span>{invitePermissions.length}/{defaultPermissions.length} {t("эрх сонгосон", "permissions selected")}</span><button type="button" onClick={toggleAllInvitePermissions}>{invitePermissions.length === defaultPermissions.length ? t("Бүгдийг цэвэрлэх", "Clear all") : t("Бүгдийг сонгох", "Select all")}</button></div>
             <div className="admin-permission-groups">
               {permissionGroups.map((group) => (
                 <section className="admin-permission-group" key={group.labelEn}>
@@ -280,6 +309,7 @@ export default function AdminUsersPage() {
                   <>
                     <fieldset className="admin-managed-permissions" disabled={working || !active}>
                       <legend>{t("Эрхийн хүрээ", "Permission scope")}</legend>
+                      <div className="admin-permission-toolbar"><span>{(permissionDrafts[user.id] || []).length}/{defaultPermissions.length}</span><button type="button" onClick={() => toggleAllManagedPermissions(user.id)}>{(permissionDrafts[user.id] || []).length === defaultPermissions.length ? t("Бүгдийг цэвэрлэх", "Clear all") : t("Бүгдийг сонгох", "Select all")}</button></div>
                       <div className="admin-managed-permission-groups">
                         {permissionGroups.map((group) => (
                           <section key={group.labelEn}>
@@ -303,7 +333,7 @@ export default function AdminUsersPage() {
                         type="button"
                         className="permission-save"
                         onClick={() => savePermissions(user)}
-                        disabled={working || !active}
+                        disabled={working || !active || samePermissions(user.permissions || [], permissionDrafts[user.id] || [])}
                       >
                         {t("Эрх хадгалах", "Save permissions")}
                       </button>

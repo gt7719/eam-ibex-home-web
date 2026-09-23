@@ -23,6 +23,9 @@ test("version 76 synchronizes administrator permissions with the revised menu wi
   assert.match(page, /label: "Нэмэлт эрх"/);
   assert.match(page, /Ерөнхий AI мэдлэг, iBeX лавлагаа/);
   assert.match(page, /баталгаажуулалтын тохиргоо, илгээлтийн түүх/);
+  assert.match(page, /Бүгдийг сонгох/);
+  assert.match(page, /beforeunload/);
+  assert.match(page, /Хадгалаагүй өөрчлөлтийг цуцлах уу/);
   for (const permission of ["navigation.manage", "pricing.manage", "partners.manage", "people.manage", "knowledge.manage", "marketing.manage", "social.manage", "accounts.manage", "media.upload"])
     assert.match(page, new RegExp(permission.replace(".", "\\.")));
 });

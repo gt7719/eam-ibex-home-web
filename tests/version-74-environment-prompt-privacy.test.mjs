@@ -28,7 +28,7 @@ test("environment names, status, visibility and routes use one published configu
   assert.match(mobile, /adminPreview=1/);
 });
 
-test("Home AI retains legacy Prompt ID data but uses a code-managed production prompt", async () => {
+test("Home AI Prompt ID remains server-side and can be selected with a tested version", async () => {
   const settings = await read("app/lib/home-ai-control.ts");
   const admin = await read("app/admin/home-ai/page.tsx");
   const control = await read("app/api/admin/home-ai-control/route.ts");
@@ -36,17 +36,25 @@ test("Home AI retains legacy Prompt ID data but uses a code-managed production p
   const connectionTest = await read("app/api/admin/home-ai-control/test/route.ts");
 
   assert.match(settings, /publishedPromptId: string/);
+  assert.match(settings, /publishedPromptVersion: string/);
+  assert.match(settings, /promptMode: HomeAiPromptMode/);
   assert.match(settings, /\^pmpt_/);
   const prompt = await read("app/lib/home-ai-prompt.ts");
-  assert.match(admin, /code-managed prompt/);
+  assert.match(admin, /OpenAI Published Prompt ID/);
+  assert.match(admin, /Prompt version/);
+  assert.match(admin, /Code-managed fallback/);
+  assert.match(admin, /API key нь server-ийн нууц environment variable/);
   assert.match(control, /promptConfigured: Boolean\(settings\.publishedPromptId\)/);
   assert.match(control, /customer_ai\.settings_changed/);
   assert.match(control, /promptIdChanged/);
-  assert.match(chat, /instructions: homeAiInstructions\(input\.lang\)/);
+  assert.match(control, /publishedPromptIsTested/);
+  assert.match(prompt, /prompt: \{/);
+  assert.match(prompt, /id: settings\.publishedPromptId/);
+  assert.match(prompt, /version: settings\.publishedPromptVersion/);
+  assert.match(chat, /homeAiPromptRequest\(input\.settings, input\.lang\)/);
   assert.match(prompt, /general model knowledge/);
-  assert.doesNotMatch(chat, /prompt: \{ id:/);
   assert.match(chat, /store: false/);
-  assert.match(connectionTest, /instructions: homeAiInstructions\("mn"\)/);
+  assert.match(connectionTest, /homeAiPromptRequest\(settings, "mn"\)/);
   assert.doesNotMatch(admin, /OPENAI_HOME_API_KEY\s*=/);
 });
 

@@ -5,6 +5,7 @@ import { type CustomerAiDatabase } from "../../../lib/customer-ai";
 import {
   HOME_AI_SETTINGS_KEY,
   normalizeHomeAiSettings,
+  publishedPromptIsTested,
   readHomeAiSettings,
 } from "../../../lib/home-ai-control";
 import { conflictMessage, hasTrustedOrigin, saveContentWithRevision } from "../../../lib/admin-security";
@@ -27,8 +28,9 @@ async function auditSubject(adminId: string) {
 
 function auditDetail(value: string) {
   try {
-    const metadata = JSON.parse(value) as { promptIdChanged?: boolean; nextMode?: string; retentionDays?: number };
-    if (metadata.promptIdChanged) return `Prompt ID changed · ${metadata.nextMode || "—"} · ${metadata.retentionDays || "—"} days`;
+    const metadata = JSON.parse(value) as { promptIdChanged?: boolean; promptVersionChanged?: boolean; promptMode?: string; nextMode?: string; retentionDays?: number };
+    if (metadata.promptIdChanged || metadata.promptVersionChanged) return `Prompt configuration changed · ${metadata.promptMode || "—"} · ${metadata.nextMode || "—"}`;
+    if (metadata.promptMode) return `${metadata.promptMode} · ${metadata.nextMode || "—"} · ${metadata.retentionDays || "—"} days`;
     if (metadata.nextMode) return `${metadata.nextMode} · ${metadata.retentionDays || "—"} days`;
   } catch {
     // Older audit entries may not contain JSON written by this control.
@@ -62,6 +64,14 @@ export async function GET() {
   ]);
   const approvedSources = knowledge.entries.filter((entry) => entry.enabled && entry.status === "approved" && entry.visibility === "public").length;
   const recentAudit = auditResult.results || [];
+  const publishedPromptTested = publishedPromptIsTested(settings);
+  const promptStatus = settings.promptMode === "code"
+    ? "code"
+    : !settings.publishedPromptId
+      ? "missing"
+      : publishedPromptTested
+        ? "ready"
+        : "untested";
   return reply({
     settings,
     revision,
@@ -70,10 +80,15 @@ export async function GET() {
     status: {
       keyConfigured: Boolean(runtime.OPENAI_HOME_API_KEY?.trim()),
       promptConfigured: Boolean(settings.publishedPromptId),
-      promptStatus: settings.publishedPromptId ? "ready" : "missing",
+      promptStatus,
+      publishedPromptTested,
       identitySaltConfigured: Boolean(runtime.HOME_AI_ID_HASH_SALT?.trim()),
       approvedSources,
-      readyForTest: Boolean(runtime.OPENAI_HOME_API_KEY?.trim() && runtime.HOME_AI_ID_HASH_SALT?.trim()),
+      readyForTest: Boolean(
+        runtime.OPENAI_HOME_API_KEY?.trim()
+          && runtime.HOME_AI_ID_HASH_SALT?.trim()
+          && (settings.promptMode === "code" || settings.publishedPromptId),
+      ),
       knowledgeMode: "open",
       rawChatStored: true,
       historyMessages: 6,
@@ -101,16 +116,34 @@ export async function PUT(request: Request) {
   if (auth.error || !auth.user) return auth.error;
   const raw = await request.json().catch(() => null) as { settings?: unknown; revision?: string | null } | null;
   if (!raw) return reply({ error: "Хүсэлтийн формат буруу байна." }, 400);
-  const settings = normalizeHomeAiSettings(raw.settings);
+  const normalizedSettings = normalizeHomeAiSettings(raw.settings);
   const submittedPromptId = raw.settings && typeof raw.settings === "object" && !Array.isArray(raw.settings)
     ? String((raw.settings as { publishedPromptId?: unknown }).publishedPromptId || "").trim()
     : "";
-  if (submittedPromptId && !settings.publishedPromptId) return reply({ error: "Published Prompt ID нь pmpt_ угтвартай зөв форматтай байна." }, 400);
+  const submittedPromptVersion = raw.settings && typeof raw.settings === "object" && !Array.isArray(raw.settings)
+    ? String((raw.settings as { publishedPromptVersion?: unknown }).publishedPromptVersion || "").trim()
+    : "";
+  if (submittedPromptId && !normalizedSettings.publishedPromptId) return reply({ error: "Published Prompt ID нь pmpt_ угтвартай зөв форматтай байна." }, 400);
+  if (submittedPromptVersion && !normalizedSettings.publishedPromptVersion) return reply({ error: "Prompt version нь зөвхөн тоон утгатай байна." }, 400);
   const runtime = env as unknown as HomeAiRuntime;
   const { settings: previousSettings } = await readHomeAiSettings(runtime.DB);
+  const promptIdentityUnchanged = previousSettings.publishedPromptId === normalizedSettings.publishedPromptId
+    && previousSettings.publishedPromptVersion === normalizedSettings.publishedPromptVersion;
+  const settings = {
+    ...normalizedSettings,
+    publishedPromptTestedAt: promptIdentityUnchanged ? previousSettings.publishedPromptTestedAt : "",
+    publishedPromptTestedId: promptIdentityUnchanged ? previousSettings.publishedPromptTestedId : "",
+    publishedPromptTestedVersion: promptIdentityUnchanged ? previousSettings.publishedPromptTestedVersion : "",
+  };
+  if (settings.promptMode === "published" && !settings.publishedPromptId) {
+    return reply({ error: "Published Prompt горимд pmpt_ угтвартай Prompt ID шаардлагатай." }, 409);
+  }
   if (settings.mode === "production") {
     if (!runtime.OPENAI_HOME_API_KEY?.trim() || !runtime.HOME_AI_ID_HASH_SALT?.trim()) {
       return reply({ error: "Production горимд орохын өмнө тусдаа OpenAI key болон identity salt бэлэн байх ёстой." }, 409);
+    }
+    if (settings.promptMode === "published" && !publishedPromptIsTested(settings)) {
+      return reply({ error: "Published Prompt ID болон version-ийг Test горимд амжилттай шалгасны дараа Production горимд идэвхжүүлнэ үү." }, 409);
     }
   }
   const revision = await saveContentWithRevision({ key: HOME_AI_SETTINGS_KEY, value: settings, userId: auth.user.id, expectedRevision: raw.revision ?? null });
@@ -123,7 +156,10 @@ export async function PUT(request: Request) {
     "ibex-home",
     JSON.stringify({
       promptIdChanged: previousSettings.publishedPromptId !== settings.publishedPromptId,
+      promptVersionChanged: previousSettings.publishedPromptVersion !== settings.publishedPromptVersion,
       promptConfigured: Boolean(settings.publishedPromptId),
+      promptMode: settings.promptMode,
+      promptTested: publishedPromptIsTested(settings),
       previousMode: previousSettings.mode,
       nextMode: settings.mode,
       previousRetentionDays: previousSettings.historyRetentionDays,
