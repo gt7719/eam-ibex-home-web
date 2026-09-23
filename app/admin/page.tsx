@@ -14,12 +14,16 @@ type Lang = "mn" | "en";
 
 const adminSections = [
   { id: "navigation", permission: "navigation.manage", mn: "Толгой цэсний мэдээлэл", en: "Header menu content", src: "/admin/navigation?embedded=1" },
-  { id: "partners", permission: "partners.manage", mn: "Хамтрагч байгууллага", en: "Partner organizations", src: "/concept.html?admin=content&embeddedHub=1&section=partners" },
-  { id: "people", permission: "people.manage", mn: "Төслийн баг", en: "Project team", src: "/concept.html?admin=content&embeddedHub=1&section=people" },
+  { id: "implementers", permission: "implementers.manage", mn: "Төсөл хэрэгжүүлэгчид", en: "Project implementers", src: "" },
   { id: "pricing", permission: "pricing.manage", mn: "Үнэ ба багц", en: "Pricing", src: "/admin/pricing?embedded=1" },
   { id: "ai", permission: "ai.manage", mn: "AI удирдлага", en: "AI management", src: "" },
   { id: "social", permission: "social.manage", mn: "Мэдээ ба контент", en: "News & content", src: "/admin/social?embedded=1" },
-  { id: "accounts", permission: "accounts.manage", mn: "Веб хэрэглэгчид", en: "Website users", src: "/admin/site-users?embedded=1" },
+  { id: "accounts", permission: "accounts.manage", mn: "Вэб хэрэглэгчид", en: "Website users", src: "/admin/site-users?embedded=1" },
+] as const;
+
+const implementerAreas = [
+  { id: "partners", permission: "partners.manage", mn: "Хамтрагч байгууллагууд", en: "Partner organizations", src: "/concept.html?admin=content&embeddedHub=1&section=partners" },
+  { id: "people", permission: "people.manage", mn: "Төслийн баг", en: "Project team", src: "/concept.html?admin=content&embeddedHub=1&section=people" },
 ] as const;
 
 const aiAreas = [
@@ -52,7 +56,8 @@ export default function AdminPage() {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [checking, setChecking] = useState(true);
   const [lang, setLang] = useState<Lang>("mn");
-  const [section, setSection] = useState<string>("partners");
+  const [section, setSection] = useState<string>("implementers");
+  const [implementerArea, setImplementerArea] = useState<string>("partners");
   const [aiArea, setAiArea] = useState<string>("home-control");
   const [iframeDirty, setIframeDirty] = useState(false);
 
@@ -108,6 +113,13 @@ export default function AdminPage() {
     setAiArea(next);
   }
 
+  function changeImplementerArea(next: string) {
+    if (next === implementerArea) return;
+    if (iframeDirty && !window.confirm(lang === "en" ? "Discard unsaved changes?" : "Хадгалаагүй өөрчлөлтийг цуцлах уу?")) return;
+    setIframeDirty(false);
+    setImplementerArea(next);
+  }
+
   if (checking) {
     return <main className="admin-gate">{lang === "en" ? "Checking administrator access…" : "Админ эрхийг шалгаж байна…"}</main>;
   }
@@ -115,10 +127,14 @@ export default function AdminPage() {
   const hasWorkspaceAccess = (user?.permissions || []).some((permission) =>
     adminPermissions.has(permission),
   );
-  const allowedSections = adminSections.filter((item) => item.id === "ai"
-    ? (user?.permissions || []).some(permission => permission === "knowledge.manage" || permission === "marketing.manage")
-    : (user?.permissions || []).includes(item.permission));
+  const allowedSections = adminSections.filter((item) => {
+    if (item.id === "ai") return (user?.permissions || []).some(permission => permission === "knowledge.manage" || permission === "marketing.manage");
+    if (item.id === "implementers") return (user?.permissions || []).some(permission => permission === "partners.manage" || permission === "people.manage");
+    return (user?.permissions || []).includes(item.permission);
+  });
   const activeSection = allowedSections.find((item) => item.id === section) || allowedSections[0];
+  const allowedImplementerAreas = implementerAreas.filter((item) => (user?.permissions || []).includes(item.permission));
+  const activeImplementerArea = allowedImplementerAreas.find((item) => item.id === implementerArea) || allowedImplementerAreas[0];
   const allowedAiAreas = aiAreas.filter((item) => (user?.permissions || []).includes(item.permission));
   const activeAiArea = allowedAiAreas.find((item) => item.id === aiArea) || allowedAiAreas[0];
   const ui = lang === "en"
@@ -143,7 +159,10 @@ export default function AdminPage() {
               {allowedSections.map((item) => <button id={`admin-tab-${item.id}`} aria-controls="admin-section-panel" key={item.id} type="button" role="tab" aria-selected={item.id === activeSection?.id} className={item.id === activeSection?.id ? "active" : ""} onClick={() => changeSection(item.id)}>{lang === "en" ? item.en : item.mn}</button>)}
             </nav>
             <div id="admin-section-panel" className="admin-hub-content" role="tabpanel" aria-labelledby={activeSection ? `admin-tab-${activeSection.id}` : undefined}>
-              {activeSection?.id === "ai" && activeAiArea ? <div className="admin-ai-workspace">
+              {activeSection?.id === "implementers" && activeImplementerArea ? <div className="admin-subsection-workspace">
+                <nav className="ai-admin-tabs" role="tablist" aria-label={lang === "en" ? "Project implementer areas" : "Төсөл хэрэгжүүлэгчдийн хэсгүүд"}>{allowedImplementerAreas.map((item) => <button id={`admin-implementer-tab-${item.id}`} aria-controls="admin-implementer-panel" key={item.id} type="button" role="tab" aria-selected={item.id === activeImplementerArea.id} className={item.id === activeImplementerArea.id ? "active" : ""} onClick={() => changeImplementerArea(item.id)}>{lang === "en" ? item.en : item.mn}</button>)}</nav>
+                <iframe className="ai-admin-frame" id="admin-implementer-panel" role="tabpanel" aria-labelledby={`admin-implementer-tab-${activeImplementerArea.id}`} key={activeImplementerArea.id} src={activeImplementerArea.src} title={lang === "en" ? activeImplementerArea.en : activeImplementerArea.mn} />
+              </div> : activeSection?.id === "ai" && activeAiArea ? <div className="admin-ai-workspace">
                 <nav className="ai-admin-tabs" role="tablist" aria-label={lang === "en" ? "AI administration areas" : "AI удирдлагын хэсгүүд"}>{allowedAiAreas.map((item) => <button id={`admin-ai-tab-${item.id}`} aria-controls="admin-ai-panel" key={item.id} type="button" role="tab" aria-selected={item.id === activeAiArea.id} className={item.id === activeAiArea.id ? "active" : ""} onClick={() => changeAiArea(item.id)}>{lang === "en" ? item.en : item.mn}</button>)}</nav>
                 <iframe className="ai-admin-frame" id="admin-ai-panel" role="tabpanel" aria-labelledby={`admin-ai-tab-${activeAiArea.id}`} key={activeAiArea.id} src={activeAiArea.src} title={lang === "en" ? activeAiArea.en : activeAiArea.mn} />
               </div> : activeSection ? <iframe key={activeSection.id} src={activeSection.src} title={lang === "en" ? activeSection.en : activeSection.mn} /> : null}

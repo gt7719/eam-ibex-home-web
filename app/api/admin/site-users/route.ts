@@ -33,6 +33,51 @@ async function authorized() {
 }
 
 type UserRow = Record<string, string | number | null>;
+type VerificationRuntimeEnv = {
+  RESEND_API_KEY?: string;
+  EMAIL_FROM?: string;
+  EMAIL_REPLY_TO?: string;
+  IBEX_SMS_DELIVERY_URL?: string;
+  IBEX_SMS_DELIVERY_TOKEN?: string;
+  IBEX_SMS_FROM?: string;
+  TURNSTILE_SITE_KEY?: string;
+  TURNSTILE_SECRET_KEY?: string;
+};
+
+function verificationReadiness() {
+  const runtime = env as unknown as VerificationRuntimeEnv;
+  let smsEndpointValid = false;
+  try {
+    smsEndpointValid = new URL(runtime.IBEX_SMS_DELIVERY_URL || "").protocol === "https:";
+  } catch {
+    smsEndpointValid = false;
+  }
+  const emailReady = Boolean(runtime.RESEND_API_KEY?.trim());
+  const smsReady = Boolean(smsEndpointValid && runtime.IBEX_SMS_DELIVERY_TOKEN?.trim());
+  const turnstileReady = Boolean(runtime.TURNSTILE_SITE_KEY?.trim() && runtime.TURNSTILE_SECRET_KEY?.trim());
+  return {
+    email: {
+      ready: emailReady,
+      provider: "Resend",
+      sender: runtime.EMAIL_FROM?.trim() || "iBeX Account <no-reply@account.ibex.mn>",
+      replyTo: runtime.EMAIL_REPLY_TO?.trim() || "support@ibex.mn",
+    },
+    sms: {
+      ready: smsReady,
+      provider: "HTTPS SMS connector",
+      sender: runtime.IBEX_SMS_FROM?.trim() || "iBeX",
+      endpointConfigured: smsEndpointValid,
+    },
+    turnstile: { ready: turnstileReady },
+    limits: {
+      otpExpiresMinutes: 10,
+      resendCooldownSeconds: 60,
+      dailySendLimit: 5,
+      maximumAttempts: 5,
+      emailLinkExpiresHours: 24,
+    },
+  };
+}
 
 function publicUser(row: UserRow) {
   const subscription = row.subscription_id
@@ -101,7 +146,7 @@ export async function GET() {
       console.error("subscription_expiry_refresh_failed", error),
     ),
   ]);
-  const [rows, verificationPolicy] = await Promise.all([
+  const [rows, verificationPolicy, deliveryRows] = await Promise.all([
     env.DB.prepare(
       `SELECT u.id,u.full_name,u.email,u.phone_e164,u.phone_country_iso,u.account_status,u.email_status,u.email_verified_at,
        u.phone_status,u.phone_verified_at,u.email_verification_required,u.phone_verification_required,u.locale,u.last_login_at,u.deletion_requested_at,u.created_at,u.updated_at,
@@ -113,9 +158,21 @@ export async function GET() {
        ORDER BY u.created_at DESC LIMIT 250`,
     ).all<UserRow>(),
     readSiteUserVerificationPolicy(),
+    env.DB.prepare(
+      `SELECT e.channel,e.template,e.recipient_masked,e.provider,e.status,e.error_code,e.attempt_count,e.created_at,e.updated_at,
+       u.full_name AS user_name
+       FROM auth_delivery_events e
+       LEFT JOIN site_users u ON u.id=e.user_id
+       ORDER BY e.created_at DESC LIMIT 100`,
+    ).all<Record<string, string | number | null>>(),
   ]);
   return NextResponse.json(
-    { users: (rows.results || []).map(publicUser), verificationPolicy },
+    {
+      users: (rows.results || []).map(publicUser),
+      verificationPolicy,
+      verificationReadiness: verificationReadiness(),
+      deliveries: deliveryRows.results || [],
+    },
     { headers: { "Cache-Control": "no-store" } },
   );
 }
@@ -140,6 +197,17 @@ export async function PATCH(request: Request) {
 
   if (body.action === "save_verification_policy") {
     const policy = normalizeVerificationPolicy(body.verificationPolicy);
+    const readiness = verificationReadiness();
+    if (policy.emailRequired && !readiness.email.ready)
+      return NextResponse.json(
+        { error: "И-мэйл үйлчилгээ бэлэн болоогүй тул и-мэйл баталгаажуулалтыг шаардах боломжгүй байна." },
+        { status: 409 },
+      );
+    if (policy.phoneRequired && !readiness.sms.ready)
+      return NextResponse.json(
+        { error: "SMS үйлчилгээ бэлэн болоогүй тул утасны баталгаажуулалтыг шаардах боломжгүй байна." },
+        { status: 409 },
+      );
     const saved = await saveContentWithRevision({
       key: SITE_USER_VERIFICATION_POLICY_KEY,
       value: policy,

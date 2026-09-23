@@ -8,6 +8,30 @@ type Policy = {
   phoneRequired: boolean;
   revision: string | null;
 };
+type VerificationReadiness = {
+  email: { ready: boolean; provider: string; sender: string; replyTo: string };
+  sms: { ready: boolean; provider: string; sender: string; endpointConfigured: boolean };
+  turnstile: { ready: boolean };
+  limits: {
+    otpExpiresMinutes: number;
+    resendCooldownSeconds: number;
+    dailySendLimit: number;
+    maximumAttempts: number;
+    emailLinkExpiresHours: number;
+  };
+};
+type DeliveryEvent = {
+  channel: string;
+  template: string;
+  recipient_masked: string;
+  provider: string;
+  status: string;
+  error_code: string | null;
+  attempt_count: number;
+  created_at: string;
+  updated_at: string;
+  user_name: string | null;
+};
 type Subscription = {
   id: string;
   organizationName: string;
@@ -123,10 +147,18 @@ function statusText(status: string) {
 
 export default function AdminSiteUsersPage() {
   const { t } = useSiteLanguage();
+  const [area, setArea] = useState<"users" | "verification" | "delivery">("users");
   const [users, setUsers] = useState<SiteUser[]>([]);
+  const [deliveries, setDeliveries] = useState<DeliveryEvent[]>([]);
+  const [readiness, setReadiness] = useState<VerificationReadiness | null>(null);
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [policy, setPolicy] = useState<Policy>({
+    emailRequired: true,
+    phoneRequired: false,
+    revision: null,
+  });
+  const [savedPolicy, setSavedPolicy] = useState<Policy>({
     emailRequired: true,
     phoneRequired: false,
     revision: null,
@@ -156,13 +188,15 @@ export default function AdminSiteUsersPage() {
       );
     else {
       setUsers(payload.users || []);
-      setPolicy(
-        payload.verificationPolicy || {
+      setDeliveries(payload.deliveries || []);
+      setReadiness(payload.verificationReadiness || null);
+      const nextPolicy = payload.verificationPolicy || {
           emailRequired: true,
           phoneRequired: false,
           revision: null,
-        },
-      );
+        };
+      setPolicy(nextPolicy);
+      setSavedPolicy(nextPolicy);
     }
     setLoading(false);
   }, [t]);
@@ -175,6 +209,27 @@ export default function AdminSiteUsersPage() {
       })
       .catch(() => (window.top!.location.href = "/admin/login"));
   }, [load]);
+  const policyDirty = policy.emailRequired !== savedPolicy.emailRequired || policy.phoneRequired !== savedPolicy.phoneRequired;
+  useEffect(() => {
+    window.parent.postMessage({ type: "ibex-admin-dirty", dirty: policyDirty }, window.location.origin);
+    const warn = (event: BeforeUnloadEvent) => {
+      if (!policyDirty) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => {
+      window.removeEventListener("beforeunload", warn);
+      window.parent.postMessage({ type: "ibex-admin-dirty", dirty: false }, window.location.origin);
+    };
+  }, [policyDirty]);
+
+  function changeArea(next: "users" | "verification" | "delivery") {
+    if (next === area) return;
+    if (policyDirty && !window.confirm(t("Хадгалаагүй баталгаажуулалтын өөрчлөлтийг цуцлах уу?", "Discard unsaved verification changes?"))) return;
+    if (policyDirty) setPolicy(savedPolicy);
+    setArea(next);
+  }
   const visible = useMemo(
     () =>
       users.filter(
@@ -235,6 +290,7 @@ export default function AdminSiteUsersPage() {
       );
     else {
       setPolicy(payload.verificationPolicy);
+      setSavedPolicy(payload.verificationPolicy);
       setMessage(
         t(
           `Бодлого хадгалагдаж, хүлээгдэж буй болон хязгаарлагдмал ${Number(payload.reconciledUsers || 0)} хэрэглэгчийн баталгаажуулалтын төлөв шинэчлэгдлээ.`,
@@ -317,6 +373,31 @@ export default function AdminSiteUsersPage() {
           )}
         </p>
       </header>
+      <nav className="site-user-admin-tabs" role="tablist" aria-label={t("Вэб хэрэглэгчдийн удирдлагын хэсгүүд", "Website user administration areas")}>
+        <button type="button" role="tab" aria-selected={area === "users"} className={area === "users" ? "active" : ""} onClick={() => changeArea("users")}>{t("Хэрэглэгчид", "Users")}</button>
+        <button type="button" role="tab" aria-selected={area === "verification"} className={area === "verification" ? "active" : ""} onClick={() => changeArea("verification")}>{t("Баталгаажуулалтын тохиргоо", "Verification settings")}</button>
+        <button type="button" role="tab" aria-selected={area === "delivery"} className={area === "delivery" ? "active" : ""} onClick={() => changeArea("delivery")}>{t("Илгээлтийн түүх", "Delivery history")}</button>
+      </nav>
+      {area === "verification" ? <>
+      <section className="verification-readiness" aria-labelledby="verification-readiness-title">
+        <div className="verification-section-heading">
+          <span>DELIVERY READINESS</span>
+          <h2 id="verification-readiness-title">{t("Үйлчилгээний бэлэн байдал", "Service readiness")}</h2>
+          <p>{t("Нууц түлхүүрүүд орчны тохиргоонд хамгаалагдана. Энд зөвхөн холболтын төлөв болон нууц бус илгээгчийн мэдээлэл харагдана.", "Secrets remain protected in the runtime environment. Only readiness and non-secret sender details are shown here.")}</p>
+        </div>
+        <div className="verification-readiness-grid">
+          <article className={readiness?.email.ready ? "ready" : "blocked"}><span>{t("И-мэйл", "Email")}</span><strong>{readiness?.email.ready ? t("Бэлэн", "Ready") : t("Тохируулаагүй", "Not configured")}</strong><small>{readiness?.email.provider || "Resend"} · {readiness?.email.sender || "—"}</small></article>
+          <article className={readiness?.sms.ready ? "ready" : "blocked"}><span>SMS</span><strong>{readiness?.sms.ready ? t("Бэлэн", "Ready") : t("Тохируулаагүй", "Not configured")}</strong><small>{readiness?.sms.provider || "HTTPS SMS connector"} · {readiness?.sms.sender || "—"}</small></article>
+          <article className={readiness?.turnstile.ready ? "ready" : "blocked"}><span>TURNSTILE</span><strong>{readiness?.turnstile.ready ? t("Бэлэн", "Ready") : t("Тохируулаагүй", "Not configured")}</strong><small>{t("Бүртгэл ба сэргээх хүсэлтийн хамгаалалт", "Registration and recovery protection")}</small></article>
+        </div>
+        {readiness ? <dl className="verification-limits">
+          <div><dt>{t("И-мэйл холбоос", "Email link")}</dt><dd>{readiness.limits.emailLinkExpiresHours} {t("цаг", "hours")}</dd></div>
+          <div><dt>OTP</dt><dd>{readiness.limits.otpExpiresMinutes} {t("минут", "minutes")}</dd></div>
+          <div><dt>{t("Дахин илгээх", "Resend")}</dt><dd>{readiness.limits.resendCooldownSeconds} {t("секунд", "seconds")}</dd></div>
+          <div><dt>{t("Өдрийн лимит", "Daily limit")}</dt><dd>{readiness.limits.dailySendLimit}</dd></div>
+          <div><dt>{t("Оролдлогын лимит", "Attempt limit")}</dt><dd>{readiness.limits.maximumAttempts}</dd></div>
+        </dl> : null}
+      </section>
       <section
         className="verification-policy-panel"
         aria-labelledby="verification-policy-title"
@@ -387,6 +468,8 @@ export default function AdminSiteUsersPage() {
           </button>
         </div>
       </section>
+      </> : null}
+      {area === "users" ? <>
       <section className="registered-users-toolbar">
         <input
           type="search"
@@ -895,6 +978,21 @@ export default function AdminSiteUsersPage() {
           </aside>
         </>
       ) : null}
+      </> : null}
+      {area === "delivery" ? <section className="delivery-history-panel" aria-labelledby="delivery-history-title">
+        <div className="delivery-history-head">
+          <div><span>DELIVERY AUDIT</span><h2 id="delivery-history-title">{t("Илгээлтийн түүх", "Delivery history")}</h2><p>{t("И-мэйл болон SMS илгээлтийн хамгийн сүүлийн 100 төлөв. Хүлээн авагчийн мэдээллийг далдалж харуулна.", "The latest 100 email and SMS delivery events. Recipient details remain masked.")}</p></div>
+          <button type="button" onClick={load} disabled={loading}>{t("Шинэчлэх", "Refresh")}</button>
+        </div>
+        {error ? <div className="registered-users-alert error">{error}</div> : null}
+        <div className="delivery-history-table-wrap">
+          <table className="delivery-history-table">
+            <thead><tr><th>{t("Огноо", "Date")}</th><th>{t("Хэрэглэгч", "User")}</th><th>{t("Суваг", "Channel")}</th><th>{t("Загвар", "Template")}</th><th>{t("Хүлээн авагч", "Recipient")}</th><th>{t("Төлөв", "Status")}</th><th>{t("Үйлчилгээ", "Provider")}</th></tr></thead>
+            <tbody>{deliveries.map((event, index) => <tr key={`${event.channel}-${event.created_at}-${index}`}><td>{dateText(event.created_at)}</td><td>{event.user_name || "—"}</td><td>{event.channel.toUpperCase()}</td><td>{statusText(event.template)}</td><td>{event.recipient_masked}</td><td><span className={`delivery-state ${event.status}`}>{statusText(event.status)}</span>{event.error_code ? <small>{statusText(event.error_code)}</small> : null}</td><td>{event.provider}</td></tr>)}</tbody>
+          </table>
+          {!loading && !deliveries.length ? <p className="registered-users-empty">{t("Илгээлтийн түүх байхгүй.", "No delivery history.")}</p> : null}
+        </div>
+      </section> : null}
     </main>
   );
 }

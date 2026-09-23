@@ -5,17 +5,35 @@ import { useSiteLanguage } from "../../lib/use-site-language";
 
 type AdminPermission = "navigation.manage" | "pricing.manage" | "partners.manage" | "people.manage" | "knowledge.manage" | "marketing.manage" | "social.manage" | "accounts.manage" | "media.upload";
 
-const permissionOptions: Array<{ id: AdminPermission; label: string; labelEn: string; detail: string; detailEn: string }> = [
-  { id: "navigation.manage", label: "Толгой цэсний мэдээлэл", labelEn: "Header menu content", detail: "Бүтээгдэхүүн, Шийдэл, Салбар, AI хөгжүүлэлт, Танилцуулга", detailEn: "Product, Solutions, Industries, AI Development and Resources" },
-  { id: "pricing.manage", label: "Үнэ ба багц", labelEn: "Pricing and packages", detail: "Багц, үнэ, хэрэглэгч болон хөрөнгийн хязгаар", detailEn: "Package, price, user and asset limits" },
-  { id: "partners.manage", label: "Хамтрагч байгууллага", labelEn: "Partner organizations", detail: "Байгууллагын мэдээлэл, лого, холбоос", detailEn: "Organization details, logo and links" },
-  { id: "people.manage", label: "Төслийн баг", labelEn: "Project team", detail: "Багийн гишүүн, албан тушаал, танилцуулга", detailEn: "Team members, roles and profiles" },
-  { id: "knowledge.manage", label: "AI удирдлага · Home AI мэдлэг", labelEn: "AI management · Home AI knowledge", detail: "Сайтын туслахын баталгаажсан эх сурвалж, төлөв ба хувилбар", detailEn: "Approved sources, status and versions for the site assistant" },
-  { id: "marketing.manage", label: "AI удирдлага · Маркетинг AI", labelEn: "AI management · Marketing AI", detail: "Кампанит ажил, lead, контент, зөвшөөрөл, төсөв ба аналитикийн командын төв", detailEn: "Command center for campaigns, leads, content, approvals, budget and analytics" },
-  { id: "social.manage", label: "Мэдээ ба контент", labelEn: "News and content", detail: "Facebook пост, Reel холбоос, зураг болон нийтлэх төлөв", detailEn: "Facebook posts, Reels, images and publication status" },
-  { id: "accounts.manage", label: "Веб хэрэглэгчид", labelEn: "Website users", detail: "Бүртгэл, баталгаажуулалт болон хэрэглэгчийн төлөв", detailEn: "Registration, verification and account status" },
-  { id: "media.upload", label: "Медиа файл", labelEn: "Media files", detail: "Зураг, видео болон PDF файл байршуулах", detailEn: "Upload images, videos and PDF files" },
+type PermissionOption = { id: AdminPermission; label: string; labelEn: string; detail: string; detailEn: string };
+
+const permissionGroups: Array<{ label: string; labelEn: string; options: PermissionOption[] }> = [
+  { label: "Толгой цэсний мэдээлэл", labelEn: "Header menu content", options: [
+    { id: "navigation.manage", label: "Толгой цэсний мэдээлэл", labelEn: "Header menu content", detail: "Бүтээгдэхүүн, Шийдэл, Салбар, AI хөгжүүлэлт, Танилцуулга", detailEn: "Product, Solutions, Industries, AI Development and Resources" },
+  ] },
+  { label: "Төсөл хэрэгжүүлэгчид", labelEn: "Project implementers", options: [
+    { id: "partners.manage", label: "Хамтрагч байгууллагууд", labelEn: "Partner organizations", detail: "Байгууллагын мэдээлэл, лого, холбоос", detailEn: "Organization details, logo and links" },
+    { id: "people.manage", label: "Төслийн баг", labelEn: "Project team", detail: "Багийн гишүүн, албан тушаал, танилцуулга", detailEn: "Team members, roles and profiles" },
+  ] },
+  { label: "Үнэ ба багц", labelEn: "Pricing and packages", options: [
+    { id: "pricing.manage", label: "Үнэ ба багц", labelEn: "Pricing and packages", detail: "Багц, үнэ, хэрэглэгч болон хөрөнгийн хязгаар", detailEn: "Package, price, user and asset limits" },
+  ] },
+  { label: "AI удирдлага", labelEn: "AI management", options: [
+    { id: "knowledge.manage", label: "Home AI удирдлага ба мэдлэгийн сан", labelEn: "Home AI control and knowledge", detail: "Ерөнхий AI мэдлэг, iBeX лавлагаа, төлөв, төсөв, лимит ба хувилбар", detailEn: "General AI knowledge, optional iBeX references, status, budget, limits and versions" },
+    { id: "marketing.manage", label: "Marketing AI", labelEn: "Marketing AI", detail: "Кампанит ажил, lead, контент, зөвшөөрөл, төсөв ба аналитикийн командын төв", detailEn: "Command center for campaigns, leads, content, approvals, budget and analytics" },
+  ] },
+  { label: "Мэдээ ба контент", labelEn: "News and content", options: [
+    { id: "social.manage", label: "Мэдээ ба контент", labelEn: "News and content", detail: "Facebook пост, Reel холбоос, зураг болон нийтлэх төлөв", detailEn: "Facebook posts, Reels, images and publication status" },
+  ] },
+  { label: "Вэб хэрэглэгчид", labelEn: "Website users", options: [
+    { id: "accounts.manage", label: "Вэб хэрэглэгчид", labelEn: "Website users", detail: "Бүртгэл, баталгаажуулалтын тохиргоо, илгээлтийн түүх, туршилт ба хэрэглэгчийн төлөв", detailEn: "Registration, verification settings, delivery history, tests and account status" },
+  ] },
+  { label: "Нэмэлт эрх", labelEn: "Additional permissions", options: [
+    { id: "media.upload", label: "Медиа файл", labelEn: "Media files", detail: "Зураг, видео болон PDF файл байршуулах", detailEn: "Upload images, videos and PDF files" },
+  ] },
 ];
+
+const permissionOptions = permissionGroups.flatMap((group) => group.options);
 
 const defaultPermissions = permissionOptions.map((permission) => permission.id);
 
@@ -201,16 +219,23 @@ export default function AdminUsersPage() {
           </div>
           <fieldset className="admin-permission-fieldset">
             <legend>{t("Өөрчлөлт хийх эрх", "Edit permissions")}</legend>
-            <div className="admin-permission-grid">
-              {permissionOptions.map((permission) => (
-                <label className="admin-permission-option" key={permission.id}>
-                  <input
-                    type="checkbox"
-                    checked={invitePermissions.includes(permission.id)}
-                    onChange={() => toggleInvitePermission(permission.id)}
-                  />
-                  <span><strong>{t(permission.label, permission.labelEn)}</strong><small>{t(permission.detail, permission.detailEn)}</small></span>
-                </label>
+            <div className="admin-permission-groups">
+              {permissionGroups.map((group) => (
+                <section className="admin-permission-group" key={group.labelEn}>
+                  <h3>{t(group.label, group.labelEn)}</h3>
+                  <div className="admin-permission-grid">
+                    {group.options.map((permission) => (
+                      <label className="admin-permission-option" key={permission.id}>
+                        <input
+                          type="checkbox"
+                          checked={invitePermissions.includes(permission.id)}
+                          onChange={() => toggleInvitePermission(permission.id)}
+                        />
+                        <span><strong>{t(permission.label, permission.labelEn)}</strong><small>{t(permission.detail, permission.detailEn)}</small></span>
+                      </label>
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
           </fieldset>
@@ -255,16 +280,21 @@ export default function AdminUsersPage() {
                   <>
                     <fieldset className="admin-managed-permissions" disabled={working || !active}>
                       <legend>{t("Эрхийн хүрээ", "Permission scope")}</legend>
-                      <div>
-                        {permissionOptions.map((permission) => (
-                          <label key={permission.id}>
-                            <input
-                              type="checkbox"
-                              checked={(permissionDrafts[user.id] || []).includes(permission.id)}
-                              onChange={() => toggleManagedPermission(user.id, permission.id)}
-                            />
-                            <span>{t(permission.label, permission.labelEn)}</span>
-                          </label>
+                      <div className="admin-managed-permission-groups">
+                        {permissionGroups.map((group) => (
+                          <section key={group.labelEn}>
+                            <h4>{t(group.label, group.labelEn)}</h4>
+                            <div>{group.options.map((permission) => (
+                              <label key={permission.id}>
+                                <input
+                                  type="checkbox"
+                                  checked={(permissionDrafts[user.id] || []).includes(permission.id)}
+                                  onChange={() => toggleManagedPermission(user.id, permission.id)}
+                                />
+                                <span>{t(permission.label, permission.labelEn)}</span>
+                              </label>
+                            ))}</div>
+                          </section>
                         ))}
                       </div>
                     </fieldset>
