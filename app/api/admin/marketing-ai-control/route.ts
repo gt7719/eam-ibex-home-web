@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
-import { conflictMessage, hasTrustedOrigin, saveContentWithRevision } from "../../../lib/admin-security";
+import { conflictMessage, hasTrustedOrigin } from "../../../lib/admin-security";
 import { MARKETING_AI_SETTINGS_KEY, marketingAiSettingsFingerprint, marketingAiSettingsIsTested, normalizeMarketingAiSettings, readMarketingAiSettings } from "../../../lib/marketing-ai-control";
 import { getAdminSession, hasMarketingAdminPermission } from "../../../lib/site-admin";
 import type { CustomerAiDatabase } from "../../../lib/customer-ai";
@@ -47,6 +47,7 @@ export async function PUT(request: Request) {
   if (!raw) return reply({ error: "Хүсэлтийн формат буруу байна." }, 400);
   const runtime = env as unknown as Runtime;
   const current = await readMarketingAiSettings(runtime.DB), settings = normalizeMarketingAiSettings(raw.settings);
+  if (current.revision !== (raw.revision ?? null)) return reply({ error: conflictMessage() }, 409);
   const currentFingerprint = await marketingAiSettingsFingerprint(current.settings), nextFingerprint = await marketingAiSettingsFingerprint(settings);
   if (current.settings.testedFingerprint !== currentFingerprint || currentFingerprint !== nextFingerprint) {
     settings.testedAt = ""; settings.testedFingerprint = ""; settings.testedBy = "";
@@ -55,16 +56,27 @@ export async function PUT(request: Request) {
   }
   if (settings.mode === "production" && !runtime.OPENAI_MARKETING_API_KEY?.trim()) return reply({ error: "Production Draft горимын өмнө OPENAI_MARKETING_API_KEY холбоно уу." }, 409);
   if (settings.mode === "production" && !await marketingAiSettingsIsTested(settings)) return reply({ error: "Production Draft горимын өмнө одоогийн model, prompt болон хамгаалалтын тохиргоог Test center-ээр амжилттай шалгана уу." }, 409);
-  const revision = await saveContentWithRevision({ key: MARKETING_AI_SETTINGS_KEY, value: settings, userId: auth.user.id, expectedRevision: raw.revision ?? null });
-  if (!revision) return reply({ error: conflictMessage() }, 409);
   const now = new Date().toISOString();
   const latestRevision = await runtime.DB.prepare("SELECT COALESCE(MAX(revision),0) AS revision FROM marketing_ai_revisions WHERE entity_type='settings' AND entity_id=?")
     .bind(MARKETING_AI_SETTINGS_KEY).first<{ revision: number }>();
-  await runtime.DB.batch([
-    runtime.DB.prepare("INSERT INTO marketing_ai_revisions (id,entity_type,entity_id,revision,change_type,snapshot_json,changed_by,note,created_at) VALUES (?,'settings',?,?,'updated',?,?,NULL,?)")
-      .bind(crypto.randomUUID(), MARKETING_AI_SETTINGS_KEY, Number(latestRevision?.revision || 0) + 1, JSON.stringify(settings), auth.user.id, now),
-    runtime.DB.prepare("INSERT INTO marketing_ai_audit_events (id,admin_id,event_type,model,status,metadata_json,created_at) VALUES (?,?,?,?,?,?,?)")
-      .bind(crypto.randomUUID(), auth.user.id, "marketing_ai.settings_changed", null, "completed", JSON.stringify({ mode: settings.mode, tested: await marketingAiSettingsIsTested(settings), tokenPolicy: settings.tokenPolicy, outboundEnabled: false }), now),
-  ]);
-  return reply({ saved: true, settings, revision });
+  const valueJson = JSON.stringify(settings);
+  const write = current.revision === null
+    ? runtime.DB.prepare("INSERT INTO site_content (key,value_json,updated_by,updated_at) VALUES (?,?,?,?) ON CONFLICT(key) DO NOTHING")
+      .bind(MARKETING_AI_SETTINGS_KEY, valueJson, auth.user.id, now)
+    : runtime.DB.prepare("UPDATE site_content SET value_json=?,updated_by=?,updated_at=? WHERE key=? AND updated_at=?")
+      .bind(valueJson, auth.user.id, now, MARKETING_AI_SETTINGS_KEY, raw.revision ?? null);
+  try {
+    const results = await runtime.DB.batch([
+      write,
+      runtime.DB.prepare("INSERT INTO marketing_ai_revisions (id,entity_type,entity_id,revision,change_type,snapshot_json,changed_by,note,created_at) SELECT ?,'settings',?,?,'updated',?,?,NULL,? WHERE changes()=1")
+        .bind(crypto.randomUUID(), MARKETING_AI_SETTINGS_KEY, Number(latestRevision?.revision || 0) + 1, valueJson, auth.user.id, now),
+      runtime.DB.prepare("INSERT INTO marketing_ai_audit_events (id,admin_id,event_type,model,status,metadata_json,created_at) SELECT ?,?,?,?,?,?,? WHERE changes()=1")
+        .bind(crypto.randomUUID(), auth.user.id, "marketing_ai.settings_changed", null, "completed", JSON.stringify({ mode: settings.mode, tested: await marketingAiSettingsIsTested(settings), tokenPolicy: settings.tokenPolicy, outboundEnabled: false }), now),
+    ]);
+    if (Number(results[0]?.meta?.changes || 0) !== 1) return reply({ error: conflictMessage() }, 409);
+  } catch (error) {
+    console.error("marketing_ai_settings_atomic_write_failed", error);
+    return reply({ error: "Тохиргоо, revision болон audit-ийг хамтад нь хадгалж чадсангүй." }, 503);
+  }
+  return reply({ saved: true, settings, revision: now });
 }

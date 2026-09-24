@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import {
   ADMIN_PERMISSIONS,
   ADMIN_CONTENT_PERMISSIONS,
+  LEGACY_EDITOR_PERMISSIONS,
   getAdminSession,
   hashPassword,
   isAdminPermission,
@@ -48,7 +49,7 @@ export async function GET() {
 }
 
 function normalizeStoredPermissions(value: string | null) {
-  if (value == null) return [...ADMIN_PERMISSIONS] as AdminPermission[];
+  if (value == null) return [...LEGACY_EDITOR_PERMISSIONS] as AdminPermission[];
   try {
     return normalizeAdminPermissions(JSON.parse(value));
   } catch {

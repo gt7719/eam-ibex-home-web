@@ -269,6 +269,13 @@ export async function PATCH(request: Request) {
               id: admin.id,
               type: "admin",
             });
+      if (!queued.created) {
+        return NextResponse.json({
+          updated: true,
+          provisioningStatus: "already_queued",
+          message: "Тенант бэлтгэх ижил хүсэлт өмнө нь бүртгэгдсэн тул дахин илгээгээгүй.",
+        });
+      }
       const dispatch = await dispatchProvisioning(
         env as unknown as {
           IBEX_EAM_PROVISIONING_URL?: string;

@@ -117,27 +117,35 @@ export async function PATCH(request: Request) {
   const snapshot = { id, domain: current.domain, kind: current.kind, title: nextTitle, status: nextStatus, data: nextData, revision: nextRevision,
     ownerId: current.owner_id, approvedBy: approved ? auth.user.id : null, approvedAt: approved ? now : null, publishedAt: published ? now : null,
     archivedAt: archived ? now : null, createdAt: current.created_at, updatedAt: now };
-  const update = await runtime.DB.prepare("UPDATE marketing_ai_records SET title=?,status=?,data_json=?,revision=revision+1,approved_by=?,approved_at=?,published_at=?,archived_at=?,updated_at=? WHERE id=? AND revision=?")
-    .bind(nextTitle, nextStatus, JSON.stringify(nextData), snapshot.approvedBy, snapshot.approvedAt, snapshot.publishedAt, snapshot.archivedAt, now, id, revision).run() as { meta?: { changes?: number } };
-  if (update.meta?.changes !== undefined && Number(update.meta.changes) !== 1) return reply({ error: "Record өөр админаар шинэчлэгдсэн байна. Дахин ачаална уу." }, 409);
-  await runtime.DB.batch([
-    runtime.DB.prepare("INSERT INTO marketing_ai_revisions (id,entity_type,entity_id,revision,change_type,snapshot_json,changed_by,note,created_at) VALUES (?,'record',?,?,?,?,?,?,?)")
-      .bind(crypto.randomUUID(), id, nextRevision, action, JSON.stringify(snapshot), auth.user.id, note || null, now),
-    runtime.DB.prepare("INSERT INTO marketing_ai_audit_events (id,admin_id,event_type,model,status,metadata_json,created_at) VALUES (?,?, 'marketing_ai.record_changed',NULL,?,?,?)")
-      .bind(crypto.randomUUID(), auth.user.id, nextStatus, JSON.stringify({ recordId: id, domain: current.domain, action, from: current.status, to: nextStatus, revision: nextRevision, outboundExecuted: false, spendExecuted: false }), now),
-  ]);
   let testDraftId: string | null = null;
+  const statements = [
+    runtime.DB.prepare("UPDATE marketing_ai_records SET title=?,status=?,data_json=?,revision=revision+1,approved_by=?,approved_at=?,published_at=?,archived_at=?,updated_at=? WHERE id=? AND revision=?")
+      .bind(nextTitle, nextStatus, JSON.stringify(nextData), snapshot.approvedBy, snapshot.approvedAt, snapshot.publishedAt, snapshot.archivedAt, now, id, revision),
+    runtime.DB.prepare("INSERT INTO marketing_ai_revisions (id,entity_type,entity_id,revision,change_type,snapshot_json,changed_by,note,created_at) SELECT ?,'record',?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM marketing_ai_records WHERE id=? AND revision=? AND updated_at=?)")
+      .bind(crypto.randomUUID(), id, nextRevision, action, JSON.stringify(snapshot), auth.user.id, note || null, now, id, nextRevision, now),
+    runtime.DB.prepare("INSERT INTO marketing_ai_audit_events (id,admin_id,event_type,model,status,metadata_json,created_at) SELECT ?,?,'marketing_ai.record_changed',NULL,?,?,? WHERE EXISTS (SELECT 1 FROM marketing_ai_records WHERE id=? AND revision=? AND updated_at=?)")
+      .bind(crypto.randomUUID(), auth.user.id, nextStatus, JSON.stringify({ recordId: id, domain: current.domain, action, from: current.status, to: nextStatus, revision: nextRevision, outboundExecuted: false, spendExecuted: false }), now, id, nextRevision, now),
+  ];
   if (action === "test" && current.domain === "automation") {
     testDraftId = crypto.randomUUID();
     const draftTitle = `Automation test · ${current.title}`.slice(0, 160), draftContent = String(nextData.draftAction || nextData.action || "Draft-only automation test").slice(0, 12_000);
-    await runtime.DB.batch([
-      runtime.DB.prepare("INSERT INTO marketing_ai_drafts (id,admin_id,title,task_type,prompt_profile,prompt_version,model,content,missing_inputs_json,status,revision,estimated_cost_usd,created_at,updated_at) VALUES (?,?,?,'general','general','marketing-admin-v2','local',?,'[]','draft',1,0,?,?)")
-        .bind(testDraftId, auth.user.id, draftTitle, draftContent, now, now),
-      runtime.DB.prepare("INSERT INTO marketing_ai_revisions (id,entity_type,entity_id,revision,change_type,snapshot_json,changed_by,note,created_at) VALUES (?,'draft',?,1,'automation_test',?,?,NULL,?)")
-        .bind(crypto.randomUUID(), testDraftId, JSON.stringify({ title: draftTitle, content: draftContent, status: "draft", sourceAutomationId: current.id, revision: 1 }), auth.user.id, now),
-      runtime.DB.prepare("INSERT INTO marketing_ai_audit_events (id,admin_id,event_type,model,status,metadata_json,created_at) VALUES (?,?, 'marketing_ai.automation_test','local','draft_created',?,?)")
-        .bind(crypto.randomUUID(), auth.user.id, JSON.stringify({ recordId: current.id, draftId: testDraftId, outboundExecuted: false, spendExecuted: false }), now),
-    ]);
+    statements.push(
+      runtime.DB.prepare("INSERT INTO marketing_ai_drafts (id,admin_id,title,task_type,prompt_profile,prompt_version,model,content,missing_inputs_json,status,revision,estimated_cost_usd,created_at,updated_at) SELECT ?,?,?,'general','general','marketing-admin-v2','local',?,'[]','draft',1,0,?,? WHERE EXISTS (SELECT 1 FROM marketing_ai_records WHERE id=? AND revision=? AND updated_at=?)")
+        .bind(testDraftId, auth.user.id, draftTitle, draftContent, now, now, id, nextRevision, now),
+      runtime.DB.prepare("INSERT INTO marketing_ai_revisions (id,entity_type,entity_id,revision,change_type,snapshot_json,changed_by,note,created_at) SELECT ?,'draft',?,1,'automation_test',?,?,NULL,? WHERE EXISTS (SELECT 1 FROM marketing_ai_drafts WHERE id=?)")
+        .bind(crypto.randomUUID(), testDraftId, JSON.stringify({ title: draftTitle, content: draftContent, status: "draft", sourceAutomationId: current.id, revision: 1 }), auth.user.id, now, testDraftId),
+      runtime.DB.prepare("INSERT INTO marketing_ai_audit_events (id,admin_id,event_type,model,status,metadata_json,created_at) SELECT ?,?,'marketing_ai.automation_test','local','draft_created',?,? WHERE EXISTS (SELECT 1 FROM marketing_ai_drafts WHERE id=?)")
+        .bind(crypto.randomUUID(), auth.user.id, JSON.stringify({ recordId: current.id, draftId: testDraftId, outboundExecuted: false, spendExecuted: false }), now, testDraftId),
+    );
+  }
+  try {
+    const results = await runtime.DB.batch(statements);
+    if (Number(results[0]?.meta?.changes || 0) !== 1) {
+      return reply({ error: "Record өөр админаар шинэчлэгдсэн байна. Дахин ачаална уу." }, 409);
+    }
+  } catch (error) {
+    console.error("marketing_ai_record_atomic_write_failed", error);
+    return reply({ error: "Record, revision болон audit-ийг хамтад нь хадгалж чадсангүй." }, 503);
   }
   return reply({ updated: snapshot, testDraftId, outboundExecuted: false, spendExecuted: false });
 }

@@ -52,12 +52,17 @@ export type CustomerAiPreparedStatement = {
   bind(...values: unknown[]): CustomerAiPreparedStatement;
   first<T = unknown>(): Promise<T | null>;
   all<T = unknown>(): Promise<{ results?: T[] }>;
-  run(): Promise<unknown>;
+  run(): Promise<CustomerAiResult>;
+};
+
+export type CustomerAiResult = {
+  success?: boolean;
+  meta?: { changes?: number };
 };
 
 export type CustomerAiDatabase = {
   prepare(query: string): CustomerAiPreparedStatement;
-  batch(statements: CustomerAiPreparedStatement[]): Promise<unknown[]>;
+  batch(statements: CustomerAiPreparedStatement[]): Promise<CustomerAiResult[]>;
 };
 
 export type CustomerAiConfig = {

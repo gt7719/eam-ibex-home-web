@@ -54,16 +54,23 @@ export async function PATCH(request: Request) {
   const title = body.action === "edit" && typeof body.title === "string" ? body.title.trim().slice(0, 160) : current.title;
   const content = body.action === "edit" && typeof body.content === "string" ? body.content.trim().slice(0, 12_000) : current.content;
   if (!title || !content) return reply({ error: "Draft-ийн нэр болон агуулга хоосон байж болохгүй." }, 400);
-  const result = await runtime.DB.prepare("UPDATE marketing_ai_drafts SET title=?,content=?,status=?,revision=revision+1,submitted_at=CASE WHEN ?='review' THEN ? ELSE submitted_at END,decided_by=CASE WHEN ? IN ('approved','rejected') THEN ? ELSE NULL END,decided_at=CASE WHEN ? IN ('approved','rejected') THEN ? ELSE NULL END,decision_note=?,updated_at=? WHERE id=? AND revision=?")
-    .bind(title, content, nextStatus, nextStatus, now, nextStatus, auth.user.id, nextStatus, now, note || null, now, body.id, body.revision).run() as { meta?: { changes?: number } };
-  if (result.meta?.changes !== undefined && Number(result.meta.changes) !== 1) return reply({ error: "Draft өөр админаар шинэчлэгдсэн байна. Дахин ачаална уу." }, 409);
   const nextRevision = Number(body.revision) + 1;
-  await runtime.DB.batch([
-    runtime.DB.prepare("INSERT INTO marketing_ai_revisions (id,entity_type,entity_id,revision,change_type,snapshot_json,changed_by,note,created_at) VALUES (?,'draft',?,?,?,?,?,?,?)")
-      .bind(crypto.randomUUID(), current.id, nextRevision, body.action, JSON.stringify({ title, content, status: nextStatus, taskType: current.task_type, promptProfile: current.prompt_profile, promptVersion: current.prompt_version, model: current.model, revision: nextRevision }), auth.user.id, note || null, now),
-    runtime.DB.prepare("INSERT INTO marketing_ai_audit_events (id,admin_id,event_type,model,status,metadata_json,created_at) VALUES (?,?,?,?,?,?,?)")
-      .bind(crypto.randomUUID(), auth.user.id, body.action === "edit" ? "marketing_ai.draft_edited" : "marketing_ai.approval_decision", current.model, nextStatus, JSON.stringify({ draftId: current.id, action: body.action, from: current.status, to: nextStatus, revision: nextRevision, outboundExecuted: false }), now),
-  ]);
+  try {
+    const results = await runtime.DB.batch([
+      runtime.DB.prepare("UPDATE marketing_ai_drafts SET title=?,content=?,status=?,revision=revision+1,submitted_at=CASE WHEN ?='review' THEN ? ELSE submitted_at END,decided_by=CASE WHEN ? IN ('approved','rejected') THEN ? ELSE NULL END,decided_at=CASE WHEN ? IN ('approved','rejected') THEN ? ELSE NULL END,decision_note=?,updated_at=? WHERE id=? AND revision=?")
+        .bind(title, content, nextStatus, nextStatus, now, nextStatus, auth.user.id, nextStatus, now, note || null, now, body.id, body.revision),
+      runtime.DB.prepare("INSERT INTO marketing_ai_revisions (id,entity_type,entity_id,revision,change_type,snapshot_json,changed_by,note,created_at) SELECT ?,'draft',?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM marketing_ai_drafts WHERE id=? AND revision=? AND updated_at=?)")
+        .bind(crypto.randomUUID(), current.id, nextRevision, body.action, JSON.stringify({ title, content, status: nextStatus, taskType: current.task_type, promptProfile: current.prompt_profile, promptVersion: current.prompt_version, model: current.model, revision: nextRevision }), auth.user.id, note || null, now, current.id, nextRevision, now),
+      runtime.DB.prepare("INSERT INTO marketing_ai_audit_events (id,admin_id,event_type,model,status,metadata_json,created_at) SELECT ?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM marketing_ai_drafts WHERE id=? AND revision=? AND updated_at=?)")
+        .bind(crypto.randomUUID(), auth.user.id, body.action === "edit" ? "marketing_ai.draft_edited" : "marketing_ai.approval_decision", current.model, nextStatus, JSON.stringify({ draftId: current.id, action: body.action, from: current.status, to: nextStatus, revision: nextRevision, outboundExecuted: false }), now, current.id, nextRevision, now),
+    ]);
+    if (Number(results[0]?.meta?.changes || 0) !== 1) {
+      return reply({ error: "Draft өөр админаар шинэчлэгдсэн байна. Дахин ачаална уу." }, 409);
+    }
+  } catch (error) {
+    console.error("marketing_ai_draft_atomic_write_failed", error);
+    return reply({ error: "Draft, revision болон audit-ийг хамтад нь хадгалж чадсангүй." }, 503);
+  }
   const updated = await runtime.DB.prepare("SELECT id,admin_id,title,task_type,prompt_profile,prompt_version,model,content,missing_inputs_json,status,revision,estimated_cost_usd,submitted_at,decided_by,decided_at,decision_note,created_at,updated_at FROM marketing_ai_drafts WHERE id=? LIMIT 1").bind(body.id).first<DraftRow>();
   return reply({ updated: updated ? present(updated) : null, outboundExecuted: false });
 }

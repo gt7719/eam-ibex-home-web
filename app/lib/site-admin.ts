@@ -33,6 +33,16 @@ export const ADMIN_CONTENT_PERMISSIONS = [
   "accounts.manage",
 ] as const;
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
+// Historical editor rows may predate permissions_json. Keep those rows on a
+// deliberately small content-only grant instead of treating NULL as owner-like
+// access. Owners remain the only role that implicitly receives every grant.
+export const LEGACY_EDITOR_PERMISSIONS: AdminPermission[] = [
+  "pricing.manage",
+  "partners.manage",
+  "people.manage",
+  "knowledge.manage",
+  "media.upload",
+];
 // Keep the work factor within the Cloudflare Worker request CPU budget. The
 // setup and login endpoints are additionally protected by the site access
 // policy and use a unique 128-bit salt for every administrator.
@@ -137,7 +147,7 @@ export function safeAdmin(row: AdminRow) {
   if (row.role === "owner") {
     permissions = [...ADMIN_PERMISSIONS];
   } else if (row.permissions_json == null) {
-    permissions = [...ADMIN_PERMISSIONS];
+    permissions = [...LEGACY_EDITOR_PERMISSIONS];
   } else {
     try {
       permissions = normalizeAdminPermissions(JSON.parse(row.permissions_json));

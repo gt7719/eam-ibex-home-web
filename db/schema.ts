@@ -593,6 +593,7 @@ export const siteUserSubscriptions = sqliteTable(
     finalAmountMnt: integer("final_amount_mnt"),
     promotionSnapshotJson: text("promotion_snapshot_json"),
     paymentStatus: text("payment_status").notNull().default("pending"),
+    paymentConfirmationKey: text("payment_confirmation_key"),
     subscriptionStatus: text("subscription_status")
       .notNull()
       .default("payment_pending"),
@@ -619,6 +620,9 @@ export const siteUserSubscriptions = sqliteTable(
       table.provisioningStatus,
     ),
     index("site_user_subscriptions_end_idx").on(table.endsAt),
+    uniqueIndex("site_user_subscriptions_payment_confirmation_unique").on(
+      table.paymentConfirmationKey,
+    ),
   ],
 );
 
@@ -627,6 +631,7 @@ export const siteUserSubscriptionEvents = sqliteTable(
   {
     id: text("id").primaryKey(),
     subscriptionId: text("subscription_id").notNull(),
+    idempotencyKey: text("idempotency_key"),
     userId: text("user_id").notNull(),
     eventType: text("event_type").notNull(),
     actorType: text("actor_type").notNull(),
@@ -643,6 +648,9 @@ export const siteUserSubscriptionEvents = sqliteTable(
       table.userId,
       table.createdAt,
     ),
+    uniqueIndex("site_user_subscription_events_idempotency_unique").on(
+      table.idempotencyKey,
+    ),
   ],
 );
 
@@ -651,6 +659,7 @@ export const siteUserProvisioningOutbox = sqliteTable(
   {
     id: text("id").primaryKey(),
     subscriptionId: text("subscription_id").notNull(),
+    idempotencyKey: text("idempotency_key"),
     status: text("status").notNull().default("pending"),
     attemptCount: integer("attempt_count").notNull().default(0),
     payloadJson: text("payload_json").notNull(),
@@ -668,6 +677,9 @@ export const siteUserProvisioningOutbox = sqliteTable(
     index("site_user_provisioning_outbox_status_idx").on(
       table.status,
       table.updatedAt,
+    ),
+    uniqueIndex("site_user_provisioning_outbox_idempotency_unique").on(
+      table.idempotencyKey,
     ),
   ],
 );

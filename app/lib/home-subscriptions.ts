@@ -171,10 +171,27 @@ export function provisioningPayload(row: SubscriptionRow, user: { id: string; fu
   };
 }
 
+async function existingProvisioningRequest(idempotencyKey: string) {
+  const row = await env.DB.prepare("SELECT id,subscription_id,payload_json FROM site_user_provisioning_outbox WHERE idempotency_key=? LIMIT 1")
+    .bind(idempotencyKey)
+    .first<{ id: string; subscription_id: string; payload_json: string }>();
+  if (!row) return null;
+  try {
+    return { subscriptionId: row.subscription_id, outboxId: row.id, payload: JSON.parse(row.payload_json) as ProvisioningPayload, created: false };
+  } catch {
+    throw new Error("Тенант бэлтгэх хадгалсан өгөгдөл гэмтсэн байна.");
+  }
+}
+
 export async function confirmSubscriptionPayment(subscriptionId: string, actor: { id: string; type: "admin" }) {
   const row = await env.DB.prepare("SELECT * FROM site_user_subscriptions WHERE id=? LIMIT 1").bind(subscriptionId).first<SubscriptionRow>();
   if (!row) throw new Error("Багцын хүсэлт олдсонгүй.");
   if (row.plan_id === "custom") throw new Error("Үнийн саналыг тусад нь тохиролцсоны дараа батална.");
+  const idempotencyKey = `payment:${subscriptionId}`;
+  if (String(row.payment_status) === "confirmed") {
+    const existing = await existingProvisioningRequest(idempotencyKey);
+    if (existing) return existing;
+  }
   if (!["pending", "rejected"].includes(String(row.payment_status))) throw new Error("Энэ хүсэлтийн төлбөрийн төлөвийг дахин батлах боломжгүй.");
   const now = new Date(), startedAt = now.toISOString(), promotion = safeJson(typeof row.promotion_snapshot_json === "string" ? row.promotion_snapshot_json : null);
   const bonusMonths = typeof promotion?.bonusMonths === "number" ? promotion.bonusMonths : 0;
@@ -185,12 +202,18 @@ export async function confirmSubscriptionPayment(subscriptionId: string, actor: 
   const payload = provisioningPayload(payloadRow, { id: user.id, fullName: user.full_name, email: user.email });
   if (!payload) throw new Error("Тенант бэлтгэх өгөгдөл бүрэн биш байна.");
   const timestamp = now.toISOString(), outboxId = crypto.randomUUID();
-  await env.DB.batch([
-    env.DB.prepare("UPDATE site_user_subscriptions SET payment_status='confirmed',subscription_status='provisioning_pending',starts_at=?,ends_at=?,provisioning_status='pending',updated_at=? WHERE id=?").bind(startedAt, endsAt, timestamp, subscriptionId),
-    env.DB.prepare("INSERT INTO site_user_provisioning_outbox (id,subscription_id,status,attempt_count,payload_json,created_at,updated_at) VALUES (?,?, 'pending',0,?,?,?)").bind(outboxId, subscriptionId, JSON.stringify(payload), timestamp, timestamp),
-    env.DB.prepare("INSERT INTO site_user_subscription_events (id,subscription_id,user_id,event_type,actor_type,actor_id,payload_json,created_at) VALUES (?,?,?,?,?,?,?,?)").bind(crypto.randomUUID(), subscriptionId, String(row.user_id), "payment_confirmed", actor.type, actor.id, JSON.stringify({ startsAt: startedAt, endsAt, outboxId }), timestamp),
+  const results = await env.DB.batch([
+    env.DB.prepare("UPDATE site_user_subscriptions SET payment_status='confirmed',payment_confirmation_key=?,subscription_status='provisioning_pending',starts_at=?,ends_at=?,provisioning_status='pending',updated_at=? WHERE id=? AND payment_status IN ('pending','rejected') AND payment_confirmation_key IS NULL")
+      .bind(idempotencyKey, startedAt, endsAt, timestamp, subscriptionId),
+    env.DB.prepare("INSERT OR IGNORE INTO site_user_provisioning_outbox (id,subscription_id,idempotency_key,status,attempt_count,payload_json,created_at,updated_at) SELECT ?,?,?,'pending',0,?,?,? WHERE changes()=1")
+      .bind(outboxId, subscriptionId, idempotencyKey, JSON.stringify(payload), timestamp, timestamp),
+    env.DB.prepare("INSERT OR IGNORE INTO site_user_subscription_events (id,subscription_id,idempotency_key,user_id,event_type,actor_type,actor_id,payload_json,created_at) SELECT ?,?,?,?,?,?,?,?,? WHERE changes()=1")
+      .bind(crypto.randomUUID(), subscriptionId, idempotencyKey, String(row.user_id), "payment_confirmed", actor.type, actor.id, JSON.stringify({ startsAt: startedAt, endsAt, outboxId }), timestamp),
   ]);
-  return { subscriptionId, outboxId, payload };
+  if (Number(results[0]?.meta?.changes || 0) === 1) return { subscriptionId, outboxId, payload, created: true };
+  const existing = await existingProvisioningRequest(idempotencyKey);
+  if (existing) return existing;
+  throw new Error("Төлбөрийн баталгаажуулалт зэрэгцээ хүсэлтээр өөрчлөгдсөн байна.");
 }
 
 export async function queueProvisioningRetry(subscriptionId: string, actor: { id: string; type: "admin" }) {
@@ -201,13 +224,30 @@ export async function queueProvisioningRetry(subscriptionId: string, actor: { id
   if (!user) throw new Error("Хэрэглэгч олдсонгүй.");
   const payload = provisioningPayload(row, { id: user.id, fullName: user.full_name, email: user.email });
   if (!payload) throw new Error("Тенант бэлтгэх өгөгдөл бүрэн биш байна.");
+  const latest = await env.DB.prepare("SELECT id,status FROM site_user_provisioning_outbox WHERE subscription_id=? ORDER BY created_at DESC LIMIT 1")
+    .bind(subscriptionId).first<{ id: string; status: string }>();
+  if (latest && ["pending", "accepted"].includes(latest.status)) {
+    const existing = await env.DB.prepare("SELECT idempotency_key FROM site_user_provisioning_outbox WHERE id=? LIMIT 1").bind(latest.id).first<{ idempotency_key: string | null }>();
+    if (existing?.idempotency_key) {
+      const request = await existingProvisioningRequest(existing.idempotency_key);
+      if (request) return request;
+    }
+    throw new Error(latest.status === "accepted" ? "Тенант аль хэдийн идэвхжсэн байна." : "Тенант бэлтгэх хүсэлт аль хэдийн дараалалд байна.");
+  }
   const now = new Date().toISOString(), outboxId = crypto.randomUUID();
-  await env.DB.batch([
-    env.DB.prepare("UPDATE site_user_subscriptions SET subscription_status='provisioning_pending',provisioning_status='pending',updated_at=? WHERE id=?").bind(now, subscriptionId),
-    env.DB.prepare("INSERT INTO site_user_provisioning_outbox (id,subscription_id,status,attempt_count,payload_json,created_at,updated_at) VALUES (?,?, 'pending',0,?,?,?)").bind(outboxId, subscriptionId, JSON.stringify(payload), now, now),
-    env.DB.prepare("INSERT INTO site_user_subscription_events (id,subscription_id,user_id,event_type,actor_type,actor_id,payload_json,created_at) VALUES (?,?,?,?,?,?,?,?)").bind(crypto.randomUUID(), subscriptionId, String(row.user_id), "provisioning_retry_queued", actor.type, actor.id, JSON.stringify({ outboxId }), now),
+  const idempotencyKey = `retry:${subscriptionId}:${latest?.id || "initial"}`;
+  const results = await env.DB.batch([
+    env.DB.prepare("UPDATE site_user_subscriptions SET subscription_status='provisioning_pending',provisioning_status='pending',updated_at=? WHERE id=? AND payment_status='confirmed' AND provisioning_status IN ('failed','pending_connection')")
+      .bind(now, subscriptionId),
+    env.DB.prepare("INSERT OR IGNORE INTO site_user_provisioning_outbox (id,subscription_id,idempotency_key,status,attempt_count,payload_json,created_at,updated_at) SELECT ?,?,?,'pending',0,?,?,? WHERE changes()=1")
+      .bind(outboxId, subscriptionId, idempotencyKey, JSON.stringify(payload), now, now),
+    env.DB.prepare("INSERT OR IGNORE INTO site_user_subscription_events (id,subscription_id,idempotency_key,user_id,event_type,actor_type,actor_id,payload_json,created_at) SELECT ?,?,?,?,?,?,?,?,? WHERE changes()=1")
+      .bind(crypto.randomUUID(), subscriptionId, idempotencyKey, String(row.user_id), "provisioning_retry_queued", actor.type, actor.id, JSON.stringify({ outboxId }), now),
   ]);
-  return { subscriptionId, outboxId, payload };
+  if (Number(results[0]?.meta?.changes || 0) === 1) return { subscriptionId, outboxId, payload, created: true };
+  const existing = await existingProvisioningRequest(idempotencyKey);
+  if (existing) return existing;
+  throw new Error("Тенант бэлтгэх төлөв зэрэгцээ хүсэлтээр өөрчлөгдсөн байна.");
 }
 
 export async function recordProvisioningResult(input: { subscriptionId: string; outboxId: string; status: "accepted" | "pending_connection" | "failed"; response: Record<string, unknown>; actorId?: string }) {
