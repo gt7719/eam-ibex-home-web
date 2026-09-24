@@ -7,6 +7,7 @@ import {
   TERMS_VERSION,
   actionAttemptKey,
   actionIsLocked,
+  clearActionFailures,
   createSecretToken,
   digest,
   findSiteUserByEmail,
@@ -48,7 +49,10 @@ export async function POST(request: Request) {
   }
   const turnstile = await verifyTurnstile(request, body.turnstileToken);
   if (!turnstile.ok)
-    return reply({ error: "Аюулгүй байдлын шалгалт амжилтгүй боллоо." }, 400);
+    return reply(
+      { error: turnstile.configured ? "Аюулгүй байдлын шалгалт амжилтгүй боллоо." : "Бүртгэлийн хамгаалалт сервер дээр тохируулагдаагүй байна." },
+      turnstile.configured ? 400 : 503,
+    );
 
   const input = validateRegistrationInput(body);
   if (!input.valid)
@@ -203,6 +207,7 @@ export async function POST(request: Request) {
   const phone = policy.phoneRequired
     ? await issuePhoneVerification(userId)
     : { sent: false, status: "not_required" };
+  await clearActionFailures(attemptKey);
   const message =
     policy.emailRequired && policy.phoneRequired
       ? "Бүртгэл үүслээ. И-мэйл болон SMS кодоор бүртгэлээ баталгаажуулна уу."

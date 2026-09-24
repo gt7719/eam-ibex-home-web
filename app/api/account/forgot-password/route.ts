@@ -5,6 +5,7 @@ import {
   RESET_TOKEN_MAX_AGE_MS,
   actionAttemptKey,
   actionIsLocked,
+  clearActionFailures,
   createSecretToken,
   digest,
   findSiteUserByEmail,
@@ -20,7 +21,10 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({})) as { email?: string; turnstileToken?: string };
   const email = normalizeEmail(body.email);
   const turnstile = await verifyTurnstile(request, body.turnstileToken);
-  if (!turnstile.ok) return NextResponse.json({ error: "Аюулгүй байдлын шалгалт амжилтгүй боллоо." }, { status: 400 });
+  if (!turnstile.ok) return NextResponse.json(
+    { error: turnstile.configured ? "Аюулгүй байдлын шалгалт амжилтгүй боллоо." : "Нууц үг сэргээх хамгаалалт сервер дээр тохируулагдаагүй байна." },
+    { status: turnstile.configured ? 400 : 503 },
+  );
   const key = await actionAttemptKey(request, "password_reset", email || "invalid");
   if (await actionIsLocked(key)) return NextResponse.json({ error: "Олон хүсэлт илэрлээ. Түр хүлээгээд дахин оролдоно уу." }, { status: 429 });
   await recordActionFailure(key, 5, 60);
@@ -39,5 +43,6 @@ export async function POST(request: Request) {
   const resetUrl = new URL("/reset-password", request.url);
   resetUrl.searchParams.set("token", token);
   const delivery = await sendAccountEmail({ userId: user.id, email: user.email, name: user.full_name, locale: user.locale, template: "password_reset", actionUrl: resetUrl.toString() });
+  await clearActionFailures(key);
   return NextResponse.json({ ...generic, emailSent: delivery.sent }, { status: 202, headers: { "Cache-Control": "no-store" } });
 }

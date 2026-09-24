@@ -247,7 +247,10 @@ export async function verifyTurnstile(
   responseToken: unknown,
 ) {
   const runtime = runtimeEnv();
-  if (!runtime.TURNSTILE_SECRET_KEY) return { ok: true, configured: false };
+  // Public auth endpoints must never silently lose their bot protection when a
+  // deployment is missing its secret. The UI readiness endpoint prevents
+  // submission, and this server-side guard remains the authoritative check.
+  if (!runtime.TURNSTILE_SECRET_KEY?.trim()) return { ok: false, configured: false };
   if (typeof responseToken !== "string" || !responseToken)
     return { ok: false, configured: true };
   const form = new FormData();

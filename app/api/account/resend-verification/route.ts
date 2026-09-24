@@ -5,6 +5,7 @@ import {
   EMAIL_TOKEN_MAX_AGE_MS,
   actionAttemptKey,
   actionIsLocked,
+  clearActionFailures,
   createSecretToken,
   digest,
   findSiteUserByEmail,
@@ -20,7 +21,10 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({})) as { email?: string; turnstileToken?: string };
   const email = normalizeEmail(body.email);
   const turnstile = await verifyTurnstile(request, body.turnstileToken);
-  if (!turnstile.ok) return NextResponse.json({ error: "Аюулгүй байдлын шалгалт амжилтгүй боллоо." }, { status: 400 });
+  if (!turnstile.ok) return NextResponse.json(
+    { error: turnstile.configured ? "Аюулгүй байдлын шалгалт амжилтгүй боллоо." : "И-мэйл баталгаажуулалтын хамгаалалт сервер дээр тохируулагдаагүй байна." },
+    { status: turnstile.configured ? 400 : 503 },
+  );
   const key = await actionAttemptKey(request, "resend", email || "invalid");
   if (await actionIsLocked(key)) return NextResponse.json({ error: "Олон хүсэлт илэрлээ. Түр хүлээгээд дахин оролдоно уу." }, { status: 429 });
   await recordActionFailure(key, 5, 60);
@@ -50,5 +54,6 @@ export async function POST(request: Request) {
   const delivery = await sendAccountEmail({ userId: user.id, email: user.email, name: user.full_name, locale: user.locale, template: "verify_email", actionUrl: verifyUrl.toString() });
   await env.DB.prepare("UPDATE site_users SET email_status=?,updated_at=? WHERE id=?")
     .bind(delivery.sent ? "sent" : "delivery_failed", new Date().toISOString(), user.id).run();
+  await clearActionFailures(key);
   return NextResponse.json({ ...generic, emailSent: delivery.sent }, { status: 202, headers: { "Cache-Control": "no-store" } });
 }

@@ -42,6 +42,8 @@ type VerificationRuntimeEnv = {
   IBEX_SMS_FROM?: string;
   TURNSTILE_SITE_KEY?: string;
   TURNSTILE_SECRET_KEY?: string;
+  IBEX_EAM_PROVISIONING_URL?: string;
+  IBEX_EAM_PROVISIONING_TOKEN?: string;
 };
 
 function verificationReadiness() {
@@ -55,6 +57,13 @@ function verificationReadiness() {
   const emailReady = Boolean(runtime.RESEND_API_KEY?.trim());
   const smsReady = Boolean(smsEndpointValid && runtime.IBEX_SMS_DELIVERY_TOKEN?.trim());
   const turnstileReady = Boolean(runtime.TURNSTILE_SITE_KEY?.trim() && runtime.TURNSTILE_SECRET_KEY?.trim());
+  let provisioningEndpointValid = false;
+  try {
+    provisioningEndpointValid = new URL(runtime.IBEX_EAM_PROVISIONING_URL || "").protocol === "https:";
+  } catch {
+    provisioningEndpointValid = false;
+  }
+  const provisioningAuthenticationConfigured = Boolean(runtime.IBEX_EAM_PROVISIONING_TOKEN?.trim());
   return {
     email: {
       ready: emailReady,
@@ -69,6 +78,11 @@ function verificationReadiness() {
       endpointConfigured: smsEndpointValid,
     },
     turnstile: { ready: turnstileReady },
+    provisioning: {
+      ready: provisioningEndpointValid && provisioningAuthenticationConfigured,
+      endpointConfigured: provisioningEndpointValid,
+      authenticationConfigured: provisioningAuthenticationConfigured,
+    },
     limits: {
       otpExpiresMinutes: 10,
       resendCooldownSeconds: 60,
@@ -206,6 +220,11 @@ export async function PATCH(request: Request) {
     if (policy.phoneRequired && !readiness.sms.ready)
       return NextResponse.json(
         { error: "SMS үйлчилгээ бэлэн болоогүй тул утасны баталгаажуулалтыг шаардах боломжгүй байна." },
+        { status: 409 },
+      );
+    if ((policy.emailRequired || policy.phoneRequired) && !readiness.turnstile.ready)
+      return NextResponse.json(
+        { error: "Turnstile хамгаалалт бэлэн болоогүй тул нийтийн баталгаажуулалтыг шаардах боломжгүй байна." },
         { status: 409 },
       );
     const saved = await saveContentWithRevision({

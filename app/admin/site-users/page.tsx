@@ -12,6 +12,7 @@ type VerificationReadiness = {
   email: { ready: boolean; provider: string; sender: string; replyTo: string };
   sms: { ready: boolean; provider: string; sender: string; endpointConfigured: boolean };
   turnstile: { ready: boolean };
+  provisioning: { ready: boolean; endpointConfigured: boolean; authenticationConfigured: boolean };
   limits: {
     otpExpiresMinutes: number;
     resendCooldownSeconds: number;
@@ -389,6 +390,7 @@ export default function AdminSiteUsersPage() {
           <article className={readiness?.email.ready ? "ready" : "blocked"}><span>{t("И-мэйл", "Email")}</span><strong>{readiness?.email.ready ? t("Бэлэн", "Ready") : t("Тохируулаагүй", "Not configured")}</strong><small>{readiness?.email.provider || "Resend"} · {readiness?.email.sender || "—"}</small></article>
           <article className={readiness?.sms.ready ? "ready" : "blocked"}><span>SMS</span><strong>{readiness?.sms.ready ? t("Бэлэн", "Ready") : t("Тохируулаагүй", "Not configured")}</strong><small>{readiness?.sms.provider || "HTTPS SMS connector"} · {readiness?.sms.sender || "—"}</small></article>
           <article className={readiness?.turnstile.ready ? "ready" : "blocked"}><span>TURNSTILE</span><strong>{readiness?.turnstile.ready ? t("Бэлэн", "Ready") : t("Тохируулаагүй", "Not configured")}</strong><small>{t("Бүртгэл ба сэргээх хүсэлтийн хамгаалалт", "Registration and recovery protection")}</small></article>
+          <article className={readiness?.provisioning.ready ? "ready" : "blocked"}><span>iBeX eAM</span><strong>{readiness?.provisioning.ready ? t("Бэлэн", "Ready") : t("Тохируулаагүй", "Not configured")}</strong><small>{t("Төлбөр батлагдсаны дараах tenant бэлтгэл", "Tenant provisioning after payment confirmation")}</small></article>
         </div>
         {readiness ? <dl className="verification-limits">
           <div><dt>{t("И-мэйл холбоос", "Email link")}</dt><dd>{readiness.limits.emailLinkExpiresHours} {t("цаг", "hours")}</dd></div>
