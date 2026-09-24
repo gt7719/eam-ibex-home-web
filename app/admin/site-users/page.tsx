@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- administrator previews use protected same-origin profile/media API routes */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSiteLanguage } from "../../lib/use-site-language";

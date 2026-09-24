@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- authenticated R2 profile images are streamed from a same-origin API route */
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
