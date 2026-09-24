@@ -115,7 +115,7 @@ export default function AccountPage() {
   const locale = lang === "en" ? "en-US" : "mn-MN",
     isEnglish = lang === "en";
   const [data, setData] = useState<AccountPayload | null>(null);
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useState(safeTab);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
@@ -123,6 +123,7 @@ export default function AccountPage() {
   const [fullName, setFullName] = useState("");
   const [profileFile, setProfileFile] = useState<File | null>(null);
   const [phoneCode, setPhoneCode] = useState("");
+  const [renderedAt] = useState(() => Date.now());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -147,23 +148,21 @@ export default function AccountPage() {
     const next = payload as AccountPayload;
     setData(next);
     setFullName(next.user.fullName);
-    setTab(safeTab());
     setLoading(false);
   }, [t]);
   useEffect(() => {
-    void load();
+    const handle = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(handle);
   }, [load]);
-  const [homeAiOpen, setHomeAiOpen] = useState(false);
-  useEffect(() => {
-    setHomeAiOpen(new URLSearchParams(window.location.search).get("home_ai") === "1");
-  }, []);
+  const [homeAiOpen, setHomeAiOpen] = useState(
+    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("home_ai") === "1",
+  );
 
   function go(next: string) {
     setTab(next);
     const url = new URL(window.location.href);
-    next === "overview"
-      ? url.searchParams.delete("tab")
-      : url.searchParams.set("tab", next);
+    if (next === "overview") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", next);
     window.history.replaceState(null, "", `${url.pathname}${url.search}`);
   }
   function openHomeAi() {
@@ -315,7 +314,7 @@ export default function AccountPage() {
     ? Math.max(
         0,
         Math.ceil(
-          (new Date(subscription.endsAt).getTime() - Date.now()) / 86_400_000,
+          (new Date(subscription.endsAt).getTime() - renderedAt) / 86_400_000,
         ),
       )
     : null;

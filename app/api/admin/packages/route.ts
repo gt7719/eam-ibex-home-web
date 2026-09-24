@@ -44,7 +44,7 @@ export async function PUT(request:Request){
       }
     }
     const result=await env.DB.batch(statements);
-    if(!result[0].meta.changes)return reply({error:'Зэрэгцээ өөрчлөлт илэрлээ. Дахин ачаална уу.'},409);
+    if(!(result[0]?.meta?.changes ?? 0))return reply({error:'Зэрэгцээ өөрчлөлт илэрлээ. Дахин ачаална уу.'},409);
     return reply({saved:true,revision:next.revision,publishedAt:next.publishedAt});
   }catch(error){console.error('package_configuration_failed',error instanceof SyntaxError?'invalid_json':'storage');return reply({error:'Хадгалж чадсангүй. Формат болон холболтоо шалгана уу.'},error instanceof SyntaxError?400:503);}
 }

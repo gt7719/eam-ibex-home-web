@@ -332,10 +332,11 @@ export async function PATCH(request: Request) {
       { error: "Хэрэглэгч олдсонгүй." },
       { status: 404 },
     );
+  const requestedStatus = body.status as "active" | "limited" | "suspended" | "deactivated";
   const emailVerificationMissing =
     target.email_status !== "verified" && target.email_verification_required === 1;
   if (
-    ["active", "limited"].includes(body.status || "") &&
+    ["active", "limited"].includes(requestedStatus) &&
     (emailVerificationMissing ||
       !verificationIsComplete({
         emailStatus: target.email_status,
@@ -352,7 +353,7 @@ export async function PATCH(request: Request) {
       { status: 409 },
     );
   const nextStatus =
-    body.status === "active" || body.status === "limited"
+    requestedStatus === "active" || requestedStatus === "limited"
       ? accountStatusAfterVerification(
           {
             emailStatus: target.email_status,
@@ -360,9 +361,9 @@ export async function PATCH(request: Request) {
             emailRequired: target.email_verification_required,
             phoneRequired: target.phone_verification_required,
           },
-          String(body.status),
+          requestedStatus,
         )
-      : body.status;
+      : requestedStatus;
   const now = new Date().toISOString(),
     statements = [
       env.DB.prepare(

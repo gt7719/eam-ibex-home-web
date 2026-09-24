@@ -17,5 +17,5 @@ export async function saveLaunchOffer(offer: LaunchOffer, revision: number, user
     ? env.DB.prepare("INSERT INTO site_content (key,value_json,updated_by,updated_at) VALUES (?,?,?,?) ON CONFLICT(key) DO NOTHING").bind(OFFER_KEY, value, userId, now)
     : env.DB.prepare("UPDATE site_content SET value_json=?,updated_by=?,updated_at=? WHERE key=? AND value_json=?").bind(value, userId, now, OFFER_KEY, state.raw);
   const result = await write.run();
-  return result.meta.changes ? next : null;
+  return (result.meta?.changes ?? 0) > 0 ? next : null;
 }

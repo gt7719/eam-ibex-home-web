@@ -21,7 +21,7 @@ export class HomeAiOpenAiError extends Error {
   code: HomeAiOpenAiErrorCode;
   httpStatus: number;
 
-  constructor(code: HomeAiOpenAiErrorCode, httpStatus = 502, message = code) {
+  constructor(code: HomeAiOpenAiErrorCode, httpStatus = 502, message: string = code) {
     super(message);
     this.name = "HomeAiOpenAiError";
     this.code = code;

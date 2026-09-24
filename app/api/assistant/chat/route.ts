@@ -297,7 +297,7 @@ export async function POST(request: Request) {
   let needsHandoff = deterministicHandoff.required;
   let handoffReason = deterministicHandoff.reason;
   let confidence = 0;
-  let mode: "openai" | "guarded" = guard ? "guarded" : "openai";
+  const mode: "openai" | "guarded" = guard ? "guarded" : "openai";
   let inputTokens = 0;
   let outputTokens = 0;
   let citedSources: CustomerAiSource[] = [];
