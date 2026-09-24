@@ -282,6 +282,32 @@ export const marketingAiMonthlyUsage = sqliteTable(
   ],
 );
 
+export const marketingAiBudgetReservations = sqliteTable(
+  "marketing_ai_budget_reservations",
+  {
+    id: text("id").primaryKey(),
+    subjectHash: text("subject_hash").notNull(),
+    monthKey: text("month_key").notNull(),
+    amountUsd: real("amount_usd").notNull(),
+    actualCostUsd: real("actual_cost_usd"),
+    status: text("status").notNull().default("pending"),
+    expiresAt: text("expires_at").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("marketing_ai_budget_reservations_month_status_idx").on(
+      table.monthKey,
+      table.status,
+      table.expiresAt,
+    ),
+    index("marketing_ai_budget_reservations_subject_idx").on(
+      table.subjectHash,
+      table.createdAt,
+    ),
+  ],
+);
+
 export const marketingAiAuditEvents = sqliteTable(
   "marketing_ai_audit_events",
   {

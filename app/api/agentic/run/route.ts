@@ -1,5 +1,7 @@
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
+import { hasTrustedOrigin } from "../../../lib/admin-security";
+import { getAdminSession, hasAdminPermission } from "../../../lib/site-admin";
 import { readKnowledge, type KnowledgeEntry } from "../../../lib/assistant-knowledge";
 import bookKnowledge from "../../../lib/ibex-book-knowledge.json";
 import {
@@ -31,13 +33,13 @@ async function readSpend(monthKey: string) {
   return Number(row?.cost_usd || 0);
 }
 
-async function recordAudit(event: Record<string, unknown>, costUsd = 0) {
+async function recordAudit(event: Record<string, unknown>, costUsd = 0, actorId = AGENTIC_USER) {
   const now = new Date().toISOString();
   const monthKey = currentMonthKey();
   try {
     await env.DB.batch([
       env.DB.prepare("INSERT INTO ai_audit_events (id, tenant_id, user_id, event_type, model, tool, status, metadata_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-        .bind(crypto.randomUUID(), AGENTIC_TENANT, AGENTIC_USER, event.eventType, event.model || null, event.tool || null, event.status, JSON.stringify(event), now),
+        .bind(crypto.randomUUID(), AGENTIC_TENANT, actorId, event.eventType, event.model || null, event.tool || null, event.status, JSON.stringify(event), now),
       env.DB.prepare("INSERT INTO ai_monthly_usage (tenant_id, month_key, request_count, cost_usd, updated_at) VALUES (?, ?, 1, ?, ?) ON CONFLICT(tenant_id, month_key) DO UPDATE SET request_count = request_count + 1, cost_usd = cost_usd + excluded.cost_usd, updated_at = excluded.updated_at")
         .bind(AGENTIC_TENANT, monthKey, costUsd, now),
     ]);
@@ -95,8 +97,12 @@ async function callOpenAI(apiKey: string, model: string, lang: SiteLang, questio
 }
 
 export async function POST(request: Request) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) return reply({ error: "Origin mismatch" }, 403);
+  if (!hasTrustedOrigin(request)) return reply({ error: "Origin mismatch" }, 403);
+  const runtime = env as unknown as { ENABLE_AGENTIC_SHADOW?: string; OPENAI_INTELLIGENT_API_KEY?: string };
+  if (runtime.ENABLE_AGENTIC_SHADOW?.trim().toLowerCase() !== "true") return reply({ error: "Not found" }, 404);
+  const admin = await getAdminSession();
+  if (!admin) return reply({ error: "Админ нэвтрэлт шаардлагатай." }, 401);
+  if (!hasAdminPermission(admin, "knowledge.manage")) return reply({ error: "Intelligent AI shadow туршилтын эрх олгогдоогүй байна." }, 403);
   let body: Record<string, unknown>;
   try {
     const raw = await request.text();
@@ -124,7 +130,7 @@ export async function POST(request: Request) {
   }
   const criticalRequest = scenario !== "complex";
   if (spentBefore >= MONTHLY_BUDGET_USD || (spentBefore >= BUDGET_CRITICAL_USD && !criticalRequest)) {
-    await recordAudit({ eventType: "llm.request", status: "budget_blocked", model: selectModel(scenario), tool: null, scenario });
+    await recordAudit({ eventType: "llm.request", status: "budget_blocked", model: selectModel(scenario), tool: null, scenario }, 0, admin.id);
     return reply({ error: lang === "en" ? "The monthly AI budget policy blocked this request." : "Сарын AI төсвийн бодлого энэ хүсэлтийг хориглолоо.", budget: { spentUsd: spentBefore, limitUsd: MONTHLY_BUDGET_USD } }, 429);
   }
 
@@ -140,7 +146,7 @@ export async function POST(request: Request) {
   const model = selectModel(scenario);
   const approvalRequired = requiresAdminApproval(action);
   const context = { tenant: AGENTIC_TENANT, asset: "PUMP-101 / M-101", analytics, engineering, sources, action, approvalRequired };
-  const apiKey = (env as unknown as { OPENAI_INTELLIGENT_API_KEY?: string }).OPENAI_INTELLIGENT_API_KEY;
+  const apiKey = runtime.OPENAI_INTELLIGENT_API_KEY;
   let answer = previewAnswer(lang, analytics, approvalRequired);
   let openaiStatus: "not_configured" | "completed" | "fallback_preview" = "not_configured";
   if (apiKey) {
@@ -157,13 +163,14 @@ export async function POST(request: Request) {
   if (approvalId) {
     try {
       await env.DB.prepare("INSERT INTO ai_approvals (id, tenant_id, action_type, requested_by, status, reason, created_at) VALUES (?, ?, ?, ?, 'pending', ?, ?)")
-        .bind(approvalId, AGENTIC_TENANT, action, AGENTIC_USER, question.slice(0, 400), new Date().toISOString()).run();
+        .bind(approvalId, AGENTIC_TENANT, action, admin.id, question.slice(0, 400), new Date().toISOString()).run();
     } catch (error) {
       console.error("agentic_approval_storage_unavailable", error instanceof Error ? error.message : "unknown");
       return reply({ error: lang === "en" ? "The approval queue is temporarily unavailable." : "Баталгаажуулалтын дараалал түр ажиллахгүй байна." }, 503);
     }
   }
-  const auditRecorded = await recordAudit({ eventType: "agentic.run", status: "completed", model, tool: "industrial_analytics,ibex_engineering,approved_rag", scenario, action, approvalRequired, openaiStatus }, costUsd);
+  const auditRecorded = await recordAudit({ eventType: "agentic.run", status: "completed", model, tool: "industrial_analytics,ibex_engineering,approved_rag", scenario, action, approvalRequired, openaiStatus }, costUsd, admin.id);
+  if (!auditRecorded) return reply({ error: lang === "en" ? "AI audit storage is temporarily unavailable." : "AI audit хадгалалт түр ажиллахгүй байна." }, 503);
   const spentAfter = Number((spentBefore + costUsd).toFixed(6));
   return reply({
     mode: "shadow",
