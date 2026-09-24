@@ -2,10 +2,13 @@ import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 import { hasTrustedOrigin } from "../../../lib/admin-security";
 import { digest, newPasswordCredential, validateSitePassword } from "../../../lib/site-user-auth";
+import { readJsonObject } from "../../../lib/http-input";
 
 export async function POST(request: Request) {
   if (!hasTrustedOrigin(request)) return NextResponse.json({ error: "Origin mismatch" }, { status: 403 });
-  const body = await request.json().catch(() => ({})) as { token?: string; password?: string; passwordConfirm?: string };
+  const parsedBody = await readJsonObject<{ token?: string; password?: string; passwordConfirm?: string }>(request, 8_000);
+  if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
+  const body = parsedBody.value;
   const password = typeof body.password === "string" ? body.password : "";
   if (!body.token || !/^[a-f0-9]{64}$/.test(body.token)) return NextResponse.json({ error: "Сэргээх холбоос буруу байна." }, { status: 400 });
   const passwordErrors = validateSitePassword(password);

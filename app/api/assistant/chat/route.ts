@@ -4,6 +4,7 @@ import { defaultKnowledge, readKnowledge, type KnowledgeEntry } from "../../../l
 import { getSiteUserSession } from "../../../lib/site-user-auth";
 import { publishedPromptIsTested, readHomeAiSettings, type HomeAiControlSettings } from "../../../lib/home-ai-control";
 import { saveHomeAiExchange } from "../../../lib/home-ai-history";
+import { readBoundedText } from "../../../lib/http-input";
 import { homeAiPromptRequest, homeAiSafetyBoundary } from "../../../lib/home-ai-prompt";
 import {
   HomeAiOpenAiError,
@@ -191,9 +192,9 @@ export async function POST(request: Request) {
 
   let body: unknown;
   try {
-    const raw = await request.text();
-    if (raw.length > 12_000) return reply({ error: "Request too large", code: "REQUEST_TOO_LARGE", requestId }, 413);
-    body = JSON.parse(raw);
+    const raw = await readBoundedText(request, 12_000);
+    if (!raw.ok) return reply({ error: raw.error, code: raw.status === 413 ? "REQUEST_TOO_LARGE" : "INVALID_REQUEST", requestId }, raw.status);
+    body = JSON.parse(raw.value || "{}");
   } catch {
     return reply({ error: "Invalid request", code: "INVALID_REQUEST", requestId }, 400);
   }

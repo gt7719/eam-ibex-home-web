@@ -10,6 +10,7 @@ import {
 } from "../../../lib/home-ai-control";
 import { conflictMessage, hasTrustedOrigin, saveContentWithRevision } from "../../../lib/admin-security";
 import { getAdminSession, hasAdminPermission } from "../../../lib/site-admin";
+import { readJsonObject } from "../../../lib/http-input";
 
 export const dynamic = "force-dynamic";
 
@@ -114,8 +115,9 @@ export async function PUT(request: Request) {
   if (!hasTrustedOrigin(request)) return reply({ error: "Origin mismatch" }, 403);
   const auth = await authorize();
   if (auth.error || !auth.user) return auth.error;
-  const raw = await request.json().catch(() => null) as { settings?: unknown; revision?: string | null } | null;
-  if (!raw) return reply({ error: "Хүсэлтийн формат буруу байна." }, 400);
+  const parsedBody = await readJsonObject<{ settings?: unknown; revision?: string | null }>(request, 64_000);
+  if (!parsedBody.ok) return reply({ error: parsedBody.error }, parsedBody.status);
+  const raw = parsedBody.value;
   const normalizedSettings = normalizeHomeAiSettings(raw.settings);
   const submittedPromptId = raw.settings && typeof raw.settings === "object" && !Array.isArray(raw.settings)
     ? String((raw.settings as { publishedPromptId?: unknown }).publishedPromptId || "").trim()

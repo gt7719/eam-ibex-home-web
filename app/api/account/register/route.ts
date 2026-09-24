@@ -22,6 +22,7 @@ import {
 } from "../../../lib/transactional-email";
 import { issuePhoneVerification } from "../../../lib/site-user-phone-verification";
 import { readSiteUserVerificationPolicy } from "../../../lib/site-user-verification";
+import { readJsonObject } from "../../../lib/http-input";
 
 const reply = (body: unknown, status = 200) =>
   NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
@@ -29,12 +30,9 @@ const reply = (body: unknown, status = 200) =>
 export async function POST(request: Request) {
   if (!hasTrustedOrigin(request))
     return reply({ error: "Origin mismatch" }, 403);
-  let body: Record<string, unknown>;
-  try {
-    body = (await request.json()) as Record<string, unknown>;
-  } catch {
-    return reply({ error: "Хүсэлтийн формат буруу байна." }, 400);
-  }
+  const parsedBody = await readJsonObject(request, 16_000);
+  if (!parsedBody.ok) return reply({ error: parsedBody.error }, parsedBody.status);
+  const body = parsedBody.value;
   if (body.website) return reply({ registered: true, emailSent: true }, 202);
   const formStartedAt = Number(body.formStartedAt || 0);
   if (

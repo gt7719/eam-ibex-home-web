@@ -7,6 +7,7 @@ import { inferMarketingAiProfile, marketingAiInstructions } from "../../../lib/m
 import { marketingAiCostReservation, normalizeMarketingAiUsage } from "../../../lib/marketing-ai-usage";
 import { hasTrustedOrigin } from "../../../lib/admin-security";
 import { getAdminSession, hasMarketingAdminPermission } from "../../../lib/site-admin";
+import { readBoundedText } from "../../../lib/http-input";
 
 export const dynamic = "force-dynamic";
 type Runtime = { DB: CustomerAiDatabase; OPENAI_MARKETING_API_KEY?: string };
@@ -52,9 +53,9 @@ export async function POST(request: Request) {
   const user = await getAdminSession();
   if (!user) return NextResponse.json({ error: "Админ нэвтрэлт шаардлагатай." }, { status: 401 });
   if (!hasMarketingAdminPermission(user, "marketing.draft")) return NextResponse.json({ error: "Marketing AI Draft үүсгэх эрх олгогдоогүй байна." }, { status: 403 });
-  const raw = await request.text();
-  if (raw.length > 5_000) return NextResponse.json({ error: "Хүсэлт хэт урт байна." }, { status: 413 });
-  let parsed: Record<string, unknown>; try { parsed = JSON.parse(raw || "{}"); } catch { return NextResponse.json({ error: "Хүсэлтийн формат буруу байна." }, { status: 400 }); }
+  const raw = await readBoundedText(request, 5_000);
+  if (!raw.ok) return NextResponse.json({ error: raw.error }, { status: raw.status });
+  let parsed: Record<string, unknown>; try { parsed = JSON.parse(raw.value || "{}"); } catch { return NextResponse.json({ error: "Хүсэлтийн формат буруу байна." }, { status: 400 }); }
   if (Object.keys(parsed).some(key => !["command", "lang", "profile"].includes(key))) return NextResponse.json({ error: "Дэмжигдээгүй талбар байна." }, { status: 400 });
   const command = typeof parsed.command === "string" ? parsed.command.trim().slice(0, 1_200) : "", lang = parsed.lang === "en" ? "en" : "mn";
   if (command.length < 3) return NextResponse.json({ error: lang === "en" ? "Enter a marketing task." : "Маркетингийн даалгавар оруулна уу." }, { status: 400 });

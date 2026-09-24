@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasTrustedOrigin } from "../../../lib/admin-security";
+import { readJsonObject } from "../../../lib/http-input";
 import {
   SITE_USER_SESSION_COOKIE,
   SITE_USER_SESSION_MAX_AGE,
@@ -15,7 +16,9 @@ import {
 
 export async function POST(request: Request) {
   if (!hasTrustedOrigin(request)) return NextResponse.json({ error: "Origin mismatch" }, { status: 403 });
-  const body = await request.json().catch(() => ({})) as { email?: string; password?: string };
+  const parsedBody = await readJsonObject<{ email?: string; password?: string }>(request, 8_000);
+  if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
+  const body = parsedBody.value;
   const email = normalizeEmail(body.email);
   const password = typeof body.password === "string" ? body.password : "";
   if (!email || !password) return NextResponse.json({ error: "И-мэйл болон нууц үгээ оруулна уу." }, { status: 400 });

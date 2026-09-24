@@ -12,6 +12,7 @@ import {
   type AdminPermission,
 } from "../../../lib/site-admin";
 import { hasTrustedOrigin } from "../../../lib/admin-security";
+import { readJsonObject } from "../../../lib/http-input";
 
 type UserRow = {
   id: string;
@@ -70,12 +71,9 @@ export async function POST(request: Request) {
   if (!hasTrustedOrigin(request)) return NextResponse.json({ error: "Origin mismatch" }, { status: 403 });
   const owner = await ownerSession();
   if (!owner) return NextResponse.json({ error: "Админ нэмэх эрхгүй байна." }, { status: 403 });
-  let body: { email?: string; name?: string; password?: string; permissions?: unknown };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Хүсэлтийн формат буруу байна." }, { status: 400 });
-  }
+  const parsedBody = await readJsonObject<{ email?: string; name?: string; password?: string; permissions?: unknown }>(request, 16_000);
+  if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
+  const body = parsedBody.value;
   const email = body.email?.trim().toLowerCase() || "";
   const name = body.name?.trim() || "";
   const password = body.password || "";
@@ -112,12 +110,9 @@ export async function PATCH(request: Request) {
   if (!hasTrustedOrigin(request)) return NextResponse.json({ error: "Origin mismatch" }, { status: 403 });
   const owner = await ownerSession();
   if (!owner) return NextResponse.json({ error: "Админы төлөв өөрчлөх эрхгүй байна." }, { status: 403 });
-  let body: { id?: string; status?: "active" | "suspended"; permissions?: unknown };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Хүсэлтийн формат буруу байна." }, { status: 400 });
-  }
+  const parsedBody = await readJsonObject<{ id?: string; status?: "active" | "suspended"; permissions?: unknown }>(request, 16_000);
+  if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
+  const body = parsedBody.value;
   const hasStatusUpdate = body.status !== undefined;
   const hasPermissionUpdate = body.permissions !== undefined;
   if (!body.id || (!hasStatusUpdate && !hasPermissionUpdate)) {

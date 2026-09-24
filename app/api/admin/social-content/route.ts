@@ -2,6 +2,7 @@ import {env} from 'cloudflare:workers';
 import {NextResponse} from 'next/server';
 import {getAdminSession,hasAdminPermission} from '../../../lib/site-admin';
 import {conflictMessage,hasTrustedOrigin,saveContentWithRevision} from '../../../lib/admin-security';
+import {readBoundedText,readJsonObject} from '../../../lib/http-input';
 
 const KEY='socialContent';
 const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{'Cache-Control':'no-store'}});
@@ -10,6 +11,7 @@ function facebookUrl(value:unknown){try{const url=new URL(String(value));if(url.
 function httpsUrl(value:unknown){try{const url=new URL(String(value));if(url.protocol!=='https:')return'';url.hash='';return url.toString().slice(0,2000);}catch{return'';}}
 function mediaUrl(value:unknown){const raw=String(value||'').trim();if(/^\/api\/media\/[a-zA-Z0-9-]{1,100}$/.test(raw))return raw;return httpsUrl(raw);}
 function meta(html:string,property:string){const safe=property.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const patterns=[new RegExp(`<meta[^>]+(?:property|name)=["']${safe}["'][^>]+content=["']([^"']*)["']`,'i'),new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]+(?:property|name)=["']${safe}["']`,'i')];for(const pattern of patterns){const value=html.match(pattern)?.[1];if(value)return value.replace(/&amp;/g,'&').replace(/&quot;/g,'"').slice(0,5000);}return'';}
+async function fetchFacebookPage(sourceUrl:string){let current=sourceUrl;for(let redirects=0;redirects<=3;redirects+=1){const response=await fetch(current,{headers:{'user-agent':'Mozilla/5.0 iBeX-Site-Content-Importer/1.0'},signal:AbortSignal.timeout(6000),redirect:'manual'});if([301,302,303,307,308].includes(response.status)){const location=response.headers.get('location');const next=location?facebookUrl(new URL(location,current).toString()):null;if(!next||redirects===3)throw new Error('UNSAFE_REDIRECT');current=next;continue;}if(!response.ok)return null;const html=await readBoundedText(response,1000000);return html.ok?html.value:null;}return null;}
 function normalize(rows:unknown){
   if(!Array.isArray(rows))return[];
   return rows.slice(0,200).map((value,index)=>{
@@ -43,5 +45,22 @@ function normalize(rows:unknown){
 }
 async function read(){const row=await env.DB.prepare('SELECT value_json,updated_at FROM site_content WHERE key=?').bind(KEY).first<{value_json:string;updated_at:string}>();try{return{entries:normalize(row?JSON.parse(row.value_json):[]),revision:row?.updated_at||null};}catch{return{entries:[],revision:row?.updated_at||null};}}
 export async function GET(){const {error}=await authorized();if(error)return error;return reply(await read());}
-export async function POST(request:Request){if(!hasTrustedOrigin(request))return reply({error:'Origin mismatch'},403);const {error}=await authorized();if(error)return error;const body=await request.json().catch(()=>({})),sourceUrl=facebookUrl(body.url);if(!sourceUrl)return reply({error:'Facebook post эсвэл Reel-ийн зөв HTTPS холбоос оруулна уу.'},400);const existing=await read();if(existing.entries.some(row=>row.sourceUrl===sourceUrl))return reply({error:'Энэ холбоос өмнө бүртгэгдсэн байна.'},409);let title='',text='',imageUrl='',importStatus='needs_manual_review';try{const response=await fetch(sourceUrl,{headers:{'user-agent':'Mozilla/5.0 iBeX-Site-Content-Importer/1.0'},signal:AbortSignal.timeout(6000),redirect:'follow'});if(response.ok){const html=(await response.text()).slice(0,1000000);title=meta(html,'og:title');text=meta(html,'og:description');imageUrl=meta(html,'og:image');if(title||text||imageUrl)importStatus='metadata_loaded';}}catch{/* Meta can require an access token; retain a safe editable draft. */}return reply({entry:{id:crypto.randomUUID(),sourceUrl,type:sourceUrl.includes('/reel/')?'reel':'post',title,text,imageUrl,imageCaptionMn:'',imageCaptionEn:'',galleryImages:[],galleryUrls:[],publishedAt:'',status:'draft',enabled:true,importStatus}});}
-export async function PUT(request:Request){if(!hasTrustedOrigin(request))return reply({error:'Origin mismatch'},403);const {user,error}=await authorized();if(error||!user)return error!;const body=await request.json().catch(()=>({})),entries=normalize(body.entries);if(!entries.length&&Array.isArray(body.entries)&&body.entries.length)return reply({error:'Бүртгэлийн холбоосуудыг шалгана уу.'},400);const incompleteEvent=entries.find(row=>row.type==='event'&&row.status==='published'&&(!row.titleMn||!row.titleEn||!row.startAt));if(incompleteEvent)return reply({error:'Published арга хэмжээнд MN/EN гарчиг болон эхлэх огноо заавал оруулна.'},400);const revision=await saveContentWithRevision({key:KEY,value:entries,userId:user.id,expectedRevision:body.revision??null});if(!revision)return reply({error:conflictMessage()},409);return reply({entries,saved:true,revision});}
+export async function POST(request:Request){
+  if(!hasTrustedOrigin(request))return reply({error:'Origin mismatch'},403);
+  const {error}=await authorized();if(error)return error;
+  const parsed=await readJsonObject<{url?:unknown}>(request,8000);if(!parsed.ok)return reply({error:parsed.error},parsed.status);
+  const sourceUrl=facebookUrl(parsed.value.url);if(!sourceUrl)return reply({error:'Facebook post эсвэл Reel-ийн зөв HTTPS холбоос оруулна уу.'},400);
+  const existing=await read();if(existing.entries.some(row=>row.sourceUrl===sourceUrl))return reply({error:'Энэ холбоос өмнө бүртгэгдсэн байна.'},409);
+  let title='',text='',imageUrl='',importStatus='needs_manual_review';
+  try{const html=await fetchFacebookPage(sourceUrl);if(html){title=meta(html,'og:title');text=meta(html,'og:description');imageUrl=meta(html,'og:image');if(title||text||imageUrl)importStatus='metadata_loaded';}}catch{/* Meta can require an access token; retain a safe editable draft. */}
+  return reply({entry:{id:crypto.randomUUID(),sourceUrl,type:sourceUrl.includes('/reel/')?'reel':'post',title,text,imageUrl,imageCaptionMn:'',imageCaptionEn:'',galleryImages:[],galleryUrls:[],publishedAt:'',status:'draft',enabled:true,importStatus}});
+}
+export async function PUT(request:Request){
+  if(!hasTrustedOrigin(request))return reply({error:'Origin mismatch'},403);
+  const {user,error}=await authorized();if(error||!user)return error!;
+  const parsed=await readJsonObject<{entries?:unknown;revision?:string|null}>(request,512000);if(!parsed.ok)return reply({error:parsed.error},parsed.status);
+  const body=parsed.value,entries=normalize(body.entries);if(!entries.length&&Array.isArray(body.entries)&&body.entries.length)return reply({error:'Бүртгэлийн холбоосуудыг шалгана уу.'},400);
+  const incompleteEvent=entries.find(row=>row.type==='event'&&row.status==='published'&&(!row.titleMn||!row.titleEn||!row.startAt));if(incompleteEvent)return reply({error:'Published арга хэмжээнд MN/EN гарчиг болон эхлэх огноо заавал оруулна.'},400);
+  const revision=await saveContentWithRevision({key:KEY,value:entries,userId:user.id,expectedRevision:body.revision??null});if(!revision)return reply({error:conflictMessage()},409);
+  return reply({entries,saved:true,revision});
+}

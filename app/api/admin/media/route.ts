@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 import { getAdminSession, hasAdminPermission } from "../../../lib/site-admin";
 import { hasTrustedOrigin } from "../../../lib/admin-security";
+import { readJsonObject } from "../../../lib/http-input";
 
 const allowedTypes = new Set([
   "image/jpeg",
@@ -87,7 +88,9 @@ export async function DELETE(request: Request) {
   const user = await getAdminSession();
   if (!user) return NextResponse.json({ error: "Админ нэвтрэлт шаардлагатай." }, { status: 401 });
   if (!hasAdminPermission(user, "media.upload")) return NextResponse.json({ error: "Медиа файл устгах эрхгүй байна." }, { status: 403 });
-  const body = await request.json().catch(() => ({})) as { id?: string };
+  const parsedBody = await readJsonObject<{ id?: string }>(request, 4_000);
+  if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
+  const body = parsedBody.value;
   if (!body.id || !/^[a-zA-Z0-9-]{1,100}$/.test(body.id)) return NextResponse.json({ error: "Медиа ID буруу байна." }, { status: 400 });
   const reference = `/api/media/${body.id}`;
   const used = await env.DB.prepare("SELECT key FROM site_content WHERE instr(value_json, ?) > 0 LIMIT 1").bind(reference).first<{ key: string }>();

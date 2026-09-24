@@ -5,6 +5,7 @@ import {
   getSiteUserSession,
   normalizeLocale,
 } from "../../../lib/site-user-auth";
+import { readJsonObject } from "../../../lib/http-input";
 
 const headers = { "Cache-Control": "no-store" };
 
@@ -26,10 +27,12 @@ export async function PATCH(request: Request) {
       { error: "Нэвтрэх шаардлагатай." },
       { status: 401, headers },
     );
-  const body = (await request.json().catch(() => ({}))) as {
+  const parsedBody = await readJsonObject<{
     fullName?: unknown;
     locale?: unknown;
-  };
+  }>(request, 8_000);
+  if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status, headers });
+  const body = parsedBody.value;
   const fullName = normalizedName(body.fullName);
   if (fullName.length < 2)
     return NextResponse.json(

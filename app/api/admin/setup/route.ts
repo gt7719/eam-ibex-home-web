@@ -9,6 +9,7 @@ import {
   isValidEmail,
 } from "../../../lib/site-admin";
 import { hasTrustedOrigin } from "../../../lib/admin-security";
+import { readJsonObject } from "../../../lib/http-input";
 
 function setupFailure(requestId: string, stage: string, error: unknown) {
   const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
@@ -58,12 +59,9 @@ export async function POST(request: Request) {
       { status: 403 },
     );
   }
-  let body: { email?: string; name?: string; password?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Хүсэлтийн формат буруу байна." }, { status: 400 });
-  }
+  const parsedBody = await readJsonObject<{ email?: string; name?: string; password?: string }>(request, 8_000);
+  if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
+  const body = parsedBody.value;
   const email = body.email?.trim().toLowerCase() || identity.email;
   const name = body.name?.trim() || identity.name;
   const password = body.password || "";

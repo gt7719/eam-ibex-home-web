@@ -7,15 +7,13 @@ import {
   verifyPassword,
 } from "../../../lib/site-admin";
 import { clearLoginFailures, hasTrustedOrigin, loginAttemptKey, loginIsLocked, recordLoginFailure } from "../../../lib/admin-security";
+import { readJsonObject } from "../../../lib/http-input";
 
 export async function POST(request: Request) {
   if (!hasTrustedOrigin(request)) return NextResponse.json({ error: "Origin mismatch" }, { status: 403 });
-  let body: { email?: string; password?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Хүсэлтийн формат буруу байна." }, { status: 400 });
-  }
+  const parsedBody = await readJsonObject<{ email?: string; password?: string }>(request, 8_000);
+  if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
+  const body = parsedBody.value;
   const email = body.email?.trim().toLowerCase() || "";
   if (!email || !body.password) {
     return NextResponse.json({ error: "И-мэйл болон нууц үгээ оруулна уу." }, { status: 400 });

@@ -13,12 +13,15 @@ import {
   recordActionFailure,
 } from "../../../lib/site-user-auth";
 import { sendAccountEmail, verifyTurnstile } from "../../../lib/transactional-email";
+import { readJsonObject } from "../../../lib/http-input";
 
 const generic = { accepted: true, message: "И-мэйл бүртгэлтэй бол нууц үг сэргээх заавар илгээнэ." };
 
 export async function POST(request: Request) {
   if (!hasTrustedOrigin(request)) return NextResponse.json({ error: "Origin mismatch" }, { status: 403 });
-  const body = await request.json().catch(() => ({})) as { email?: string; turnstileToken?: string };
+  const parsedBody = await readJsonObject<{ email?: string; turnstileToken?: string }>(request, 8_000);
+  if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
+  const body = parsedBody.value;
   const email = normalizeEmail(body.email);
   const turnstile = await verifyTurnstile(request, body.turnstileToken);
   if (!turnstile.ok) return NextResponse.json(

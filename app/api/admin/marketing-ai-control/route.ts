@@ -4,6 +4,7 @@ import { conflictMessage, hasTrustedOrigin } from "../../../lib/admin-security";
 import { MARKETING_AI_SETTINGS_KEY, marketingAiSettingsFingerprint, marketingAiSettingsIsTested, normalizeMarketingAiSettings, readMarketingAiSettings } from "../../../lib/marketing-ai-control";
 import { getAdminSession, hasMarketingAdminPermission } from "../../../lib/site-admin";
 import type { CustomerAiDatabase } from "../../../lib/customer-ai";
+import { readJsonObject } from "../../../lib/http-input";
 
 export const dynamic = "force-dynamic";
 type Runtime = { DB: CustomerAiDatabase; OPENAI_MARKETING_API_KEY?: string; MARKETING_EMAIL_OAUTH_TOKEN?: string; MARKETING_SOCIAL_OAUTH_TOKEN?: string };
@@ -44,8 +45,9 @@ export async function GET() {
 export async function PUT(request: Request) {
   if (!hasTrustedOrigin(request)) return reply({ error: "Origin mismatch" }, 403);
   const auth = await authorize(true); if (auth.error || !auth.user) return auth.error;
-  const raw = await request.json().catch(() => null) as { settings?: unknown; revision?: string | null } | null;
-  if (!raw) return reply({ error: "Хүсэлтийн формат буруу байна." }, 400);
+  const parsedBody = await readJsonObject<{ settings?: unknown; revision?: string | null }>(request, 64_000);
+  if (!parsedBody.ok) return reply({ error: parsedBody.error }, parsedBody.status);
+  const raw = parsedBody.value;
   const runtime = env as unknown as Runtime;
   const current = await readMarketingAiSettings(runtime.DB), settings = normalizeMarketingAiSettings(raw.settings);
   if (current.revision !== (raw.revision ?? null)) return reply({ error: conflictMessage() }, 409);

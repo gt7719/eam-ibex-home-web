@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { cloneDefaultNavigation, normalizeNavigation } from "../../../lib/navigation";
 import { getAdminSession, hasAdminPermission } from "../../../lib/site-admin";
 import { conflictMessage, hasTrustedOrigin, saveContentWithRevision } from "../../../lib/admin-security";
+import { readJsonObject } from "../../../lib/http-input";
 
 type ContentRow = { key: string; value_json: string; updated_at: string };
 
@@ -42,12 +43,9 @@ export async function PUT(request: Request) {
   if (!hasTrustedOrigin(request)) return NextResponse.json({ error: "Origin mismatch" }, { status: 403 });
   const user = await authorizedAdmin();
   if (!user) return NextResponse.json({ error: "Толгой цэсний мэдээлэл удирдах эрхгүй байна." }, { status: 403 });
-  let body: { action?: "draft" | "publish"; navigation?: unknown; revision?: string | null };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Хүсэлтийн формат буруу байна." }, { status: 400 });
-  }
+  const parsedBody = await readJsonObject<{ action?: "draft" | "publish"; navigation?: unknown; revision?: string | null }>(request, 512_000);
+  if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
+  const body = parsedBody.value;
   const navigation = normalizeNavigation(body.navigation);
   if (!navigation || (body.action !== "draft" && body.action !== "publish")) {
     return NextResponse.json({ error: "Цэсийн мэдээлэл дутуу эсвэл буруу байна." }, { status: 400 });

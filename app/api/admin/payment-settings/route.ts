@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getAdminSession, hasAdminPermission } from "../../../lib/site-admin";
 import { defaultPaymentMethods, normalizePaymentMethods } from "../../../lib/payment-settings";
 import { conflictMessage, hasTrustedOrigin, saveContentWithRevision } from "../../../lib/admin-security";
+import { readJsonObject } from "../../../lib/http-input";
 
 const PAYMENT_SETTINGS_KEY = "paymentSettings";
 
@@ -27,7 +28,9 @@ export async function PUT(request: Request) {
   const { user, error } = await authorized(); if (error || !user) return error!;
   if (!hasTrustedOrigin(request)) return NextResponse.json({ error: "Origin mismatch" }, { status: 403 });
   try {
-    const body = await request.json();
+    const parsedBody = await readJsonObject<{ methods?: unknown; revision?: string | null }>(request, 128_000);
+    if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
+    const body = parsedBody.value;
     const methods = normalizePaymentMethods(body.methods);
     const revision = await saveContentWithRevision({ key: PAYMENT_SETTINGS_KEY, value: methods, userId: user.id, expectedRevision: body.revision ?? null });
     if (!revision) return NextResponse.json({ error: conflictMessage() }, { status: 409 });

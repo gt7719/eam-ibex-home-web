@@ -26,6 +26,7 @@ import {
   refreshExpiredSubscriptions,
 } from "../../../lib/home-subscriptions";
 import { dispatchProvisioning } from "../../../lib/eam-provisioning";
+import { readJsonObject } from "../../../lib/http-input";
 
 async function authorized() {
   const user = await getAdminSession();
@@ -200,14 +201,16 @@ export async function PATCH(request: Request) {
       { error: "Вэб хэрэглэгчийн төлөв өөрчлөх эрхгүй байна." },
       { status: 403 },
     );
-  const body = (await request.json().catch(() => ({}))) as {
+  const parsedBody = await readJsonObject<{
     id?: string;
     status?: string;
     action?: string;
     subscriptionId?: string;
     verificationPolicy?: unknown;
     expectedRevision?: string | null;
-  };
+  }>(request, 32_000);
+  if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
+  const body = parsedBody.value;
 
   if (body.action === "save_verification_policy") {
     const policy = normalizeVerificationPolicy(body.verificationPolicy);

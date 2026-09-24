@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAdminSession, hasAdminPermission } from "../../../lib/site-admin";
 import { readLaunchOffer, saveLaunchOffer } from "../../../lib/launch-offer";
 import { validateLaunchOffer } from "../../../lib/launch-offer-model";
+import { readBoundedText } from "../../../lib/http-input";
 
 const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 async function authorized() {
@@ -19,9 +20,9 @@ export async function PUT(request: Request) {
   if (origin && origin !== new URL(request.url).origin) return reply({ error: "Origin mismatch" }, 403);
   let body, offer;
   try {
-    const text = await request.text();
-    if (text.length > 10000) return reply({ error: "Тохиргоо хэт том. / Offer is too large." }, 413);
-    body = JSON.parse(text);
+    const text = await readBoundedText(request, 10_000);
+    if (!text.ok) return reply({ error: text.error }, text.status);
+    body = JSON.parse(text.value || "{}");
     if (!Number.isSafeInteger(body.revision) || body.revision < 0) throw new Error("Хувилбарын дугаар буруу. / Invalid revision.");
     offer = validateLaunchOffer(body.offer);
   } catch (reason) { return reply({ error: reason instanceof Error ? reason.message : "Тохиргоо буруу. / Invalid offer." }, 400); }

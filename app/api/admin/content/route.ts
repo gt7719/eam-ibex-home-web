@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 import { getAdminSession, hasAdminPermission, type AdminPermission } from "../../../lib/site-admin";
 import { conflictMessage, hasTrustedOrigin, normalizePartners, normalizePeople } from "../../../lib/admin-security";
+import { readJsonObject } from "../../../lib/http-input";
 
 const allowedKeys = ["pricing", "partners", "people"] as const;
 const permissionByKey: Record<(typeof allowedKeys)[number], AdminPermission> = {
@@ -14,12 +15,9 @@ export async function PUT(request: Request) {
   if (!hasTrustedOrigin(request)) return NextResponse.json({ error: "Origin mismatch" }, { status: 403 });
   const user = await getAdminSession();
   if (!user) return NextResponse.json({ error: "Админ нэвтрэлт шаардлагатай." }, { status: 401 });
-  let body: Record<string, unknown> & { revisions?: Record<string, string | null> };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Хүсэлтийн формат буруу байна." }, { status: 400 });
-  }
+  const parsedBody = await readJsonObject<Record<string, unknown> & { revisions?: Record<string, string | null> }>(request, 512_000);
+  if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
+  const body = parsedBody.value;
   const entries = allowedKeys.filter((key) => key in body);
   if (!entries.length || entries.some((key) => !Array.isArray(body[key]))) {
     return NextResponse.json({ error: "Хадгалах контентын бүтэц буруу байна." }, { status: 400 });

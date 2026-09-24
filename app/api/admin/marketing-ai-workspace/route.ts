@@ -4,6 +4,7 @@ import { hasTrustedOrigin } from "../../../lib/admin-security";
 import type { CustomerAiDatabase } from "../../../lib/customer-ai";
 import { isMarketingAiDomain, marketingAiRecordSnapshot, normalizeMarketingAiKind, validateMarketingAiRecord, type MarketingAiDomain } from "../../../lib/marketing-ai-workspace";
 import { getAdminSession, hasMarketingAdminPermission, type MarketingAdminPermission } from "../../../lib/site-admin";
+import { readJsonObject } from "../../../lib/http-input";
 
 export const dynamic = "force-dynamic";
 type Runtime = { DB: CustomerAiDatabase; MARKETING_EMAIL_OAUTH_TOKEN?: string; MARKETING_SOCIAL_OAUTH_TOKEN?: string };
@@ -27,11 +28,6 @@ function present(row: RecordRow) {
     revision: row.revision, ownerId: row.owner_id, approvedBy: row.approved_by, approvedAt: row.approved_at, publishedAt: row.published_at,
     archivedAt: row.archived_at, createdAt: row.created_at, updatedAt: row.updated_at });
 }
-function parseBody(raw: string) {
-  if (raw.length > 40_000) throw new Error("REQUEST_TOO_LARGE");
-  return JSON.parse(raw || "{}") as Record<string, unknown>;
-}
-
 export async function GET(request: Request) {
   const auth = await authorize(); if (auth.error) return auth.error;
   const runtime = env as unknown as Runtime, url = new URL(request.url), rawDomain = url.searchParams.get("domain"), historyId = url.searchParams.get("history");
@@ -58,7 +54,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   if (!hasTrustedOrigin(request)) return reply({ error: "Origin mismatch" }, 403);
-  let body: Record<string, unknown>; try { body = parseBody(await request.text()); } catch (error) { return reply({ error: error instanceof Error && error.message === "REQUEST_TOO_LARGE" ? "Хүсэлт хэт том байна." : "Хүсэлтийн формат буруу байна." }, 400); }
+  const parsedBody = await readJsonObject(request, 40_000); if (!parsedBody.ok) return reply({ error: parsedBody.error }, parsedBody.status); const body = parsedBody.value;
   if (!isMarketingAiDomain(body.domain)) return reply({ error: "Marketing domain буруу байна." }, 400);
   const domain = body.domain, auth = await authorize(scopeFor(domain)); if (auth.error || !auth.user) return auth.error;
   const normalized = validateMarketingAiRecord(domain, body.title, body.data);
@@ -79,7 +75,7 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   if (!hasTrustedOrigin(request)) return reply({ error: "Origin mismatch" }, 403);
-  let body: Record<string, unknown>; try { body = parseBody(await request.text()); } catch { return reply({ error: "Хүсэлтийн формат буруу байна." }, 400); }
+  const parsedBody = await readJsonObject(request, 40_000); if (!parsedBody.ok) return reply({ error: parsedBody.error }, parsedBody.status); const body = parsedBody.value;
   const id = typeof body.id === "string" ? body.id.slice(0, 100) : "", revision = Number(body.revision), action = typeof body.action === "string" ? body.action : "";
   if (!id || !Number.isSafeInteger(revision) || revision < 1) return reply({ error: "Record болон revision шаардлагатай." }, 400);
   const runtime = env as unknown as Runtime;

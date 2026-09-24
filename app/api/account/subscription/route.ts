@@ -13,6 +13,7 @@ import {
   profileImageUrl,
 } from "../../../lib/site-user-profile";
 import { verificationSummary } from "../../../lib/site-user-verification";
+import { readBoundedText } from "../../../lib/http-input";
 
 const headers = { "Cache-Control": "no-store" };
 
@@ -93,13 +94,9 @@ export async function POST(request: Request) {
     );
   let body: Record<string, unknown> = {};
   try {
-    const raw = await request.text();
-    if (raw.length > 8_000)
-      return NextResponse.json(
-        { error: "Хүсэлт хэт урт байна." },
-        { status: 413, headers },
-      );
-    body = JSON.parse(raw) as Record<string, unknown>;
+    const raw = await readBoundedText(request, 8_000);
+    if (!raw.ok) return NextResponse.json({ error: raw.error }, { status: raw.status, headers });
+    body = JSON.parse(raw.value || "{}") as Record<string, unknown>;
   } catch {
     return NextResponse.json(
       { error: "Хүсэлтийн формат буруу байна." },

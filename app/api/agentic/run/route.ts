@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 import { hasTrustedOrigin } from "../../../lib/admin-security";
 import { getAdminSession, hasAdminPermission } from "../../../lib/site-admin";
+import { readBoundedText } from "../../../lib/http-input";
 import { readKnowledge, type KnowledgeEntry } from "../../../lib/assistant-knowledge";
 import bookKnowledge from "../../../lib/ibex-book-knowledge.json";
 import {
@@ -105,9 +106,9 @@ export async function POST(request: Request) {
   if (!hasAdminPermission(admin, "knowledge.manage")) return reply({ error: "Intelligent AI shadow туршилтын эрх олгогдоогүй байна." }, 403);
   let body: Record<string, unknown>;
   try {
-    const raw = await request.text();
-    if (raw.length > 5000) return reply({ error: "Request too large" }, 413);
-    body = JSON.parse(raw);
+    const raw = await readBoundedText(request, 5_000);
+    if (!raw.ok) return reply({ error: raw.error }, raw.status);
+    body = JSON.parse(raw.value || "{}");
   } catch {
     return reply({ error: "Invalid request" }, 400);
   }

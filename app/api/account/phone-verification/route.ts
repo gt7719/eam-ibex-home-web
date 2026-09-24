@@ -5,6 +5,7 @@ import {
   issuePhoneVerification,
   verifyPhoneVerification,
 } from "../../../lib/site-user-phone-verification";
+import { readJsonObject } from "../../../lib/http-input";
 
 export async function POST(request: Request) {
   if (!hasTrustedOrigin(request))
@@ -15,10 +16,12 @@ export async function POST(request: Request) {
       { error: "Нэвтрэх шаардлагатай." },
       { status: 401 },
     );
-  const body = (await request.json().catch(() => ({}))) as {
+  const parsedBody = await readJsonObject<{
     action?: string;
     code?: unknown;
-  };
+  }>(request, 8_000);
+  if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
+  const body = parsedBody.value;
   try {
     if (body.action === "send") {
       const result = await issuePhoneVerification(user.id);

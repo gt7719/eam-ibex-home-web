@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { hasTrustedOrigin } from "../../../lib/admin-security";
 import { getAdminSession, hasMarketingAdminPermission } from "../../../lib/site-admin";
 import type { CustomerAiDatabase } from "../../../lib/customer-ai";
+import { readJsonObject } from "../../../lib/http-input";
 
 export const dynamic = "force-dynamic";
 type Runtime = { DB: CustomerAiDatabase };
@@ -39,8 +40,10 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   if (!hasTrustedOrigin(request)) return reply({ error: "Origin mismatch" }, 403);
   const auth = await authorize(); if (auth.error || !auth.user) return auth.error;
-  const body = await request.json().catch(() => null) as { id?: string; revision?: number; action?: "edit" | "submit" | "approve" | "reject" | "return_to_draft"; note?: string; title?: string; content?: string } | null;
-  if (!body?.id || !Number.isInteger(body.revision) || !body.action) return reply({ error: "Draft, revision эсвэл шийдвэр дутуу байна." }, 400);
+  const parsedBody = await readJsonObject<{ id?: string; revision?: number; action?: "edit" | "submit" | "approve" | "reject" | "return_to_draft"; note?: string; title?: string; content?: string }>(request, 32_000);
+  if (!parsedBody.ok) return reply({ error: parsedBody.error }, parsedBody.status);
+  const body = parsedBody.value;
+  if (!body.id || !Number.isInteger(body.revision) || !body.action) return reply({ error: "Draft, revision эсвэл шийдвэр дутуу байна." }, 400);
   if (["edit", "submit"].includes(body.action) && !hasMarketingAdminPermission(auth.user, "marketing.draft")) return reply({ error: "Draft засах эсвэл Review-д илгээх эрхгүй байна." }, 403);
   if (!["edit", "submit"].includes(body.action) && !hasMarketingAdminPermission(auth.user, "marketing.approve")) return reply({ error: "Draft батлах эсвэл татгалзах эрхгүй байна." }, 403);
   const runtime = env as unknown as Runtime;

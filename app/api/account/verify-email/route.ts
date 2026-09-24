@@ -3,11 +3,14 @@ import { NextResponse } from "next/server";
 import { hasTrustedOrigin } from "../../../lib/admin-security";
 import { digest } from "../../../lib/site-user-auth";
 import { accountStatusAfterVerification } from "../../../lib/site-user-verification";
+import { readJsonObject } from "../../../lib/http-input";
 
 export async function POST(request: Request) {
   if (!hasTrustedOrigin(request))
     return NextResponse.json({ error: "Origin mismatch" }, { status: 403 });
-  const body = (await request.json().catch(() => ({}))) as { token?: string };
+  const parsedBody = await readJsonObject<{ token?: string }>(request, 4_000);
+  if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
+  const body = parsedBody.value;
   if (!body.token || !/^[a-f0-9]{64}$/.test(body.token)) {
     return NextResponse.json(
       { verified: false, status: "invalid" },

@@ -3,6 +3,7 @@ import {NextResponse} from 'next/server';
 import {getAdminSession,hasAdminPermission} from '../../../lib/site-admin';
 import {PACKAGE_KEY,readPackageState} from '../../../lib/packages';
 import {normalizeConfig,validateConfig} from '../../../../public/package-model.mjs';
+import {readBoundedText} from '../../../lib/http-input';
 const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{'Cache-Control':'no-store'}});
 async function authorized(){const user=await getAdminSession();return {user,error:!user?reply({error:'Админ нэвтрэлт шаардлагатай.'},401):!hasAdminPermission(user,'pricing.manage')?reply({error:'Багц удирдах эрхгүй.'},403):null};}
 export async function GET(){
@@ -17,8 +18,8 @@ export async function PUT(request:Request){
   const {user,error}=await authorized();if(error||!user)return error!;
   const origin=request.headers.get('origin');if(origin&&origin!==new URL(request.url).origin)return reply({error:'Origin mismatch'},403);
   try{
-    const text=await request.text();if(text.length>100000)return reply({error:'Тохиргоо хэт том.'},413);
-    const body=JSON.parse(text);const {state,raw}=await readPackageState();
+    const text=await readBoundedText(request,100000);if(!text.ok)return reply({error:text.error},text.status);
+    const body=JSON.parse(text.value||'{}');const {state,raw}=await readPackageState();
     if(body.revision!==state.revision)return reply({error:'Өөр админ тохиргоог шинэчилсэн. Дахин ачаалж хянана уу.'},409);
     if(!['draft','publish','restore'].includes(body.action))return reply({error:'Үйлдэл буруу.'},400);
     let config=body.config;
