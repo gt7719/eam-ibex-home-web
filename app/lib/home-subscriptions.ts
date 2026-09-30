@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "@/app/runtime/env";
 import { features, normalizeConfig } from "../../public/package-model.mjs";
 import { readPackageState, type PackageConfig } from "./packages";
 import { offerDate, publicLaunchOffer, type PlanOffer } from "./launch-offer-model";

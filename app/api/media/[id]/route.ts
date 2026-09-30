@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "@/app/runtime/env";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;

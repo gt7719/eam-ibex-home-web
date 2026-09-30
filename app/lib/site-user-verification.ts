@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "@/app/runtime/env";
 
 export const SITE_USER_VERIFICATION_POLICY_KEY =
   "site_user_verification_policy";

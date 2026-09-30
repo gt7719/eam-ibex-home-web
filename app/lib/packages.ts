@@ -1,4 +1,4 @@
-import {env} from 'cloudflare:workers';
+import { env } from "@/app/runtime/env";
 import {initialConfig,normalizeConfig} from '../../public/package-model.mjs';
 export type PackageConfig = ReturnType<typeof initialConfig>;
 export type PackageState = {revision:number;published:PackageConfig;draft:PackageConfig|null;checked:number[];publishedAt:string|null;token:string};
