@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { env } from "cloudflare:workers";
+import { env } from "@/app/runtime/env";
 import { SITE_USER_SESSION_COOKIE, getSiteUserSession } from "../../../lib/site-user-auth";
 import { profileImageUrl } from "../../../lib/site-user-profile";
 

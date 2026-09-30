@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "@/app/runtime/env";
 import { accountStatusAfterVerification } from "./site-user-verification";
 import { digest } from "./site-user-auth";
 import { sendAccountSms } from "./transactional-email";

@@ -1,5 +1,6 @@
 import vinext from "vinext";
 import { defineConfig } from "vite";
+import { resolve } from "node:path";
 import hostingConfig from "./.openai/hosting.json";
 import { sites } from "./build/sites-vite-plugin";
 
@@ -41,6 +42,7 @@ const localBindingConfig = {
 };
 
 export default defineConfig(async () => {
+  const isNodeRuntime = process.env.IBEX_RUNTIME === "node";
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
   process.env.WRANGLER_WRITE_LOGS ??= "false";
@@ -48,7 +50,10 @@ export default defineConfig(async () => {
   process.env.MINIFLARE_REGISTRY_PATH ??= ".wrangler/registry";
 
   // Wrangler snapshots its log path while the Cloudflare plugin is imported.
-  const { cloudflare } = await import("@cloudflare/vite-plugin");
+  // Do not even load the plugin for a self-hosted Node build.
+  const cloudflare = isNodeRuntime
+    ? null
+    : (await import("@cloudflare/vite-plugin")).cloudflare;
 
   return {
     server: {
@@ -58,14 +63,25 @@ export default defineConfig(async () => {
         ? { watch: { useFsEvents: false, usePolling: true } }
         : {}),
     },
+    resolve: isNodeRuntime
+      ? {
+          alias: {
+            "@/app/runtime/env": resolve(process.cwd(), "app/runtime/env.node.ts"),
+          },
+        }
+      : undefined,
     plugins: [
       vinext(),
-      sites(),
-      cloudflare({
-        viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
-        inspectorPort: false,
-        config: localBindingConfig,
-      }),
+      ...(isNodeRuntime || !cloudflare
+        ? []
+        : [
+            sites(),
+            cloudflare({
+              viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
+              inspectorPort: false,
+              config: localBindingConfig,
+            }),
+          ]),
     ],
   };
 });

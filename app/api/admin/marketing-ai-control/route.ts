@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "@/app/runtime/env";
 import { NextResponse } from "next/server";
 import { conflictMessage, hasTrustedOrigin } from "../../../lib/admin-security";
 import { MARKETING_AI_SETTINGS_KEY, marketingAiSettingsFingerprint, marketingAiSettingsIsTested, normalizeMarketingAiSettings, readMarketingAiSettings } from "../../../lib/marketing-ai-control";

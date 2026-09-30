@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "@/app/runtime/env";
 import { NextResponse } from "next/server";
 import { cloneDefaultNavigation, normalizeNavigation } from "../../../lib/navigation";
 import { getAdminSession, hasAdminPermission } from "../../../lib/site-admin";

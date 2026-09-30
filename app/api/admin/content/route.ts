@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "@/app/runtime/env";
 import { NextResponse } from "next/server";
 import { getAdminSession, hasAdminPermission, type AdminPermission } from "../../../lib/site-admin";
 import { conflictMessage, hasTrustedOrigin, normalizePartners, normalizePeople } from "../../../lib/admin-security";

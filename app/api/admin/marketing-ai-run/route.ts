@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "@/app/runtime/env";
 import { NextResponse } from "next/server";
 import { customerAiGuard, type CustomerAiDatabase } from "../../../lib/customer-ai";
 import { MARKETING_AI_PROMPT_VERSION, marketingAiSettingsIsTested, marketingAiTokenBudget, readMarketingAiSettings, type MarketingAiPromptProfile } from "../../../lib/marketing-ai-control";

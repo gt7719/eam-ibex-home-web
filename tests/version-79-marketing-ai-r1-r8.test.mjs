@@ -34,7 +34,7 @@ test("R2 through R7 use durable governed records and never execute outbound or s
 
 test("workspace normalization removes credential fields and suspicious secret values", async () => {
   const workspace = await import("../app/lib/marketing-ai-workspace.ts");
-  const result = workspace.normalizeMarketingAiData({ body: "approved", password: "bad", api_key: "bad", note: "sk-exampleverysecret123" });
+  const result = workspace.normalizeMarketingAiData({ body: "approved", password: "bad", api_key: "bad", note: "sk-example123456" });
   assert.deepEqual(result, { body: "approved" });
 });
 

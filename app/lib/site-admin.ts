@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "@/app/runtime/env";
 import { cookies } from "next/headers";
 
 export const ADMIN_SESSION_COOKIE = "ibex_site_session";

@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "@/app/runtime/env";
 import { safeHttpsUrl } from "./admin-security";
 
 export type KnowledgeStatus = "draft" | "approved" | "archived";

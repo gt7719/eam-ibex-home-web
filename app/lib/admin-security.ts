@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "@/app/runtime/env";
 
 export function hasTrustedOrigin(request: Request) {
   const origin = request.headers.get("origin");
