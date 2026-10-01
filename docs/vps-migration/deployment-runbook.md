@@ -23,6 +23,8 @@ curl --fail http://127.0.0.1/api/health
 curl --fail http://127.0.0.1/api/ready
 ```
 
+For a direct non-Compose process, `npm start` is VPS-safe: it creates the standalone artifact when missing, loads `.env.vps` when present, and starts the managed Node server. The former Cloudflare launcher remains available only as `npm run start:cloudflare`.
+
 The migration job must finish successfully before the application starts. The application readiness healthcheck requires both PostgreSQL and MinIO.
 
 ## Database migration and data import
