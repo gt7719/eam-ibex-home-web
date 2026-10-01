@@ -41,3 +41,14 @@ test("VPS image contains the migration runner and SQL", async () => {
   assert.match(build, /migrate-postgres\.mjs/);
   assert.match(build, /drizzle-postgres/);
 });
+
+test("default npm start uses the VPS runtime and preserves an explicit Cloudflare command", async () => {
+  const packageJson = JSON.parse(await read("package.json"));
+  const startScript = await read("scripts/start-vps.sh");
+  assert.equal(packageJson.scripts.start, "bash scripts/start-vps.sh");
+  assert.match(packageJson.scripts["start:cloudflare"], /vinext start/);
+  assert.match(startScript, /npm run build:vps/);
+  assert.match(startScript, /IBEX_RUNTIME=node/);
+  assert.match(startScript, /--env-file=\.env\.vps/);
+  assert.match(startScript, /dist\/standalone\/server\.js/);
+});
