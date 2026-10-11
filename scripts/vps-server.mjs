@@ -2,6 +2,7 @@
 import { join } from "node:path";
 import { startProdServer } from "vinext/server/prod-server";
 import { validateVpsEnvironment } from "./vps-env.mjs";
+import { SECURITY_HEADERS } from "./web-security.mjs";
 
 validateVpsEnvironment();
 
@@ -17,6 +18,14 @@ const { server } = await startProdServer({
   port,
   host,
   outDir: join(import.meta.dirname, "dist"),
+});
+
+// Cover static assets and early server errors that bypass the route proxy.
+const listeners = server.listeners("request");
+server.removeAllListeners("request");
+server.on("request", (request, response) => {
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.setHeader(name, value);
+  for (const listener of listeners) listener.call(server, request, response);
 });
 
 let shuttingDown = false;

@@ -5,6 +5,10 @@ root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root_dir"
 
 server_entry="dist/standalone/server.js"
+if [[ ! -f dist/standalone/web-security.mjs ]]; then
+  echo "VPS artifact is missing the shared ingress security policy" >&2
+  exit 1
+fi
 if [[ ! -f "$server_entry" ]]; then
   echo "Missing VPS standalone server entry: $server_entry" >&2
   exit 1

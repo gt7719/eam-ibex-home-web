@@ -69,7 +69,17 @@ try {
   });
   assertStatus(readiness, 503, "fail-closed readiness endpoint");
 
-  console.log(`VPS smoke test passed: home=200, health=200, unconfigured readiness=503; cloudflare: URL scheme was not loaded.`);
+  for (const path of ["/concept.html", "/api/admin/session", "/organization-preview.html", "/mobile-preview/index.html"]) {
+    const response = await fetch(`${origin}${path}`, { signal: AbortSignal.timeout(2_000) });
+    const expected = path === "/concept.html" ? 200 : path === "/api/admin/session" ? 401 : 503;
+    assertStatus(response, expected, path);
+    for (const header of ["x-content-type-options", "permissions-policy", "content-security-policy-report-only"]) {
+      if (!response.headers.get(header)) throw new Error(`${path} is missing ${header}`);
+    }
+    await response.arrayBuffer();
+  }
+
+  console.log(`VPS smoke test passed: home/health=200, anonymous session=401, unconfigured readiness/previews=503, shared security headers present; cloudflare: URL scheme was not loaded.`);
 } finally {
   await stop();
 }

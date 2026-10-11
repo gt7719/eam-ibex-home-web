@@ -33,6 +33,7 @@ function unavailableObjectStorage(): RuntimeObjectStorage {
   };
 
   return {
+    checkReadiness: async () => fail(),
     delete: async () => fail(),
     get: async () => fail(),
     put: async () => fail(),

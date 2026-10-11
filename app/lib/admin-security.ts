@@ -11,8 +11,9 @@ async function digest(value: string) {
 }
 
 export async function loginAttemptKey(request: Request, email: string) {
-  const ip = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  return digest(`${email.toLowerCase()}|${ip}`);
+  // Account-level throttling cannot be reset by changing a network/header.
+  void request;
+  return digest(`admin-login|${email.trim().toLowerCase()}`);
 }
 
 export async function loginIsLocked(key: string) {

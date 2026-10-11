@@ -64,6 +64,7 @@ export async function POST(request: Request) {
   const now = new Date().toISOString();
   try {
     await env.BUCKET.put(objectKey, file.stream(), {
+      contentLength: file.size,
       httpMetadata: {
         contentType: file.type,
         cacheControl: "private, no-store",

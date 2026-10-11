@@ -6,7 +6,7 @@ This procedure preserves the v80 Cloudflare deployment until the VPS has passed 
 
 Record the operator, approver, UTC start time, source export identifiers, migration report paths, release commit, image digest, DNS values, and backup restore-test result in the change ticket. Never copy secret values into the ticket.
 
-The approved source release is the signed-off `v80-vps-ready` tag. The deployment must use the exact commit referenced by that tag and a locally verified `npm run quality:vps` result.
+The approved source release is the exact reviewed commit SHA recorded in the change ticket. The deployment must use that commit and a matching successful `npm run quality:vps` result. Optional release tags must resolve to the same commit; a tag name alone is not acceptance evidence. Version 81 supersedes the earlier uncreated `v80-vps-ready` tag requirement.
 
 ## Pre-cutover
 
@@ -16,7 +16,7 @@ The approved source release is the signed-off `v80-vps-ready` tag. The deploymen
 4. Create final D1 and R2 exports and record their immutable identifiers.
 5. Run the PostgreSQL and object migrations once against an empty target.
 6. Require zero row-count and object-size reconciliation mismatches.
-7. Start the tagged VPS image and require `/api/health` and `/api/ready` to return 200.
+7. Start the VPS image built from the approved commit and require `/api/health` and `/api/ready` to return 200.
 8. Complete every staging acceptance item in `r8-release-acceptance.md`.
 
 Any failed item stops the cutover. Do not repair production data manually while traffic is enabled.

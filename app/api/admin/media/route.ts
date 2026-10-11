@@ -65,6 +65,7 @@ export async function POST(request: Request) {
   const objectKey = `site-media/${id}/${safeName}`;
   try {
     await env.BUCKET.put(objectKey, file.stream(), {
+      contentLength: file.size,
       httpMetadata: { contentType: file.type, cacheControl: "public, max-age=31536000, immutable" },
       customMetadata: { uploadedBy: user.id, originalName: file.name },
     });

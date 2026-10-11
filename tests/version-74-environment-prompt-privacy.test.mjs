@@ -9,7 +9,7 @@ test("environment names, status, visibility and routes use one published configu
   const adapter = await read("public/navigation-content.js");
   const web = await read("app/organization/page.tsx");
   const mobile = await read("app/mobile/page.tsx");
-  const worker = await read("worker/index.ts");
+  const worker = await read("worker/index.ts") + await read("app/runtime/web-security.ts");
   const buildConfig = await read("vite.config.ts");
 
   for (const field of ["nameMn", "nameEn", "descriptionMn", "descriptionEn", "status", "visible", "href"]) {

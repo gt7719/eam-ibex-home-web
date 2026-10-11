@@ -264,11 +264,9 @@ export async function actionAttemptKey(
   action: string,
   subject: string,
 ) {
-  const ip =
-    request.headers.get("cf-connecting-ip") ||
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    "unknown";
-  return digest(`${action}|${subject.toLowerCase()}|${ip}`);
+  // Keep the same action/subject limit across networks and forged IP headers.
+  void request;
+  return digest(`site-user|${action}|${subject.trim().toLowerCase()}`);
 }
 
 export async function actionIsLocked(key: string) {
