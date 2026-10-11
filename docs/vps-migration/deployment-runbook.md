@@ -23,7 +23,9 @@ curl --fail http://127.0.0.1/api/health
 curl --fail http://127.0.0.1/api/ready
 ```
 
-For a direct non-Compose process, `npm start` is VPS-safe: it creates the standalone artifact when missing, loads `.env.vps` when present, and starts the managed Node server. The former Cloudflare launcher remains available only as `npm run start:cloudflare`.
+For a direct non-Compose process, `npm start` is VPS-safe: it creates the standalone artifact when missing, loads `.env.vps` when present, and starts the managed Node server. The former Cloudflare launcher remains available only as `npm run start:cloudflare`. After updating source with `git pull`, explicitly run `npm run build:vps` before restarting: `npm start` only builds when the artifact is absent.
+
+The Nginx ingress overwrites X-Forwarded-For and removes client-supplied CF-Connecting-IP. Authentication limits are additionally bound to the account/action, so changing an IP cannot reset them. When adding a CDN or another proxy, configure its trusted address range explicitly instead of trusting arbitrary forwarded headers.
 
 The migration job must finish successfully before the application starts. The application readiness healthcheck requires both PostgreSQL and MinIO.
 

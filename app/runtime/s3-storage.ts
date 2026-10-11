@@ -2,6 +2,7 @@ import {
   DeleteObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
+  HeadBucketCommand,
   PutObjectCommand,
   S3Client,
   type PutObjectCommandInput,
@@ -89,6 +90,10 @@ export class S3ObjectStorage implements RuntimeObjectStorage {
     });
   }
 
+  async checkReadiness(): Promise<void> {
+    await this.client.send(new HeadBucketCommand({ Bucket: this.config.bucket }));
+  }
+
   async delete(keys: string | string[]): Promise<void> {
     const keyList = (Array.isArray(keys) ? keys : [keys]).filter(Boolean);
     if (keyList.length === 0) return;
@@ -129,9 +134,9 @@ export class S3ObjectStorage implements RuntimeObjectStorage {
         },
       };
     } catch (error) {
-      const status = (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode;
       const name = (error as { name?: string }).name;
-      if (status === 404 || name === "NoSuchKey" || name === "NotFound") return null;
+      // A missing bucket is an infrastructure failure, not a missing object.
+      if (name === "NoSuchKey") return null;
       throw error;
     }
   }
@@ -140,6 +145,7 @@ export class S3ObjectStorage implements RuntimeObjectStorage {
     key: string,
     value: ReadableStream | ArrayBuffer | ArrayBufferView | Blob | string | null,
     options?: {
+      contentLength?: number;
       customMetadata?: Record<string, string>;
       httpMetadata?: {
         cacheControl?: string;
@@ -150,12 +156,25 @@ export class S3ObjectStorage implements RuntimeObjectStorage {
       };
     },
   ): Promise<unknown> {
+    const inferredLength = value instanceof Blob ? value.size
+      : typeof value === "string" ? Buffer.byteLength(value)
+        : value === null ? 0
+          : value instanceof ReadableStream ? undefined : value.byteLength;
+    const contentLength = options?.contentLength ?? inferredLength;
+    if (!Number.isSafeInteger(contentLength) || (contentLength as number) < 0) {
+      throw new Error("S3 stream uploads require a non-negative contentLength.");
+    }
     return this.client.send(
       new PutObjectCommand({
         Bucket: this.config.bucket,
         Key: key,
         Body: putBody(value),
-        Metadata: options?.customMetadata,
+        ContentLength: contentLength,
+        Metadata: options?.customMetadata && Object.fromEntries(
+          Object.entries(options.customMetadata).map(([name, value]) => [
+            name, /[^\x20-\x7e]/.test(value) ? encodeURIComponent(value) : value,
+          ]),
+        ),
         CacheControl: options?.httpMetadata?.cacheControl,
         ContentDisposition: options?.httpMetadata?.contentDisposition,
         ContentEncoding: options?.httpMetadata?.contentEncoding,

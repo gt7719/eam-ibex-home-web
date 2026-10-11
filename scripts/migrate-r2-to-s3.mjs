@@ -47,11 +47,16 @@ do {
       new GetObjectCommand({ Bucket: sourceBucket, Key: listed.Key }),
     );
     if (!object.Body) throw new Error(`R2 object has no body: ${listed.Key}`);
+    const sourceSize = Number(object.ContentLength ?? listed.Size);
+    if (!Number.isSafeInteger(sourceSize) || sourceSize < 0) {
+      throw new Error(`R2 object has no valid byte length: ${listed.Key}`);
+    }
     await target.send(
       new PutObjectCommand({
         Bucket: targetBucket,
         Key: listed.Key,
         Body: object.Body,
+        ContentLength: sourceSize,
         CacheControl: object.CacheControl,
         ContentDisposition: object.ContentDisposition,
         ContentEncoding: object.ContentEncoding,
@@ -63,7 +68,6 @@ do {
     const targetObject = await target.send(
       new HeadObjectCommand({ Bucket: targetBucket, Key: listed.Key }),
     );
-    const sourceSize = Number(object.ContentLength ?? listed.Size ?? 0);
     const targetSize = Number(targetObject.ContentLength ?? -1);
     if (sourceSize !== targetSize) {
       throw new Error(`Object size reconciliation failed for ${listed.Key}: source=${sourceSize}, target=${targetSize}`);

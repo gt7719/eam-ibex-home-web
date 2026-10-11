@@ -42,12 +42,14 @@ export interface RuntimeObjectBody {
 }
 
 export interface RuntimeObjectStorage {
+  checkReadiness?(): Promise<void>;
   delete(keys: string | string[]): Promise<void>;
   get(key: string): Promise<RuntimeObjectBody | null>;
   put(
     key: string,
     value: ReadableStream | ArrayBuffer | ArrayBufferView | Blob | string | null,
     options?: {
+      contentLength?: number;
       customMetadata?: Record<string, string>;
       httpMetadata?: RuntimeObjectHttpMetadata;
     },

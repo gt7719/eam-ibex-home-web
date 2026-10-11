@@ -55,7 +55,7 @@ test("provisioning is idempotent and the shadow AI endpoint is private by defaul
 });
 
 test("web responses, social redirects and bootstrap controls preserve the hardened contract", () => {
-  const worker = read("worker/index.ts");
+  const worker = read("worker/index.ts") + read("app/runtime/web-security.ts");
   const social = read("app/api/admin/social-content/route.ts");
   const packageHtml = read("public/package-admin.html");
   assert.match(worker, /Content-Security-Policy-Report-Only/);

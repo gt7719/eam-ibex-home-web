@@ -6,14 +6,14 @@ Status: Implemented
 
 - Release: v80
 - Source commit: `384ac5b04f62957d1fe8217aa35dafd832bf888b`
-- Protected tag: `v80-baseline`
+- Optional alias tag: `v80-baseline` (the immutable commit is authoritative)
 - Migration branch: `vps/node-runtime`
 - Required Node.js: `>=22.13.0`
 - D1 migrations: 15 (`drizzle/0000` through `drizzle/0014`)
 - D1 schema tables: 33
 - Regression baseline: at least 195 passing tests
 
-The protected tag must not be moved or rewritten. VPS work must remain on the migration branch until the R8 release gates pass.
+The protected commit must remain unchanged. If present, its alias tag must resolve to that commit and must not be moved or rewritten. VPS fixes use a review branch until the R8 release gates pass.
 
 ## Verified R0 gates
 
@@ -51,12 +51,12 @@ The 2026-09-30 baseline audit reports one moderate `baseline-browser-mapping` ad
 Before production cutover:
 
 ```bash
-git switch --detach v80-baseline
+git switch --detach 384ac5b04f62957d1fe8217aa35dafd832bf888b
 npm ci
 npm run baseline:v80
 ```
 
-Deploy the verified Cloudflare artifact from the protected tag. DNS must remain unchanged until VPS database and object-storage reconciliation is complete. After cutover, retain the v80 Cloudflare deployment and pre-cutover D1/R2 snapshots for at least 30 days.
+Preserve the existing v80 deployment for rollback. A historical dependency audit may now fail due to advisories published after that release; retain it as rollback evidence rather than claiming it passes today. Deploy only a separately accepted Cloudflare artifact. DNS must remain unchanged until VPS database and object-storage reconciliation is complete. After cutover, retain the v80 Cloudflare deployment and pre-cutover D1/R2 snapshots for at least 30 days.
 
 ## Data prerequisite
 

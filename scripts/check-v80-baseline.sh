@@ -9,11 +9,14 @@ expected_tables=33
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root_dir"
 
-baseline_commit="$(git rev-list -n 1 v80-baseline 2>/dev/null || true)"
-if [[ "$baseline_commit" != "$expected_commit" ]]; then
+baseline_commit="$(git rev-parse --verify 'refs/tags/v80-baseline^{commit}' 2>/dev/null || true)"
+if [[ -n "$baseline_commit" && "$baseline_commit" != "$expected_commit" ]]; then
   echo "v80-baseline tag mismatch: expected $expected_commit, got ${baseline_commit:-missing}" >&2
   exit 1
 fi
+git cat-file -e "${expected_commit}^{commit}"
+git merge-base --is-ancestor "$expected_commit" HEAD
+echo "Verifying immutable v80 commit $expected_commit (tag is optional)."
 
 migration_count="$(find drizzle -maxdepth 1 -type f -name '*.sql' | wc -l | tr -d ' ')"
 table_count="$(grep -o 'sqliteTable(' db/schema.ts | wc -l | tr -d ' ')"
@@ -42,4 +45,4 @@ if [[ -z "$test_count" || "$test_count" -lt "$minimum_tests" ]]; then
 fi
 
 npm run audit:prod
-echo "v80 baseline verified: tag, schema, migrations, $test_count tests, build, and high-severity production audit gate."
+echo "v80 baseline verified: immutable commit, schema, migrations, $test_count tests, build, and high-severity production audit gate."
