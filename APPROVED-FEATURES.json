@@ -1,6 +1,6 @@
 {
   "policyVersion": 1,
-  "releaseCandidateVersion": 84,
+  "releaseCandidateVersion": 85,
   "baseline": { "siteVersion": 77, "commit": "530d57a3b7ecdf4f1fab2bfb9b259619ee7a8116" },
   "features": [
     { "id": "V55-HOME-AI-BOUNDARY", "mustPreserve": ["server-only OpenAI key", "store:false", "privacy and prompt-injection guards", "fair-share budget", "audit", "external actions blocked"] },
