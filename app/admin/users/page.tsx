@@ -71,6 +71,7 @@ export default function AdminUsersPage() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [inviteRole, setInviteRole] = useState<"editor" | "owner">("editor");
   const [invitePermissions, setInvitePermissions] = useState<AdminPermission[]>(defaultPermissions);
   const [permissionDrafts, setPermissionDrafts] = useState<Record<string, AdminPermission[]>>({});
   const [loading, setLoading] = useState(true);
@@ -79,7 +80,7 @@ export default function AdminUsersPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const managedPermissionsDirty = useMemo(() => users.some((user) => !samePermissions(user.permissions || [], permissionDrafts[user.id] || [])), [permissionDrafts, users]);
-  const inviteDirty = Boolean(email || name || password || !samePermissions(invitePermissions, defaultPermissions));
+  const inviteDirty = Boolean(inviteRole !== "editor" || email || name || password || !samePermissions(invitePermissions, defaultPermissions));
   const hasUnsavedChanges = inviteDirty || managedPermissionsDirty;
 
   const loadUsers = useCallback(async () => {
@@ -129,13 +130,14 @@ export default function AdminUsersPage() {
 
   async function invite(event: FormEvent) {
     event.preventDefault();
+    if (inviteRole === "owner" && !window.confirm(t("Энэ админ бүх тохиргоо болон бусад админы эрхийг удирдана. Үндсэн админ нэмэх үү?", "This administrator can manage all settings and other administrators. Add an owner administrator?"))) return;
     setWorking(true);
     setError("");
     setMessage("");
     const response = await fetch("/api/admin/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, name, password, permissions: invitePermissions }),
+      body: JSON.stringify({ email, name, password, role: inviteRole, permissions: invitePermissions }),
     }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) {
@@ -147,7 +149,8 @@ export default function AdminUsersPage() {
     setName("");
     setPassword("");
     setInvitePermissions(defaultPermissions);
-    setMessage(t("Контент админы бүртгэлийг үүсгэлээ. Түр нууц үгийг хэрэглэгчид аюулгүй сувгаар дамжуулна уу.", "The content administrator was created. Share the temporary password through a secure channel."));
+    setInviteRole("editor");
+    setMessage(t("Админы бүртгэлийг үүсгэлээ. Түр нууц үгийг хэрэглэгчид аюулгүй сувгаар дамжуулна уу.", "The administrator was created. Share the temporary password through a secure channel."));
     await loadUsers();
     setWorking(false);
   }
@@ -240,17 +243,23 @@ export default function AdminUsersPage() {
       <section className="admin-invite-card" aria-labelledby="invite-title">
         <div>
           <span className="admin-step">01</span>
-          <h2 id="invite-title">{t("Шинэ контент админ нэмэх", "Add a content administrator")}</h2>
+          <h2 id="invite-title">{t("Шинэ админ нэмэх", "Add an administrator")}</h2>
           <p>{t("Нэвтрэх мэдээллийг бүртгээд тухайн админ яг ямар хэсэгт өөрчлөлт хийхийг сонгоно.", "Enter the sign-in details and select the exact areas this administrator can change.")}</p>
         </div>
         <form onSubmit={invite}>
+          <label htmlFor="invite-role">{t("Админы төрөл", "Administrator role")}</label>
+          <select id="invite-role" value={inviteRole} onChange={(event) => setInviteRole(event.target.value as "editor" | "owner")}>
+            <option value="editor">{t("Контент админ", "Content administrator")}</option>
+            <option value="owner">{t("Үндсэн админ", "Owner administrator")}</option>
+          </select>
+          {inviteRole === "owner" ? <p role="note">{t("Бүх хэсэг болон бусад админыг удирдах бүрэн эрхтэй. Үндсэн админы эрхийг эндээс хаах боломжгүй.", "Full access to all areas and administrator management. Owner access cannot be disabled here.")}</p> : null}
           <label htmlFor="invite-email">{t("Админы мэдээлэл", "Administrator details")}</label>
           <div className="admin-invite-fields">
             <input type="text" value={name} onChange={(event) => setName(event.target.value)} placeholder={t("Нэр", "Name")} required />
             <input id="invite-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@company.mn" required />
             <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder={t("Түр нууц үг • 10+ тэмдэгт", "Temporary password • 10+ characters")} minLength={10} required />
           </div>
-          <fieldset className="admin-permission-fieldset">
+          <fieldset className="admin-permission-fieldset" disabled={inviteRole === "owner"}>
             <legend>{t("Өөрчлөлт хийх эрх", "Edit permissions")}</legend>
             <div className="admin-permission-toolbar"><span>{invitePermissions.length}/{defaultPermissions.length} {t("эрх сонгосон", "permissions selected")}</span><button type="button" onClick={toggleAllInvitePermissions}>{invitePermissions.length === defaultPermissions.length ? t("Бүгдийг цэвэрлэх", "Clear all") : t("Бүгдийг сонгох", "Select all")}</button></div>
             <div className="admin-permission-groups">
@@ -262,7 +271,7 @@ export default function AdminUsersPage() {
                       <label className="admin-permission-option" key={permission.id}>
                         <input
                           type="checkbox"
-                          checked={invitePermissions.includes(permission.id)}
+                          checked={inviteRole === "owner" || invitePermissions.includes(permission.id)}
                           onChange={() => toggleInvitePermission(permission.id)}
                         />
                         <span><strong>{t(permission.label, permission.labelEn)}</strong><small>{t(permission.detail, permission.detailEn)}</small></span>
@@ -276,7 +285,7 @@ export default function AdminUsersPage() {
           <button
             type="submit"
             className="admin-invite-submit"
-            disabled={working || !inviteEnabled || !invitePermissions.some((permission) => permission !== "media.upload")}
+            disabled={working || !inviteEnabled || (inviteRole !== "owner" && !invitePermissions.some((permission) => permission !== "media.upload"))}
           >
             {working ? t("Түр хүлээнэ үү…", "Please wait…") : t("Админ нэмэх", "Add administrator")}
           </button>

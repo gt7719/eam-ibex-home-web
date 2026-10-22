@@ -7,8 +7,9 @@ export const metadata: Metadata = {
   description:
     "Хөрөнгө, ажил, засвар, нөөц, зардал болон бодит өгөгдлийг нэг цөмд холбосон Монгол EAM/CMMS платформ.",
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    icon: [{ url: "/ibex-icon-32.png?v=87", sizes: "32x32", type: "image/png" }, { url: "/favicon.ico?v=87" }],
+    shortcut: "/favicon.ico?v=87",
+    apple: "/ibex-icon-180.png?v=87",
   },
 };
 
