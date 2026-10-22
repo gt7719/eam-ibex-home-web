@@ -6,11 +6,12 @@
   const copy = {
     mn: {
       name: "iBeX Home AI",
-      scope: "iBeX хэрэглэгчийн туслах",
-      safe: "iBeX Intelligent AI-аас тусдаа",
+      scope: "Таны цахим туслах",
+      safe: "Ажиллах хүрээ",
+      details: "Үндсэн системийн Intelligent AI-аас тусдаа вэб туслах. Системийн бодит өгөгдөлд хандахгүй. OpenAI-ийн ерөнхий мэдлэг болон нийтэд нээлттэй лавлагааг ашиглана. Гадагш үйлдэл хийхгүй.",
       open: "Home AI",
       hint: "24/7 хэрэглэгчийн туслах",
-      hello: "Сайн байна уу. Би OpenAI-ийн ерөнхий мэдлэг болон нэмэлт iBeX лавлагааг ашиглан таны асуултад хариулна.",
+      hello: "Сайн байна уу! Бүтээгдэхүүний боломж, багц сонголт, ашиглалтын талаар асуугаарай.",
       placeholder: "iBeX-ийн талаар асуух…",
       send: "Илгээх",
       close: "Home AI хаах",
@@ -18,7 +19,7 @@
       consent: "Асуулт болон сүүлийн 6 мессежийг OpenAI-р боловсруулахыг зөвшөөрч байна.",
       privacy: "Нууц үг, API key болон байгууллагын нууц өгөгдөл бүү оруулна уу.",
       policy: "Нууцлалын бодлого",
-      status: "OpenAI ерөнхий мэдлэг · Гадагш үйлдэл хийхгүй",
+      status: "Танд юугаар туслах вэ?",
       thinking: "Home AI хариулт боловсруулж байна…",
       error: "Одоогоор хариулт авах боломжгүй байна. Түр хүлээгээд дахин оролдоно уу.",
       quota: "Шударга хэрэглээний хязгаар түр үйлчилж байна. Дараа дахин оролдоно уу.",
@@ -26,11 +27,12 @@
     },
     en: {
       name: "iBeX Home AI",
-      scope: "iBeX customer assistant",
-      safe: "Separate from iBeX Intelligent AI",
+      scope: "Your digital assistant",
+      safe: "How it works",
+      details: "Separate from the main system's Intelligent AI. This website assistant cannot access live system data. It uses OpenAI general knowledge and public references and does not perform external actions.",
       open: "Home AI",
       hint: "24/7 customer assistant",
-      hello: "Hello. I answer using OpenAI general knowledge with optional iBeX references.",
+      hello: "Hello! Ask about product features, choosing a plan or getting started.",
       placeholder: "Ask about iBeX…",
       send: "Send",
       close: "Close Home AI",
@@ -38,7 +40,7 @@
       consent: "I consent to OpenAI processing my question and the latest 6 chat messages.",
       privacy: "Do not enter passwords, API keys or confidential organization data.",
       policy: "Privacy policy",
-      status: "OpenAI general knowledge · No external actions",
+      status: "How can I help you?",
       thinking: "Home AI is preparing a response…",
       error: "The assistant is temporarily unavailable. Please try again shortly.",
       quota: "The fair-use limit is temporarily active. Please try again later.",
@@ -81,8 +83,8 @@
     </button>
     <section class="assistant-panel" hidden role="dialog" aria-modal="false">
       <header class="assistant-head">
-        <span class="assistant-avatar" aria-label="iBeX"><i>iBe</i><b>X</b></span>
-        <span class="assistant-head-copy"><strong></strong><small></small><span class="assistant-safe"><i></i><b></b></span></span>
+        <span class="assistant-avatar" aria-hidden="true">AI</span>
+        <div class="assistant-head-copy"><strong></strong><small></small><details class="assistant-safe"><summary><span aria-hidden="true">ⓘ</span><b></b></summary><p></p></details></div>
         <button class="assistant-close" type="button">×</button>
       </header>
       <div class="assistant-boundary"></div>
@@ -109,7 +111,7 @@
   const history = [];
   const sessionId = sessionValue();
   let busy = false;
-  let welcomed = false;
+  let welcomeMessage;
 
   const lang = () => document.documentElement.lang === "en" ? "en" : "mn";
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (character) => ({
@@ -157,6 +159,7 @@
     root.querySelector(".assistant-head-copy > strong").textContent = text.name;
     root.querySelector(".assistant-head-copy > small").textContent = text.scope;
     root.querySelector(".assistant-safe b").textContent = text.safe;
+    root.querySelector(".assistant-safe p").textContent = text.details;
     root.querySelector(".assistant-boundary").textContent = text.status;
     root.querySelector(".assistant-consent span").textContent = text.consent;
     root.querySelector(".assistant-footnote span").textContent = text.privacy;
@@ -166,10 +169,8 @@
     close.setAttribute("aria-label", text.close);
     launch.setAttribute("aria-label", text.open);
     suggestions.innerHTML = text.suggest.map((question) => `<button type="button">${escapeHtml(question)}</button>`).join("");
-    if (!welcomed) {
-      addMessage("bot", text.hello);
-      welcomed = true;
-    }
+    if (!welcomeMessage) welcomeMessage = addMessage("bot", text.hello);
+    else welcomeMessage.firstElementChild.textContent = text.hello;
     syncConsent();
   }
 

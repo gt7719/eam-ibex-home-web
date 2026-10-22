@@ -30,7 +30,7 @@ export function AccountShell({ kicker, titleMn, titleEn, introMn, introEn, child
         <p className="account-intro">{t(introMn, introEn)}</p>
         {children}
       </section>
-      <p className="account-security-note">{t("Хамгаалалттай бүртгэл • И-мэйл баталгаажуулалт • SMS-д бэлэн", "Secure account • Email verification • SMS-ready")}</p>
+      <p className="account-security-note">{t("Таны мэдээлэл хамгаалагдана • Баталгаажуулалттай бүртгэл", "Your information is protected • Verified accounts")}</p>
     </main>
   );
 }

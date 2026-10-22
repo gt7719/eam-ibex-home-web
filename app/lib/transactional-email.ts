@@ -64,6 +64,7 @@ export async function sendAccountSms(input: {
   try {
     const response = await fetch(validUrl.toString(), {
       method: "POST",
+      signal: AbortSignal.timeout(15_000),
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -201,6 +202,7 @@ export async function sendAccountEmail(input: {
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
+      signal: AbortSignal.timeout(15_000),
       headers: {
         Authorization: `Bearer ${runtime.RESEND_API_KEY}`,
         "Content-Type": "application/json",
@@ -261,7 +263,7 @@ export async function verifyTurnstile(
   try {
     const response = await fetch(
       "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-      { method: "POST", body: form },
+      { method: "POST", body: form, signal: AbortSignal.timeout(10_000) },
     );
     const payload = (await response.json()) as { success?: boolean };
     return { ok: response.ok && payload.success === true, configured: true };

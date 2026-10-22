@@ -1,7 +1,9 @@
 "use client";
+import { apiMessage } from "../lib/api-message";
 /* eslint-disable @next/next/no-img-element -- authenticated R2 profile images are streamed from a same-origin API route */
 
 import Link from "next/link";
+import { features } from "../../public/package-model.mjs";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AccountAlert, AccountShell } from "../components/account-shell";
 import { HomeAiDrawer } from "../components/home-ai-drawer";
@@ -72,17 +74,21 @@ type Subscription = {
 type AccountPayload = {
   user: AccountUser;
   subscription: Subscription | null;
+  activeSubscription: Subscription | null;
 };
 
 const statusLabel: Record<string, [string, string]> = {
+  pending: ["Хүлээгдэж байна", "Pending"],
+  confirmed: ["Баталгаажсан", "Confirmed"],
+  rejected: ["Татгалзсан", "Rejected"],
   payment_pending: [
     "Төлбөрийн баталгаажуулалт хүлээгдэж байна",
     "Payment confirmation pending",
   ],
   quote_requested: ["Үнийн санал хүссэн", "Quote requested"],
   provisioning_pending: [
-    "iBeX eAM тенант бэлтгэж байна",
-    "iBeX eAM tenant provisioning",
+    "Ажлын орчин бэлтгэж байна",
+    "Preparing your workspace",
   ],
   active: ["Идэвхтэй", "Active"],
   expired: ["Хугацаа дууссан", "Expired"],
@@ -140,7 +146,7 @@ export default function AccountPage() {
         );
       else
         setError(
-          payload.error ||
+          apiMessage(payload.error, lang) ||
             t("Бүртгэлийг ачаалж чадсангүй.", "Could not load your account."),
         );
       setLoading(false);
@@ -150,7 +156,7 @@ export default function AccountPage() {
     setData(next);
     setFullName(next.user.fullName);
     setLoading(false);
-  }, [t]);
+  }, [t, lang]);
   useEffect(() => {
     const handle = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(handle);
@@ -224,7 +230,7 @@ export default function AccountPage() {
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok)
       setError(
-        payload.error ||
+        apiMessage(payload.error, lang) ||
           t("Профайлыг хадгалж чадсангүй.", "Could not save your profile."),
       );
     else {
@@ -249,7 +255,7 @@ export default function AccountPage() {
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok)
       setError(
-        payload.error ||
+        apiMessage(payload.error, lang) ||
           t("Зургийг хадгалж чадсангүй.", "Could not save the image."),
       );
     else {
@@ -291,7 +297,7 @@ export default function AccountPage() {
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok)
       setError(
-        payload.error ||
+        apiMessage(payload.error, lang) ||
           t(
             "Утасны баталгаажуулалтыг хийж чадсангүй.",
             "Could not verify the phone.",
@@ -300,7 +306,7 @@ export default function AccountPage() {
     else {
       setPhoneCode("");
       setMessage(
-        payload.message ||
+        apiMessage(payload.message, lang) ||
           t(
             "Утасны баталгаажуулалт шинэчлэгдлээ.",
             "Phone verification updated.",
@@ -311,11 +317,12 @@ export default function AccountPage() {
     setWorking(false);
   }
   const subscription = data?.subscription || null;
-  const remaining = subscription?.endsAt
+  const currentSubscription = data?.activeSubscription || subscription;
+  const remaining = currentSubscription?.endsAt
     ? Math.max(
         0,
         Math.ceil(
-          (new Date(subscription.endsAt).getTime() - renderedAt) / 86_400_000,
+          (new Date(currentSubscription.endsAt).getTime() - renderedAt) / 86_400_000,
         ),
       )
     : null;
@@ -374,7 +381,7 @@ export default function AccountPage() {
                 <article>
                   <small>{t("Байгууллага", "Organization")}</small>
                   <strong>
-                    {subscription?.organizationName ||
+                    {currentSubscription?.organizationName ||
                       t("Байгууллага сонгоогүй", "No organization selected")}
                   </strong>
                   <span>
@@ -383,29 +390,29 @@ export default function AccountPage() {
                 </article>
                 <article>
                   <small>{t("Одоогийн багц", "Current plan")}</small>
-                  <strong>{subscription?.planName || "—"}</strong>
+                  <strong>{currentSubscription?.planName || "—"}</strong>
                   <span
                     className={
-                      subscription?.subscriptionStatus === "active"
+                      currentSubscription?.subscriptionStatus === "active"
                         ? "verified"
                         : "pending"
                     }
                   >
-                    {status
-                      ? t(status[0], status[1])
+                    {currentSubscription
+                      ? t(...(statusLabel[currentSubscription.subscriptionStatus] || [currentSubscription.subscriptionStatus, currentSubscription.subscriptionStatus]))
                       : t("Багц сонгоно уу", "Choose a plan")}
                   </span>
                 </article>
                 <article>
                   <small>{t("Хугацаа", "Term")}</small>
                   <strong>
-                    {subscription?.endsAt
+                    {currentSubscription?.endsAt
                       ? `${remaining} ${t("хоног үлдсэн", "days remaining")}`
                       : "—"}
                   </strong>
                   <span>
-                    {subscription?.startsAt
-                      ? `${dateText(subscription.startsAt, locale)} — ${dateText(subscription.endsAt, locale)}`
+                    {currentSubscription?.startsAt
+                      ? `${dateText(currentSubscription.startsAt, locale)} — ${dateText(currentSubscription.endsAt, locale)}`
                       : t(
                           "Төлбөр баталгаажсаны дараа тогтооно",
                           "Set after payment confirmation",
@@ -424,40 +431,40 @@ export default function AccountPage() {
                     )}
                   </p>
                 </div>
-                {subscription?.subscriptionStatus === "active" &&
-                subscription.coreWorkspaceUrl ? (
+                {currentSubscription?.subscriptionStatus === "active" &&
+                currentSubscription.coreWorkspaceUrl ? (
                   <a
                     className="account-primary-link"
-                    href={subscription.coreWorkspaceUrl}
+                    href={currentSubscription.coreWorkspaceUrl}
                   >
                     {t("iBeX eAM нээх ↗", "Open iBeX eAM ↗")}
                   </a>
                 ) : (
                   <button type="button" onClick={() => go("package")}>
-                    {subscription
+                    {currentSubscription
                       ? t(
-                          "Тенант бэлтгэгдэж байна",
-                          "Tenant preparation in progress",
+                          "Ажлын орчны төлөв харах",
+                          "View workspace status",
                         )
                       : t("Багцын мэдээлэл", "Plan information")}
                   </button>
                 )}
               </div>
-              {subscription?.promotion ? (
+              {currentSubscription?.promotion ? (
                 <div className="my-ibex-promotion">
                   <small>{t("Авсан урамшуулал", "Applied promotion")}</small>
                   <strong>
                     {isEnglish
-                      ? subscription.promotion.nameEn ||
-                        subscription.promotion.textEn
-                      : subscription.promotion.nameMn ||
-                        subscription.promotion.textMn}
+                      ? currentSubscription.promotion.nameEn ||
+                        currentSubscription.promotion.textEn
+                      : currentSubscription.promotion.nameMn ||
+                        currentSubscription.promotion.textMn}
                   </strong>
                   <span>
-                    {subscription.promotion.bonusMonths
+                    {currentSubscription.promotion.bonusMonths
                       ? t(
-                          `${subscription.promotion.bonusMonths} сарын үнэгүй хугацаа`,
-                          `${subscription.promotion.bonusMonths} free month(s)`,
+                          `${currentSubscription.promotion.bonusMonths} сарын үнэгүй хугацаа`,
+                          `${currentSubscription.promotion.bonusMonths} free month(s)`,
                         )
                       : t(
                           "Үнийн хөнгөлөлт тооцогдсон",
@@ -497,8 +504,8 @@ export default function AccountPage() {
                   <article><small>{t("Байгууллага", "Organization")}</small><strong>{subscription.organizationName}</strong><span>{t("Хүсэлт", "Request")} · {dateText(subscription.createdAt, locale)}</span></article>
                   <article><small>{t("Хугацаа", "Term")}</small><strong>{subscription.durationMonths} {t("сар", "month(s)")}</strong><span>{dateText(subscription.startsAt, locale)} — {dateText(subscription.endsAt, locale)}</span></article>
                   <article><small>{t("Төлбөр", "Payment")}</small><strong>{t(statusLabel[subscription.paymentStatus]?.[0] || subscription.paymentStatus, statusLabel[subscription.paymentStatus]?.[1] || subscription.paymentStatus)}</strong><span>{t("Суурь дүн", "Base amount")}: {money(subscription.baseAmountMnt, locale, isEnglish)} · {t("Хөнгөлөлт", "Discount")}: {money(subscription.discountAmountMnt, locale, isEnglish)}</span></article>
-                  <article><small>iBeX eAM</small><strong>{t(statusLabel[subscription.subscriptionStatus]?.[0] || subscription.subscriptionStatus, statusLabel[subscription.subscriptionStatus]?.[1] || subscription.subscriptionStatus)}</strong><span>{subscription.provisioningStatus || t("Бэлтгэгдээгүй", "Not provisioned")}{subscription.coreTenantId ? ` · ${subscription.coreTenantId}` : ""}</span></article>
-                  <article className="my-package-detail-wide"><small>{t("Багцын хязгаар ба модуль", "Plan limits and modules")}</small><strong>{t("Хэрэглэгч", "Users")}: {subscription.plan?.users ?? "—"} · {t("Хөрөнгө", "Assets")}: {subscription.plan?.assets ?? "—"}</strong><span>{subscription.plan?.assignedModules?.length ? subscription.plan.assignedModules.join(" · ") : t("Модулийн snapshot байхгүй", "No module snapshot")}</span></article>
+                  <article><small>iBeX eAM</small><strong>{t(statusLabel[subscription.subscriptionStatus]?.[0] || subscription.subscriptionStatus, statusLabel[subscription.subscriptionStatus]?.[1] || subscription.subscriptionStatus)}</strong><span>{t(...({ pending: ["Бэлтгэж байна", "Preparing"], accepted: ["Бэлэн", "Ready"], failed: ["Дэмжлэгийн баг шалгаж байна", "Our support team is checking"], pending_connection: ["Холболт хүлээгдэж байна", "Awaiting connection"], not_requested: ["Хүсэлт үүсээгүй", "Not requested"] } as Record<string, [string, string]>)[subscription.provisioningStatus] || ["Төлөв шинэчлэгдэж байна", "Status is being updated"])}</span></article>
+                  <article className="my-package-detail-wide"><small>{t("Багцын хязгаар ба модуль", "Plan limits and modules")}</small><strong>{t("Хэрэглэгч", "Users")}: {subscription.plan?.users ?? "—"} · {t("Хөрөнгө", "Assets")}: {subscription.plan?.assets ?? "—"}</strong><span>{subscription.plan?.assignedModules?.length ? subscription.plan.assignedModules.map(id => { const feature = features.find((item: { id: string }) => item.id === id); return feature ? (isEnglish ? feature.en : feature.mn) : t("Нэмэлт боломж", "Additional feature"); }).join(" · ") : t("Модулийн мэдээлэл хараахан ороогүй", "Module details are not available yet")}</span></article>
                   <article className="my-package-detail-wide"><small>{t("Авсан урамшуулал", "Applied promotion")}</small><strong>{subscription.promotion ? (isEnglish ? subscription.promotion.nameEn || subscription.promotion.textEn : subscription.promotion.nameMn || subscription.promotion.textMn) : t("Урамшуулалгүй", "No promotion")}</strong><span>{subscription.promotion?.bonusMonths ? t(`${subscription.promotion.bonusMonths} сарын үнэгүй хугацаа`, `${subscription.promotion.bonusMonths} free month(s)`) : subscription.discountAmountMnt ? t("Үнийн хөнгөлөлт тооцогдсон", "Price discount applied") : t("Стандарт нөхцөл", "Standard terms")}</span></article>
                 </div>
                 <p className="my-package-boundary">{t("Энэ хэсэг нь сонгосон багцын мэдээллийг зөвхөн харуулна. Багцын шинэ сонголтыг Үнэ ба багц хэсгээс хийнэ.", "This area only displays the selected plan. Make a new plan selection from Pricing.")}</p>
@@ -762,7 +769,7 @@ export default function AccountPage() {
           ) : null}
         </>
       ) : null}
-      <HomeAiDrawer open={homeAiOpen} onOpen={openHomeAi} onClose={closeHomeAi} />
+      {data ? <HomeAiDrawer open={homeAiOpen} onOpen={openHomeAi} onClose={closeHomeAi} /> : null}
     </AccountShell>
   );
 }

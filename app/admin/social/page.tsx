@@ -1,4 +1,5 @@
 "use client";
+import { apiMessage } from "../../lib/api-message";
 
 import { ChangeEvent, DragEvent, FormEvent, useEffect, useState } from "react";
 import { useSiteLanguage } from "../../lib/use-site-language";
@@ -56,7 +57,7 @@ function createManualEntry(type: "event" | "research"): Entry {
 }
 
 export default function SocialContentPage() {
-  const { t } = useSiteLanguage();
+  const { t , lang} = useSiteLanguage();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
@@ -108,7 +109,7 @@ export default function SocialContentPage() {
     form.append("file", file);
     const response = await fetch("/api/admin/media", { method: "POST", body: form });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || t("Зургийг байршуулж чадсангүй.", "Could not upload the image."));
+    if (!response.ok) throw new Error(apiMessage(payload.error, lang) || t("Зургийг байршуулж чадсангүй.", "Could not upload the image."));
     return String(payload.url || "");
   }
 
@@ -192,7 +193,7 @@ export default function SocialContentPage() {
       body: JSON.stringify({ url }),
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) setError(payload.error || t("Холбоосыг оруулж чадсангүй.", "Could not import the link."));
+    if (!response.ok) setError(apiMessage(payload.error, lang) || t("Холбоосыг оруулж чадсангүй.", "Could not import the link."));
     else {
       setEntries((rows) => [payload.entry, ...rows]);
       setUrl("");
@@ -211,7 +212,7 @@ export default function SocialContentPage() {
       body: JSON.stringify({ entries, revision }),
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) setError(payload.error || t("Хадгалж чадсангүй.", "Could not save changes."));
+    if (!response.ok) setError(apiMessage(payload.error, lang) || t("Хадгалж чадсангүй.", "Could not save changes."));
     else {
       setEntries(payload.entries); setRevision(payload.revision || null); setSavedSnapshot(JSON.stringify(payload.entries));
       setMessage(t("Мэдээ ба контентын өөрчлөлтийг хадгаллаа.", "News and content changes were saved."));

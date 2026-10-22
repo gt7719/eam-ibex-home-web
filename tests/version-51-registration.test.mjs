@@ -48,7 +48,8 @@ test("email and password tokens are one-time, hashed and time limited", () => {
   assert.match(auth, /RESET_TOKEN_MAX_AGE_MS = 30 \* 60 \* 1000/);
   assert.match(verify, /token_hash=\?/);
   assert.match(verify, /status='used'/);
-  assert.match(reset, /status='password_changed'/);
+  assert.match(reset, /resetPasswordWithToken/);
+  assert.match(read("app/lib/account-token.ts"), /status='password_changed'/);
   assert.match(reset, /await digest\(body\.token\)/);
 });
 

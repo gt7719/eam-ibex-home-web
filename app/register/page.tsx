@@ -1,4 +1,5 @@
 "use client";
+import { apiMessage } from "../lib/api-message";
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -38,6 +39,8 @@ export default function RegisterPage() {
     }).catch(() => {});
   }, []);
 
+  const [captchaAttempt, setCaptchaAttempt] = useState(0);
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     setWorking(true);
@@ -48,8 +51,8 @@ export default function RegisterPage() {
       body: JSON.stringify({ fullName, email, phoneCountryIso: countryIso, phoneCallingCode: callingCode, phoneNationalNumber: phone, password, passwordConfirm, termsAccepted: terms, privacyAccepted: privacy, marketingEmailOptIn: marketingEmail, marketingSmsOptIn: marketingSms, website, formStartedAt, locale: lang, turnstileToken }),
     }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
-    setResult({ ok: Boolean(response?.ok), message: payload.message || payload.error || t("Сервертэй холбогдож чадсангүй.", "Could not connect to the server."), emailSent: payload.emailSent });
-    setWorking(false);
+    setResult({ ok: Boolean(response?.ok), message: apiMessage(payload.message, lang) || apiMessage(payload.error, lang) || t("Сервертэй холбогдож чадсангүй.", "Could not connect to the server."), emailSent: payload.emailSent });
+    setTurnstileToken(""); setSecurityReady(false); setCaptchaAttempt(value => value + 1); setWorking(false);
   }
 
   if (result?.ok) {
@@ -59,7 +62,7 @@ export default function RegisterPage() {
     </AccountShell>;
   }
 
-  return <AccountShell variant="registration" kicker="WEBSITE ACCOUNT" titleMn="Шинэ хэрэглэгч бүртгүүлэх" titleEn="Create your account" introMn="И-мэйлээ баталгаажуулсны дараа веб бүртгэл идэвхжинэ. Утасны дугаар SMS баталгаажуулалтад бэлэн хадгалагдана." introEn="Your website account becomes active after email verification. Your mobile number is stored ready for future SMS verification.">
+  return <AccountShell variant="registration" kicker="WEBSITE ACCOUNT" titleMn="Шинэ хэрэглэгч бүртгүүлэх" titleEn="Create your account" introMn="Мэдээллээ оруулж бүртгүүлнэ үү. Шаардлагатай и-мэйл болон утасны баталгаажуулалтын зааврыг дараагийн алхамд харуулна." introEn="Create your account below. The next step will explain any required email or phone verification.">
     <form className="account-form account-register-form" onSubmit={submit}>
       <label>{t("Овог, нэр", "Full name")}<input value={fullName} onChange={(event) => setFullName(event.target.value)} autoComplete="name" maxLength={160} required /></label>
       <label>{t("И-мэйл", "Email")}<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" maxLength={254} required /></label>
@@ -75,7 +78,7 @@ export default function RegisterPage() {
       <label className="account-check"><input type="checkbox" checked={privacy} onChange={(event) => setPrivacy(event.target.checked)} required /><span><Link href="/privacy" target="_blank" rel="noopener noreferrer">{t("Нууцлалын бодлого", "Privacy policy")}</Link> {t("зөвшөөрч байна.", "accepted.")}</span></label>
       <div className="account-optional"><strong>{t("Сонголттой зөвшөөрөл", "Optional consent")}</strong><label className="account-check"><input type="checkbox" checked={marketingEmail} onChange={(event) => setMarketingEmail(event.target.checked)} /><span>{t("Имэйлээр бүтээгдэхүүний мэдээлэл авах", "Receive product updates by email")}</span></label><label className="account-check"><input type="checkbox" checked={marketingSms} onChange={(event) => setMarketingSms(event.target.checked)} /><span>{t("Цаашид SMS мэдээлэл авах", "Receive future SMS updates")}</span></label></div>
       <label className="account-honeypot" aria-hidden="true">Website<input tabIndex={-1} autoComplete="off" value={website} onChange={(event) => setWebsite(event.target.value)} /></label>
-      <TurnstileField onToken={setTurnstileToken} onReadyChange={setSecurityReady} />
+      <TurnstileField key={captchaAttempt} onToken={setTurnstileToken} onReadyChange={setSecurityReady} />
       {result && !result.ok ? <AccountAlert type="error">{result.message}</AccountAlert> : null}
       <button type="submit" className="account-submit" disabled={working || !securityReady}>{working ? t("Бүртгэж байна…", "Creating account…") : t("Бүртгүүлэх", "Create account")}</button>
     </form>

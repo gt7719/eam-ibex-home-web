@@ -1,3 +1,4 @@
+import { purgeExpiredAccounts } from "./data-retention";
 import { env } from "@/app/runtime/env";
 import { cookies } from "next/headers";
 import { hashPassword, isValidEmail, verifyPassword } from "./site-admin";
@@ -322,43 +323,5 @@ export async function clearActionFailures(key: string) {
 }
 
 export async function purgeExpiredSiteUsers(now = new Date()) {
-  const cutoff = new Date(
-    now.getTime() - 30 * 24 * 60 * 60 * 1000,
-  ).toISOString();
-  const rows = await env.DB.prepare(
-    "SELECT id FROM site_users WHERE account_status='deletion_requested' AND deletion_requested_at IS NOT NULL AND deletion_requested_at <= ? LIMIT 50",
-  )
-    .bind(cutoff)
-    .all<{ id: string }>();
-  const ids = (rows.results || []).map((row) => row.id).filter(Boolean);
-  for (const id of ids) {
-    await env.DB.batch([
-      env.DB.prepare("DELETE FROM site_user_sessions WHERE user_id=?").bind(id),
-      env.DB.prepare("DELETE FROM site_user_tokens WHERE user_id=?").bind(id),
-      env.DB.prepare("DELETE FROM site_user_consents WHERE user_id=?").bind(id),
-      env.DB.prepare("DELETE FROM customer_ai_messages WHERE user_id=?").bind(id),
-      env.DB.prepare("DELETE FROM auth_delivery_events WHERE user_id=?").bind(
-        id,
-      ),
-      env.DB.prepare(
-        "DELETE FROM site_user_sms_verifications WHERE user_id=?",
-      ).bind(id),
-      env.DB.prepare(
-        "DELETE FROM site_user_access_requests WHERE user_id=?",
-      ).bind(id),
-      env.DB.prepare(
-        "DELETE FROM site_user_subscription_events WHERE user_id=?",
-      ).bind(id),
-      env.DB.prepare(
-        "DELETE FROM site_user_provisioning_outbox WHERE subscription_id IN (SELECT id FROM site_user_subscriptions WHERE user_id=?)",
-      ).bind(id),
-      env.DB.prepare(
-        "DELETE FROM site_user_subscriptions WHERE user_id=?",
-      ).bind(id),
-      env.DB.prepare(
-        "DELETE FROM site_users WHERE id=? AND account_status='deletion_requested'",
-      ).bind(id),
-    ]);
-  }
-  return ids.length;
+  return purgeExpiredAccounts(env, now);
 }

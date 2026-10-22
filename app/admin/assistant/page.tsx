@@ -1,4 +1,5 @@
 "use client";
+import { apiMessage } from "../../lib/api-message";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useSiteLanguage } from "../../lib/use-site-language";
@@ -36,7 +37,7 @@ export default function AssistantKnowledgePage() {
     if (!response?.ok) {
       if (response?.status === 401) window.location.replace("/admin/login");
       else if (response?.status === 403) window.location.replace("/admin");
-      setError(payload.error || "Мэдлэгийн санг уншиж чадсангүй."); setLoading(false); return;
+      setError(apiMessage(payload.error) || "Мэдлэгийн санг уншиж чадсангүй."); setLoading(false); return;
     }
     const next = (payload.entries || []) as KnowledgeEntry[];
     setEntries(next); setRevision(payload.updatedAt || null); setSavedSnapshot(JSON.stringify(next)); setSelectedId((current) => current || next[0]?.id || ""); setLoading(false);
@@ -96,7 +97,7 @@ export default function AssistantKnowledgePage() {
     event.preventDefault(); setSaving(true); setError(""); setMessage("");
     const response = await fetch("/api/admin/assistant-knowledge", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entries, revision }) }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
-    if (!response?.ok) setError(payload.error || t("Өөрчлөлтийг хадгалж чадсангүй.", "Could not save changes."));
+    if (!response?.ok) setError(apiMessage(payload.error) || t("Өөрчлөлтийг хадгалж чадсангүй.", "Could not save changes."));
     else { const next = payload.entries || entries; setEntries(next); setRevision(payload.revision || payload.updatedAt || null); setSavedSnapshot(JSON.stringify(next)); setMessage(t("Мэдлэгийн сангийн шинэ хувилбарыг хадгаллаа.", "A new knowledge-base version was saved.")); }
     setSaving(false);
   }
@@ -104,7 +105,7 @@ export default function AssistantKnowledgePage() {
     setSaving(true); setError(""); setMessage("");
     const response = await fetch("/api/admin/assistant-knowledge", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ revision }) }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
-    if (!response?.ok) setError(payload.error || t("Анхны санг сэргээж чадсангүй.", "Could not restore the approved default library."));
+    if (!response?.ok) setError(apiMessage(payload.error) || t("Анхны санг сэргээж чадсангүй.", "Could not restore the approved default library."));
     else { const next = payload.entries || []; setEntries(next); setRevision(payload.revision || payload.updatedAt || null); setSavedSnapshot(JSON.stringify(next)); setSelectedId(next[0]?.id || ""); setMessage(t("Баталгаажсан анхны мэдлэгийн санг сэргээв.", "The approved default knowledge base was restored.")); }
     setSaving(false);
   }

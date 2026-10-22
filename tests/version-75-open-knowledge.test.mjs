@@ -27,8 +27,9 @@ test("Home AI uses general model knowledge and treats iBeX sources as optional r
   assert.match(prompt, /not the only permitted knowledge source/);
   assert.match(route, /OPTIONAL IBEX REFERENCES/);
   assert.match(route, /used_source_ids/);
-  assert.match(publicWidget, /OpenAI ерөнхий мэдлэг/);
-  assert.match(accountDrawer, /OpenAI-ийн ерөнхий мэдлэг/);
+  assert.match(publicWidget, /OpenAI-ийн ерөнхий мэдлэг/);
+  assert.match(accountDrawer, /Танд хэрэгтэй мэдээллээ олоход тусална/);
+  assert.doesNotMatch(accountDrawer, /Uses OpenAI general knowledge with optional iBeX references/);
 });
 
 test("production and admin tests use the same selected prompt mode without restoring the source gate", async () => {

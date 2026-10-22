@@ -1,4 +1,5 @@
 "use client";
+import { apiMessage } from "../../lib/api-message";
 /* eslint-disable @next/next/no-img-element -- administrator previews use protected same-origin profile/media API routes */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -148,7 +149,7 @@ function statusText(status: string) {
 }
 
 export default function AdminSiteUsersPage() {
-  const { t } = useSiteLanguage();
+  const { t , lang} = useSiteLanguage();
   const [area, setArea] = useState<"users" | "verification" | "delivery">("users");
   const [users, setUsers] = useState<SiteUser[]>([]);
   const [deliveries, setDeliveries] = useState<DeliveryEvent[]>([]);
@@ -185,7 +186,7 @@ export default function AdminSiteUsersPage() {
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok)
       setError(
-        payload.error ||
+        apiMessage(payload.error, lang) ||
           t("Хэрэглэгчдийг уншиж чадсангүй.", "Could not load users."),
       );
     else {
@@ -201,7 +202,7 @@ export default function AdminSiteUsersPage() {
       setSavedPolicy(nextPolicy);
     }
     setLoading(false);
-  }, [t]);
+  }, [t, lang]);
 
   useEffect(() => {
     fetch("/api/admin/session", { cache: "no-store" })
@@ -258,7 +259,7 @@ export default function AdminSiteUsersPage() {
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok)
       setError(
-        payload.error ||
+        apiMessage(payload.error, lang) ||
           t(
             "Дэлгэрэнгүй мэдээллийг уншиж чадсангүй.",
             "Could not load user details.",
@@ -287,7 +288,7 @@ export default function AdminSiteUsersPage() {
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok)
       setError(
-        payload.error ||
+        apiMessage(payload.error, lang) ||
           t("Бодлогыг хадгалж чадсангүй.", "Could not save the policy."),
       );
     else {
@@ -315,7 +316,7 @@ export default function AdminSiteUsersPage() {
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok)
       setError(
-        payload.error ||
+        apiMessage(payload.error, lang) ||
           t("Төлөв өөрчилж чадсангүй.", "Could not change status."),
       );
     else {
@@ -343,7 +344,7 @@ export default function AdminSiteUsersPage() {
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok)
       setError(
-        payload.error ||
+        apiMessage(payload.error, lang) ||
           t(
             "Тенантын үйлдлийг хийж чадсангүй.",
             "Could not process the tenant action.",
@@ -351,7 +352,7 @@ export default function AdminSiteUsersPage() {
       );
     else {
       setMessage(
-        payload.message ||
+        apiMessage(payload.message, lang) ||
           t("Тенантын дараалал шинэчлэгдлээ.", "Tenant queue updated."),
       );
       await load();

@@ -81,3 +81,14 @@ export function marketingAiRecordSnapshot(record: Omit<MarketingAiRecord, "data"
 }
 
 export const MARKETING_AI_OUTBOUND_LOCKED = true as const;
+
+// Connection checks and dry runs do not make a new approval decision.
+export function marketingDecisionFields(current: { approved_by: string | null; approved_at: string | null; published_at: string | null; archived_at: string | null }, status: string, action: string, actorId: string, now: string) {
+  const approved = status === "approved" || status === "published";
+  return {
+    approvedBy: approved ? (action === "approve" ? actorId : current.approved_by) : null,
+    approvedAt: approved ? (action === "approve" ? now : current.approved_at) : null,
+    publishedAt: status === "published" ? (action === "publish" ? now : current.published_at) : null,
+    archivedAt: status === "archived" ? (action === "archive" ? now : current.archived_at) : null,
+  };
+}
