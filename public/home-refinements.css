@@ -64,3 +64,8 @@ body.theme-day .mega-link { background: #fff3d4; border-color: #a07826; }
 
 body.theme-day .eco-type { color: #805600; }
 body.theme-day .eco-link { color: #166534; }
+
+/* Recommendation stays outside the heading flow on every pricing card. */
+.mega-grid.pricing .mega-plan { position:relative; display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; padding-top:44px; }
+.mega-grid.pricing .mega-plan > .plan-badge { position:absolute; top:12px; right:12px; margin:0; max-width:calc(100% - 24px); padding:4px 8px; font-size:10px; line-height:1.3; font-weight:800; letter-spacing:.03em; white-space:nowrap; color:#f0ddff; background:#542378; border:1px solid #a970d5; pointer-events:none; }
+body.theme-day .mega-grid.pricing .mega-plan > .plan-badge { color:#581080; background:#f0ddff; border-color:#9b60bd; }

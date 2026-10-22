@@ -191,3 +191,7 @@
 [data-ibex-theme="day"] .navigation-admin-page .navigation-media-fields>label,
 [data-ibex-theme="day"] .navigation-admin-page .navigation-poster-fields>label{color:#564b5e}
 @media(max-width:680px){.admin-auth-page{align-content:start;padding:92px 14px 28px}.admin-auth-brand{position:absolute}.admin-auth-controls{position:absolute;top:17px;right:14px}.admin-auth-controls button{width:42px;padding:0;font-size:0}.admin-auth-controls button span{font-size:18px}.admin-session-bar{border-radius:14px;margin-bottom:7px}}
+
+.admin-invite-card #invite-role { width:100%; min-width:0; min-height:44px; padding:10px 12px; border:1px solid #766383; border-radius:11px; color:#f1ebf5; background:#17121c; font:inherit; font-size:16px; }
+.admin-invite-card #invite-role:focus-visible { outline:2px solid #bd8bff; outline-offset:2px; }
+[data-ibex-theme="day"] .admin-invite-card #invite-role { color:#30283a; background:#fff; border-color:#a18cae; }

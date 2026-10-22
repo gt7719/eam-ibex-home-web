@@ -71,13 +71,17 @@ export async function POST(request: Request) {
   if (!hasTrustedOrigin(request)) return NextResponse.json({ error: "Origin mismatch" }, { status: 403 });
   const owner = await ownerSession();
   if (!owner) return NextResponse.json({ error: "Админ нэмэх эрхгүй байна." }, { status: 403 });
-  const parsedBody = await readJsonObject<{ email?: string; name?: string; password?: string; permissions?: unknown }>(request, 16_000);
+  const parsedBody = await readJsonObject<{ email?: string; name?: string; password?: string; permissions?: unknown; role?: unknown }>(request, 16_000);
   if (!parsedBody.ok) return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
   const body = parsedBody.value;
   const email = body.email?.trim().toLowerCase() || "";
   const name = body.name?.trim() || "";
   const password = body.password || "";
-  const permissions = requestedPermissions(body.permissions);
+  if (body.role !== undefined && body.role !== "editor" && body.role !== "owner") {
+    return NextResponse.json({ error: "Админы төрөл буруу байна. / Invalid administrator role." }, { status: 400 });
+  }
+  const role = body.role === "owner" ? "owner" : "editor";
+  const permissions = role === "owner" ? [...ADMIN_PERMISSIONS] : requestedPermissions(body.permissions);
   if (!isValidEmail(email) || name.length < 2 || password.length < 10) {
     return NextResponse.json(
       { error: "Нэр, зөв и-мэйл болон 10-аас дээш тэмдэгттэй түр нууц үг оруулна уу." },
@@ -96,13 +100,14 @@ export async function POST(request: Request) {
     await env.DB.prepare(
       `INSERT INTO admin_users
        (id, email, name, password_hash, password_salt, role, permissions_json, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'editor', ?, 'active', ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
     )
-      .bind(crypto.randomUUID(), email, name, credential.hash, credential.salt, JSON.stringify(permissions), now, now)
+      .bind(crypto.randomUUID(), email, name, credential.hash, credential.salt, role, JSON.stringify(permissions), now, now)
       .run();
   } catch {
     return NextResponse.json({ error: "Энэ и-мэйлтэй админ бүртгэлтэй байна." }, { status: 409 });
   }
+  console.info(JSON.stringify({ event: "admin.created", actorId: owner.id, role, at: now }));
   return NextResponse.json({ created: true });
 }
 

@@ -224,3 +224,23 @@ test("header navigation accepts a complete custom menu and caps each gallery typ
   assert.equal(item.media.filter((row) => row.type === "video").length, 5);
   assert.equal(item.media.filter((row) => row.type === "pdf").length, 5);
 });
+
+test("only an owner can create another owner with full permissions", { concurrency: false }, async () => {
+  const body = { name: "New Owner", email: "new-owner@example.com", password: "A-long-password-123", role: "owner", permissions: [] };
+  const denied = createDatabase({ role: "editor", permissions: ["accounts.manage"] });
+  assert.equal((await dispatch(denied, adminRequest("/api/admin/users", "POST", body))).status, 403);
+  assert.equal(denied.runs.filter(row => row.sql.includes("INSERT INTO admin_users")).length, 0);
+  const allowed = createDatabase({ role: "owner" });
+  assert.equal((await dispatch(allowed, adminRequest("/api/admin/users", "POST", body))).status, 200);
+  const insert = allowed.runs.find(row => row.sql.includes("INSERT INTO admin_users"));
+  assert.equal(insert.values[5], "owner");
+  assert.ok(JSON.parse(insert.values[6]).includes("accounts.manage"));
+  assert.notEqual(insert.values[3], body.password);
+});
+
+test("rejects unknown admin roles and protects existing owners", { concurrency: false }, async () => {
+  const database = createDatabase({ role: "owner", targetRole: "owner" });
+  assert.equal((await dispatch(database, adminRequest("/api/admin/users", "POST", { name: "Bad role", email: "bad@example.com", password: "A-long-password-123", role: "root", permissions: ["pricing.manage"] }))).status, 400);
+  assert.equal((await dispatch(database, adminRequest("/api/admin/users", "PATCH", { id: "existing-owner", status: "suspended" }))).status, 403);
+  assert.equal(database.runs.filter(row => /INSERT INTO admin_users|SET status/.test(row.sql)).length, 0);
+});
