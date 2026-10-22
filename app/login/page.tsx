@@ -1,4 +1,5 @@
 "use client";
+import { apiMessage } from "../lib/api-message";
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
@@ -6,7 +7,7 @@ import { AccountAlert, AccountShell } from "../components/account-shell";
 import { useSiteLanguage } from "../lib/use-site-language";
 
 export default function LoginPage() {
-  const { t } = useSiteLanguage();
+  const { t , lang} = useSiteLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [working, setWorking] = useState(false);
@@ -28,7 +29,7 @@ export default function LoginPage() {
     const response = await fetch("/api/account/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (response?.ok) { window.location.replace(returnTo()); return; }
-    setError(payload.error || t("Сервертэй холбогдож чадсангүй.", "Could not connect to the server."));
+    setError(apiMessage(payload.error, lang) || t("Сервертэй холбогдож чадсангүй.", "Could not connect to the server."));
     setUnverified(payload.code === "email_unverified");
     setWorking(false);
   }

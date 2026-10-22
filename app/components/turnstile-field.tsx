@@ -20,6 +20,7 @@ export function TurnstileField({
   onToken: (token: string) => void;
   onReadyChange: (ready: boolean) => void;
 }) {
+  const [unavailable, setUnavailable] = useState(false);
   const [siteKey, setSiteKey] = useState<string | null>(null);
 
   useEffect(() => {
@@ -32,11 +33,11 @@ export function TurnstileField({
           setSiteKey(result.siteKey);
           onReadyChange(false);
         } else {
-          onReadyChange(true);
+          setUnavailable(true); onReadyChange(false);
         }
       })
       .catch(() => {
-        if (active) onReadyChange(true);
+        if (active) { setUnavailable(true); onReadyChange(false); }
       });
     return () => { active = false; };
   }, [onReadyChange]);
@@ -78,5 +79,5 @@ export function TurnstileField({
     };
   }, [onReadyChange, onToken, siteKey]);
 
-  return siteKey ? <div className="account-turnstile" id="ibex-turnstile" aria-label="Security check" /> : null;
+  return unavailable ? <p className="account-alert error" role="status">{document.documentElement.lang === "en" ? "The security check is unavailable. Please reload and try again." : "Хамгаалалтын шалгалт түр ажиллахгүй байна. Хуудсыг дахин ачаална уу."}</p> : siteKey ? <div className="account-turnstile" id="ibex-turnstile" aria-label="Security check" /> : null;
 }

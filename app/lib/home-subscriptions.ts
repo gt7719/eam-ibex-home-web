@@ -1,3 +1,4 @@
+import { monthEnd } from "./calendar";
 import { env } from "@/app/runtime/env";
 import { features, normalizeConfig } from "../../public/package-model.mjs";
 import { readPackageState, type PackageConfig } from "./packages";
@@ -31,11 +32,6 @@ function safeJson(value: string | null) {
   try { return JSON.parse(value) as Record<string, unknown>; } catch { return null; }
 }
 
-function monthEnd(start: Date, months: number) {
-  const end = new Date(start);
-  end.setUTCMonth(end.getUTCMonth() + months);
-  return end.toISOString();
-}
 
 function durationBonusMonths(offer: PlanOffer | null) {
   if (!offer?.bonusEnabled) return 0;
@@ -108,6 +104,11 @@ export async function refreshExpiredSubscriptions(userId?: string) {
 export async function latestSubscriptionForUser(userId: string) {
   await refreshExpiredSubscriptions(userId);
   return env.DB.prepare("SELECT * FROM site_user_subscriptions WHERE user_id=? ORDER BY created_at DESC LIMIT 1").bind(userId).first<SubscriptionRow>();
+}
+
+export async function activeSubscriptionForUser(userId: string) {
+  return env.DB.prepare("SELECT * FROM site_user_subscriptions WHERE user_id=? AND subscription_status='active' AND (ends_at IS NULL OR ends_at>?) ORDER BY created_at DESC LIMIT 1")
+    .bind(userId, new Date().toISOString()).first<SubscriptionRow>();
 }
 
 export async function subscriptionCatalog() {

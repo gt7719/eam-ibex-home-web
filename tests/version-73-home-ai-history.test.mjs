@@ -51,7 +51,7 @@ test("the privacy notice documents persistent history and explicit deletion", as
   const auth = await read("app/lib/site-user-auth.ts");
 
   assert.match(auth, /PRIVACY_VERSION = "2026-09-v2"/);
-  assert.match(privacy, /D1 санд тухайн хэрэглэгчийн бүртгэлтэй тусгаарлан/);
+  assert.match(privacy, /хамгаалалттай өгөгдлийн санд тухайн хэрэглэгчийн бүртгэлтэй тусгаарлан/);
   assert.match(privacy, /«Түүх цэвэрлэх» үйлдлээр яриагаа хүссэн үедээ устгана/);
   assert.match(privacy, /store: false/);
 });

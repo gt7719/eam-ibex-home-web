@@ -9,7 +9,7 @@ import { homeAiPromptRequest, homeAiSafetyBoundary } from "../../../lib/home-ai-
 import {
   HomeAiOpenAiError,
   homeAiOpenAiHttpError,
-  homeAiOpenAiMessage,
+  homeAiCustomerMessage,
   normalizeHomeAiOpenAiError,
   parseHomeAiStructuredOutput,
   type HomeAiOpenAiPayload,
@@ -204,6 +204,13 @@ export async function POST(request: Request) {
     return reply({ error: parsed.message, code: parsed.code, requestId }, status);
   }
 
+  let siteUser: Awaited<ReturnType<typeof getSiteUserSession>> = null;
+  try {
+    siteUser = await getSiteUserSession();
+  } catch (error) {
+    console.error("customer_ai_identity_unavailable", error instanceof Error ? error.message : "unknown");
+  }
+  if (!siteUser) return reply({ error: parsed.payload.lang === "en" ? "Please sign in to use Home AI." : "Home AI ашиглахын тулд нэвтэрнэ үү.", code: "AUTH_REQUIRED", requestId }, 401);
   const runtime = env as unknown as CustomerAiRuntimeEnv & { DB: CustomerAiDatabase };
   const { settings: homeAiSettings } = await readHomeAiSettings(runtime.DB);
   const config = customerAiConfig(runtime, homeAiSettings);
@@ -215,18 +222,10 @@ export async function POST(request: Request) {
   ) {
     console.error("customer_ai_required_controls_missing");
     return reply({
-      answer: parsed.payload.lang === "en"
-        ? "Home AI is not available in production mode right now. Please try again shortly."
-        : "Home AI одоогоор production горимд ажиллахад бэлэн биш байна. Түр хүлээгээд дахин оролдоно уу.",
+      answer: homeAiCustomerMessage(parsed.payload.lang),
       sources: [], grounded: false, mode: "safe_fallback", requestId,
       controls: { dataBoundary: CUSTOMER_AI_DATA_BOUNDARY, externalActions: "blocked", systemAiAccess: false },
     }, 503);
-  }
-  let siteUser: Awaited<ReturnType<typeof getSiteUserSession>> = null;
-  try {
-    siteUser = await getSiteUserSession();
-  } catch (error) {
-    console.error("customer_ai_identity_unavailable", error instanceof Error ? error.message : "unknown");
   }
   if (siteUser && !siteUser.privacyCurrent) {
     return reply({
@@ -239,7 +238,7 @@ export async function POST(request: Request) {
     }, 428);
   }
   const subjectHash = await hashCustomerAiSubject(
-    siteUser?.id ? `site-user:${siteUser.id}` : `anonymous-session:${parsed.payload.sessionId}`,
+    `site-user:${siteUser.id}`,
     config.identitySalt,
   );
   const model = selectCustomerAiModel(config, parsed.payload.message, parsed.payload.history);
@@ -269,9 +268,7 @@ export async function POST(request: Request) {
     }
     console.error("customer_ai_cost_guard_unavailable", error instanceof Error ? error.message : "unknown");
     return reply({
-      answer: parsed.payload.lang === "en"
-        ? "The AI cost guard is temporarily unavailable, so no paid model request was made. Please try again shortly."
-        : "AI зардлын хамгаалалт түр ажиллахгүй байгаа тул төлбөртэй model руу хүсэлт илгээгээгүй. Түр хүлээгээд дахин оролдоно уу.",
+      answer: homeAiCustomerMessage(parsed.payload.lang),
       sources: [], grounded: false, mode: "safe_fallback", requestId,
       controls: { dataBoundary: CUSTOMER_AI_DATA_BOUNDARY, externalActions: "blocked", systemAiAccess: false },
     }, 503);
@@ -338,7 +335,7 @@ export async function POST(request: Request) {
         console.error("customer_ai_outcome_audit_unavailable", auditError instanceof Error ? auditError.message : "unknown");
       }
       return reply({
-        error: homeAiOpenAiMessage(openAiError.code, parsed.payload.lang),
+        error: homeAiCustomerMessage(parsed.payload.lang, openAiError.code),
         code: openAiError.code,
         requestId,
       }, openAiError.httpStatus);

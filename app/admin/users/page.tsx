@@ -1,4 +1,5 @@
 "use client";
+import { apiMessage } from "../../lib/api-message";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useSiteLanguage } from "../../lib/use-site-language";
@@ -87,7 +88,7 @@ export default function AdminUsersPage() {
     const response = await fetch("/api/admin/users", { cache: "no-store" }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) {
-      setError(payload.error || "Админ хэрэглэгчдийн мэдээллийг уншиж чадсангүй. / Could not load administrators.");
+      setError(apiMessage(payload.error) || "Админ хэрэглэгчдийн мэдээллийг уншиж чадсангүй. / Could not load administrators.");
       setLoading(false);
       return;
     }
@@ -138,7 +139,7 @@ export default function AdminUsersPage() {
     }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) {
-      setError(payload.error || t("Урилга илгээж чадсангүй.", "Could not create the administrator."));
+      setError(apiMessage(payload.error) || t("Урилга илгээж чадсангүй.", "Could not create the administrator."));
       setWorking(false);
       return;
     }
@@ -194,7 +195,7 @@ export default function AdminUsersPage() {
     }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) {
-      setError(payload.error || t("Админы эрхийн хүрээг хадгалж чадсангүй.", "Could not save administrator permissions."));
+      setError(apiMessage(payload.error) || t("Админы эрхийн хүрээг хадгалж чадсангүй.", "Could not save administrator permissions."));
       setWorking(false);
       return;
     }
@@ -215,7 +216,7 @@ export default function AdminUsersPage() {
     }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) {
-      setError(payload.error || t("Хэрэглэгчийн төлөвийг өөрчилж чадсангүй.", "Could not change the administrator status."));
+      setError(apiMessage(payload.error) || t("Хэрэглэгчийн төлөвийг өөрчилж чадсангүй.", "Could not change the administrator status."));
       setWorking(false);
       return;
     }

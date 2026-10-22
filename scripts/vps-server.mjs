@@ -1,9 +1,11 @@
 #!/usr/bin/env node
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { startProdServer } from "vinext/server/prod-server";
 import { validateVpsEnvironment } from "./vps-env.mjs";
 import { SECURITY_HEADERS } from "./web-security.mjs";
 
+process.env.NODE_ENV ??= "production";
 validateVpsEnvironment();
 
 const port = Number.parseInt(process.env.PORT || "3000", 10);
@@ -13,6 +15,9 @@ const shutdownTimeout = Number.parseInt(process.env.SHUTDOWN_TIMEOUT_MS || "1000
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error("PORT must be an integer between 1 and 65535.");
 }
+
+const retentionToken = randomUUID();
+process.env.IBEX_INTERNAL_RETENTION_TOKEN = retentionToken;
 
 const { server } = await startProdServer({
   port,
@@ -28,10 +33,30 @@ server.on("request", (request, response) => {
   for (const listener of listeners) listener.call(server, request, response);
 });
 
+// Maintenance runs independently of browser activity. The token is ephemeral,
+// never logged, and changes at every process start.
+let retentionRunning = false;
+async function maintainRetention() {
+  if (retentionRunning || process.env.NODE_ENV !== "production") return;
+  retentionRunning = true;
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/api/internal/retention`, {
+      method: "POST", headers: { Authorization: `Bearer ${retentionToken}` }, signal: AbortSignal.timeout(60_000),
+    });
+    if (!response.ok) console.error("[ibex] Data retention returned", response.status);
+    await response.body?.cancel();
+  } catch { console.error("[ibex] Data retention could not finish; it will retry."); }
+  finally { retentionRunning = false; }
+}
+const retentionTimer = setInterval(() => void maintainRetention(), 3_600_000);
+retentionTimer.unref();
+void maintainRetention();
+
 let shuttingDown = false;
 async function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
+  clearInterval(retentionTimer);
   console.log(`[ibex] ${signal} received; draining HTTP connections.`);
 
   const forcedExit = setTimeout(() => {

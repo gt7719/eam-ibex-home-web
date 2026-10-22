@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { hasTrustedOrigin } from "../../../lib/admin-security";
 import {
   createSubscriptionRequest,
+  activeSubscriptionForUser,
   latestSubscriptionForUser,
   publicSubscription,
   subscriptionCatalog,
@@ -34,6 +35,7 @@ export async function GET() {
         .bind(user.id)
         .first<{ id: string }>(),
     ]);
+    const activeSubscription = await activeSubscriptionForUser(user.id);
     const profile = profileCompleteness({
       fullName: user.fullName,
       email: user.email,
@@ -61,6 +63,7 @@ export async function GET() {
           }),
         },
         subscription: publicSubscription(subscription),
+        activeSubscription: publicSubscription(activeSubscription),
         catalog,
       },
       { headers },

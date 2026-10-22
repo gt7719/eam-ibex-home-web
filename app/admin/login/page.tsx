@@ -1,4 +1,5 @@
 "use client";
+import { apiMessage } from "../../lib/api-message";
 
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
@@ -6,7 +7,7 @@ import Image from "next/image";
 import { useSiteLanguage } from "../../lib/use-site-language";
 
 export default function AdminLoginPage() {
-  const { t } = useSiteLanguage();
+  const { t , lang} = useSiteLanguage();
   const [theme, setTheme] = useState<"day" | "night">("night");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -74,7 +75,7 @@ export default function AdminLoginPage() {
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) {
       setError(
-        payload.error ||
+        apiMessage(payload.error, lang) ||
         (response
           ? t(`Сервер хүсэлтийг боловсруулж чадсангүй (HTTP ${response.status}).`, `The server could not process the request (HTTP ${response.status}).`)
           : t("Сервертэй холбогдож чадсангүй. Сүлжээгээ шалгаад дахин оролдоно уу.", "Could not connect to the server. Check your network and try again.")),

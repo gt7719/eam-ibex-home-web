@@ -2,11 +2,13 @@
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import { previewAccessResponse, withSecurityHeaders } from "../app/runtime/web-security";
-import type { RuntimeDatabase } from "../app/runtime/contracts";
+import { runDataRetention } from "../app/lib/data-retention";
+import type { RuntimeObjectStorage, RuntimeDatabase } from "../app/runtime/contracts";
 
 interface Env {
   ASSETS: Fetcher;
   DB: RuntimeDatabase;
+  BUCKET: RuntimeObjectStorage;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -27,9 +29,18 @@ interface ExecutionContext {
 // dangerouslyAllowSVG: true in next.config.js and uncomment below:
 // const imageConfig: ImageConfig = { dangerouslyAllowSVG: true };
 
+let lastRetentionAttempt = 0;
 const worker = {
+  async scheduled(_event: unknown, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(runDataRetention(env).catch(error => console.error("retention_cleanup_failed", error)));
+  },
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    // Backstop for Sites hosts without a cron trigger. VPS has an independent hourly timer.
+    if (env.DB && env.BUCKET && Date.now() - lastRetentionAttempt > 3_600_000) {
+      lastRetentionAttempt = Date.now();
+      ctx.waitUntil(runDataRetention(env).catch(error => console.error("retention_cleanup_failed", error)));
+    }
 
     const denied = await previewAccessResponse(request, env);
     if (denied) return withSecurityHeaders(denied);

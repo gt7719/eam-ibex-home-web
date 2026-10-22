@@ -16,22 +16,18 @@ test("website assistant stays separate from iBeX System AI and live tenant data"
   assert.doesNotMatch(route, /Use only APPROVED EVIDENCE/);
 });
 
-test("assistant UI is bilingual, cites sources and is wired into the public site", () => {
+test("Home AI is bilingual, supports references and is confined to signed-in accounts (V84)", () => {
   const html = read("public/concept.html");
-  const widget = read("public/assistant-widget.js");
-  assert.match(html, /assistant-widget\.css/);
-  assert.match(html, /assistant-widget\.js/);
-  assert.match(widget, /iBeX Home AI/);
-  assert.match(widget, /iBeX хэрэглэгчийн туслах/);
-  assert.match(widget, /iBeX customer assistant/);
-  assert.doesNotMatch(widget, /Хэрэглэгчийн ба маркетингийн туслах|Customer & marketing assistant/);
-  assert.match(widget, /iBeX Intelligent AI-аас тусдаа/);
-  assert.match(widget, /Separate from iBeX Intelligent AI/);
-  assert.match(widget, /assistant-sources/);
-  assert.match(widget, /\/api\/assistant\/chat/);
-  assert.match(widget, /consent: true/);
-  assert.match(widget, /get\(["']admin["']\)\s*===\s*["']1["']\)\s*return/);
-  assert.doesNotMatch(widget, /PM ба PdM ямар ялгаатай вэ\?|How do PM and PdM differ\?/);
+  const drawer = read("app/components/home-ai-drawer.tsx");
+  const account = read("app/account/page.tsx");
+  assert.doesNotMatch(html, /assistant-widget\.(?:css|js)/);
+  assert.match(account, /data \? <HomeAiDrawer/);
+  assert.match(drawer, /YOUR DIGITAL ASSISTANT/);
+  assert.match(drawer, /ТАНЫ ЦАХИМ ТУСЛАХ/);
+  assert.match(drawer, /message\.sources/);
+  assert.match(drawer, /\/api\/assistant\/chat/);
+  assert.match(drawer, /consent: true/);
+  assert.match(drawer, /Нууц мэдээллээ чатад бүү оруулаарай/);
 });
 
 test("Marketing AI is an administrator-only full module instead of a public chat identity", () => {

@@ -1,8 +1,27 @@
-# vinext-starter
+# iBeX Home Web
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+iBeX product website, website accounts and subscriptions, signed-in Home AI, and administrator-only Marketing AI.
+
+## Supported deployments
+
+- Sites / Cloudflare: D1 and R2 bindings, `npm run build`.
+- Ubuntu / VPS: Node.js, PostgreSQL and S3-compatible storage, `npm run build:vps`; follow `docs/vps-migration/deployment-runbook.md`.
+- Run `npm run quality:vps` before a VPS release. A build or an unconfigured smoke test does not verify real database, email, SMS, payment or AI credentials.
+
+## Application ownership
+
+`app/api/` owns authorization, validation, budget and persistence. `app/lib/` contains domain rules. `public/concept.html` and its ordered enhancement scripts render the public site; `app/account/` is the signed-in customer experience. Keep customer text bilingual and separate from administrator diagnostics. Read `RELEASE-GOVERNANCE.md` before changing accepted behavior.
+
+Home AI requires a website session and is available from My iBeX. It cannot perform external actions or read core tenant data. Marketing AI remains administrator-only with outbound delivery and spend execution locked.
+
+## Retention maintenance
+
+VPS runs retention at startup and hourly using a process-local, ephemeral maintenance credential. It deletes expired chat history globally and cleans up up to 50 due accounts per run, including private profile objects. Storage deletion failures retain the database pointer for retry. Cloudflare exports a `scheduled` handler and an hourly request-triggered backstop; the hosting operator must attach an hourly cron trigger for cleanup during complete site inactivity. Do not claim the backstop is an unattended scheduler.
+
+## Public interface scripts
+
+Existing public enhancements form an ordered rendering pipeline. Do not reorder them or add another wrapper for a global renderer without a browser regression check. New domain rules belong in tested modules. A broad rewrite of this pipeline is a separate migration; this release makes bounded fixes.
+
 
 ## Prerequisites
 
@@ -26,7 +45,7 @@ Scripts that need writable project-scoped home, npm, XDG, and temporary paths us
 - `.openai/hosting.json` declares optional Sites D1 and R2 bindings
 - `vite.config.ts` simulates declared bindings for local development
 - `db/index.ts` reads the D1 binding from the Cloudflare Worker environment
-- `db/schema.ts` starts intentionally empty
+- `db/schema.ts` and `db/schema.postgres.ts` define the application schemas
 - `examples/d1/` contains an optional D1 example surface
 - `drizzle.config.ts` supports local migration generation when needed
 

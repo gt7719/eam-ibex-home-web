@@ -1,4 +1,5 @@
 "use client";
+import { apiMessage } from "../../lib/api-message";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useSiteLanguage } from "../../lib/use-site-language";
@@ -254,8 +255,8 @@ export default function MarketingAiPage() {
     const response = await fetch("/api/admin/marketing-ai-control", { cache: "no-store" }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (response?.ok) { setControl(payload); setControlSettings(payload.settings); }
-    else if (response?.status !== 401 && response?.status !== 403) setControlError(payload.error || t("Marketing AI тохиргоог ачаалж чадсангүй.", "Could not load Marketing AI settings."));
-  }, [t]);
+    else if (response?.status !== 401 && response?.status !== 403) setControlError(apiMessage(payload.error, lang) || t("Marketing AI тохиргоог ачаалж чадсангүй.", "Could not load Marketing AI settings."));
+  }, [t, lang]);
 
   const loadDrafts = useCallback(async () => {
     const response = await fetch("/api/admin/marketing-ai-drafts", { cache: "no-store" }).catch(() => null);
@@ -266,8 +267,8 @@ export default function MarketingAiPage() {
     const response = await fetch(`/api/admin/marketing-ai-workspace?domain=${encodeURIComponent(domain)}`, { cache: "no-store" }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (response?.ok) { setWorkspaceRecords(payload.records || []); setWorkspaceSummary(payload.summary || {}); }
-    else setControlError(payload.error || t("Маркетингийн өгөгдлийг ачаалж чадсангүй.", "Could not load marketing data."));
-  }, [t]);
+    else setControlError(apiMessage(payload.error, lang) || t("Маркетингийн өгөгдлийг ачаалж чадсангүй.", "Could not load marketing data."));
+  }, [t, lang]);
 
   useEffect(() => {
     fetch("/api/admin/session", { cache: "no-store" })
@@ -323,7 +324,7 @@ export default function MarketingAiPage() {
     setRunning(true);
     const response = await fetch("/api/admin/marketing-ai-run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ command: value, lang }) }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
-    const text = response?.ok ? String(payload.draft || "") : String(payload.error || t("Marketing AI Draft бэлтгэж чадсангүй.", "Marketing AI could not prepare the draft."));
+    const text = response?.ok ? String(payload.draft || "") : String(apiMessage(payload.error, lang) || t("Marketing AI Draft бэлтгэж чадсангүй.", "Marketing AI could not prepare the draft."));
     setMessages((current) => [...current, { id: `assistant-${now}`, role: "assistant", status: response?.ok ? "draft" : "notice", textMn: text, textEn: text }]);
     setRunning(false);
     if (response?.ok) { void loadControl(); void loadDrafts(); }
@@ -333,7 +334,7 @@ export default function MarketingAiPage() {
     event.preventDefault(); setSavingControl(true); setControlMessage(""); setControlError("");
     const response = await fetch("/api/admin/marketing-ai-control", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ settings: controlSettings, revision: control?.revision ?? null }) }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
-    if (!response?.ok) setControlError(payload.error || t("Тохиргоог хадгалж чадсангүй.", "Could not save settings."));
+    if (!response?.ok) setControlError(apiMessage(payload.error, lang) || t("Тохиргоог хадгалж чадсангүй.", "Could not save settings."));
     else { setControlMessage(t("Marketing AI тохиргоог хадгаллаа.", "Marketing AI settings saved.")); await loadControl(); }
     setSavingControl(false);
   }
@@ -343,7 +344,7 @@ export default function MarketingAiPage() {
     if (dirty) { setControlError(t("Тестлэхийн өмнө одоогийн тохиргоог хадгална уу.", "Save the current settings before testing.")); setTestingControl(false); return; }
     const response = await fetch("/api/admin/marketing-ai-control/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
-    if (!response?.ok) setControlError(payload.error || t("Тохиргооны тест амжилтгүй.", "Configuration test failed."));
+    if (!response?.ok) setControlError(apiMessage(payload.error, lang) || t("Тохиргооны тест амжилтгүй.", "Configuration test failed."));
     else { setControlMessage(t(`OpenAI, ${payload.checks?.length || 0} model, code-managed prompt болон Draft хамгаалалтыг амжилттай шалгалаа.`, `OpenAI, ${payload.checks?.length || 0} models, the code-managed prompt, and draft safeguards passed.`)); await loadControl(); }
     setTestingControl(false);
   }
@@ -352,7 +353,7 @@ export default function MarketingAiPage() {
     const note = action === "reject" ? window.prompt(t("Татгалзсан шалтгаан", "Rejection reason")) || "" : "";
     const response = await fetch("/api/admin/marketing-ai-drafts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: draft.id, revision: draft.revision, action, note }) }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
-    if (!response?.ok) setControlError(payload.error || t("Draft төлөвийг шинэчилж чадсангүй.", "Could not update the draft status."));
+    if (!response?.ok) setControlError(apiMessage(payload.error, lang) || t("Draft төлөвийг шинэчилж чадсангүй.", "Could not update the draft status."));
     else { setControlMessage(t("Draft-ийн шийдвэрийг audit-д бүртгэлээ.", "The draft decision was recorded in the audit trail.")); await Promise.all([loadDrafts(), loadControl()]); }
   }
 
@@ -363,14 +364,14 @@ export default function MarketingAiPage() {
     if (content == null) return;
     const response = await fetch("/api/admin/marketing-ai-drafts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: draft.id, revision: draft.revision, action: "edit", title, content }) }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
-    if (!response?.ok) setControlError(payload.error || t("Draft засварлаж чадсангүй.", "Could not edit the draft."));
+    if (!response?.ok) setControlError(apiMessage(payload.error, lang) || t("Draft засварлаж чадсангүй.", "Could not edit the draft."));
     else { setControlMessage(t("Draft-ийн шинэ revision хадгалагдлаа.", "A new draft revision was saved.")); await Promise.all([loadDrafts(), loadControl()]); }
   }
 
   async function showDraftHistory(draft: MarketingDraft) {
     const response = await fetch(`/api/admin/marketing-ai-drafts?history=${encodeURIComponent(draft.id)}`, { cache: "no-store" }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
-    if (!response?.ok) setControlError(payload.error || t("Draft revision history ачаалж чадсангүй.", "Could not load draft revision history."));
+    if (!response?.ok) setControlError(apiMessage(payload.error, lang) || t("Draft revision history ачаалж чадсангүй.", "Could not load draft revision history."));
     else setDraftHistory({ title: draft.title, rows: payload.history || [] });
   }
 
@@ -380,7 +381,7 @@ export default function MarketingAiPage() {
     const config = workspaceConfigs[workspaceDomain];
     const response = await fetch("/api/admin/marketing-ai-workspace", { method: workspaceEditing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(workspaceEditing ? { id: workspaceEditing.id, revision: workspaceEditing.revision, action: "update", title: workspaceTitle, data: workspaceData } : { domain: workspaceDomain, kind: workspaceKind || config.kind, title: workspaceTitle, data: workspaceData }) }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
-    if (!response?.ok) setControlError(payload.error || t("Record хадгалж чадсангүй.", "Could not save the record."));
+    if (!response?.ok) setControlError(apiMessage(payload.error, lang) || t("Record хадгалж чадсангүй.", "Could not save the record."));
     else { setWorkspaceTitle(""); setWorkspaceData(workspaceDefaults[workspaceDomain]); setWorkspaceEditing(null); setControlMessage(t("Draft record хадгалагдаж, revision үүслээ.", "The draft record was saved with a revision.")); await Promise.all([loadWorkspace(workspaceDomain), loadControl()]); }
     setWorkspaceBusy(false);
   }
@@ -394,7 +395,7 @@ export default function MarketingAiPage() {
   async function showWorkspaceHistory(record: WorkspaceRecord) {
     const response = await fetch(`/api/admin/marketing-ai-workspace?history=${encodeURIComponent(record.id)}`, { cache: "no-store" }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
-    if (!response?.ok) setControlError(payload.error || t("Revision history ачаалж чадсангүй.", "Could not load revision history."));
+    if (!response?.ok) setControlError(apiMessage(payload.error, lang) || t("Revision history ачаалж чадсангүй.", "Could not load revision history."));
     else setWorkspaceHistory({ title: record.title, rows: payload.history || [] });
   }
 
@@ -417,7 +418,7 @@ export default function MarketingAiPage() {
     setWorkspaceBusy(true); setControlError("");
     const response = await fetch("/api/admin/marketing-ai-workspace", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: record.id, revision: record.revision, action, note }) }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
-    if (!response?.ok) setControlError(payload.error || t("Record шинэчилж чадсангүй.", "Could not update the record."));
+    if (!response?.ok) setControlError(apiMessage(payload.error, lang) || t("Record шинэчилж чадсангүй.", "Could not update the record."));
     else { setControlMessage(t("Шийдвэр болон revision audit-д бүртгэгдлээ.", "The decision and revision were recorded in audit.")); if (workspaceDomain) await Promise.all([loadWorkspace(workspaceDomain), loadControl()]); }
     setWorkspaceBusy(false);
   }
@@ -458,7 +459,7 @@ export default function MarketingAiPage() {
             <div className="marketing-ai-stats">
               <article><small>{t("Батлагдсан кампанит ажил", "Approved campaigns")}</small><strong>{control?.recordCounts?.campaigns?.approved || 0}</strong><span>{t("Гадагш зарцуулалт хаалттай", "External spend locked")}</span></article>
               <article><small>{t("Хүлээгдэж буй зөвшөөрөл", "Pending approvals")}</small><strong>{control?.draftCounts?.review || 0}</strong><span>{t("Гадагш үйлдэл хаалттай", "Outbound actions locked")}</span></article>
-              <article><small>{t("Холболтын бэлэн байдал", "Channel readiness")}</small><strong>{1 + Number(Boolean(control?.status.emailConnected)) + Number(Boolean(control?.status.socialConnected))} / 3</strong><span>{t("Веб + server-side OAuth secret", "Website + server-side OAuth secrets")}</span></article>
+              <article><small>{t("Сувгийн тохиргоо", "Channel configuration")}</small><strong>{1 + Number(Boolean(control?.status.emailConnected)) + Number(Boolean(control?.status.socialConnected))} / 3</strong><span>{t("Веб + server-side OAuth secret", "Website + server-side OAuth secrets")}</span></article>
               <article><small>{t("AI сарын төсөв", "Monthly AI budget")}</small><strong>${(control?.usage.estimatedCostUsd || 0).toFixed(4)} / ${controlSettings.monthlyBudgetUsd}</strong><span>{t("App guard · OpenAI hard limit тусдаа", "App guard · separate OpenAI hard limit")}</span></article>
             </div>
             <div className="marketing-ai-dashboard-grid">
@@ -468,7 +469,7 @@ export default function MarketingAiPage() {
               </article>
               <article className="marketing-ai-readiness">
                 <div className="marketing-ai-card-head"><div><span>READINESS</span><h3>{t("Холболтын төлөв", "Connection status")}</h3></div></div>
-                <ul><li className="ready"><span>{t("Админ permission", "Admin permission")}</span><b>{t("Бэлэн", "Ready")}</b></li><li className="ready"><span>Draft → Review → Decision</span><b>{t("Бэлэн", "Ready")}</b></li><li className={control?.status.keyConfigured ? "ready" : ""}><span>OpenAI API</span><b>{control?.status.keyConfigured ? t("Secret идэвхтэй", "Secret active") : t("Холбогдоогүй", "Not connected")}</b></li><li className={control?.status.tested ? "ready" : ""}><span>{t("Тохиргооны тест", "Configuration test")}</span><b>{control?.status.tested ? t("Амжилттай", "Passed") : t("Шаардлагатай", "Required")}</b></li><li className={control?.status.budgetState === "normal" ? "ready" : ""}><span>{t("Төсвийн төлөв", "Budget state")}</span><b>{control?.status.budgetState || "normal"}</b></li></ul>
+                <ul><li className="ready"><span>{t("Админ permission", "Admin permission")}</span><b>{t("Бэлэн", "Ready")}</b></li><li className="ready"><span>Draft → Review → Decision</span><b>{t("Бэлэн", "Ready")}</b></li><li className={control?.status.keyConfigured ? "ready" : ""}><span>OpenAI API</span><b>{control?.status.keyConfigured ? t("Secret идэвхтэй", "Secret active") : t("Тохируулаагүй", "Not configured")}</b></li><li className={control?.status.tested ? "ready" : ""}><span>{t("Тохиргооны тест", "Configuration test")}</span><b>{control?.status.tested ? t("Амжилттай", "Passed") : t("Шаардлагатай", "Required")}</b></li><li className={control?.status.budgetState === "normal" ? "ready" : ""}><span>{t("Төсвийн төлөв", "Budget state")}</span><b>{control?.status.budgetState || "normal"}</b></li></ul>
               </article>
             </div>
           </> : null}
@@ -495,7 +496,7 @@ export default function MarketingAiPage() {
             {controlMessage ? <div className="marketing-ai-control-alert success" role="status">{controlMessage}</div> : null}
             <form id="marketing-ai-settings-form" className="marketing-ai-control-form" onSubmit={saveControl}>
               <section>
-                <div className="marketing-ai-card-head"><div><span>OPENAI PROJECT</span><h3>{t("Marketing AI ажиллагаа", "Marketing AI operation")}</h3></div><b className={control?.status.keyConfigured ? "connected" : "waiting"}>{control?.status.keyConfigured ? t("Холбогдсон", "Connected") : t("Key хүлээж байна", "Waiting for key")}</b></div>
+                <div className="marketing-ai-card-head"><div><span>OPENAI PROJECT</span><h3>{t("Marketing AI ажиллагаа", "Marketing AI operation")}</h3></div><b className={control?.status.keyConfigured ? "connected" : "waiting"}>{control?.status.keyConfigured ? t("Тохируулагдсан", "Configured") : t("Key хүлээж байна", "Waiting for key")}</b></div>
                 <div className="marketing-ai-control-fields">
                   <label>{t("Ажиллах горим", "Operating mode")}<select value={controlSettings.mode} onChange={event => setControlSettings(current => ({ ...current, mode: event.target.value as MarketingAiControlSettings["mode"] }))}><option value="disabled">Disabled</option><option value="test">Test</option><option value="production">Production Draft</option></select></label>
                   <label>{t("Хурдан model", "Fast model")}<input value={controlSettings.fastModel} onChange={event => setControlSettings(current => ({ ...current, model: event.target.value, fastModel: event.target.value }))} /></label>
@@ -517,8 +518,8 @@ export default function MarketingAiPage() {
               <section>
                 <div className="marketing-ai-card-head"><div><span>CHANNEL VAULT</span><h3>{t("Суваг ба үйлдлийн хамгаалалт", "Channels & action safeguards")}</h3></div></div>
                 <ul className="marketing-ai-connection-list">
-                  <li className={control?.status.emailConnected ? "ready" : ""}><span>Email OAuth</span><b>{control?.status.emailConnected ? t("Холбогдсон", "Connected") : t("Холбогдоогүй", "Not connected")}</b></li>
-                  <li className={control?.status.socialConnected ? "ready" : ""}><span>Social OAuth</span><b>{control?.status.socialConnected ? t("Холбогдсон", "Connected") : t("Холбогдоогүй", "Not connected")}</b></li>
+                  <li className={control?.status.emailConnected ? "ready" : ""}><span>Email OAuth</span><b>{control?.status.emailConnected ? t("Тохируулагдсан", "Configured") : t("Тохируулаагүй", "Not configured")}</b></li>
+                  <li className={control?.status.socialConnected ? "ready" : ""}><span>Social OAuth</span><b>{control?.status.socialConnected ? t("Тохируулагдсан", "Configured") : t("Тохируулаагүй", "Not configured")}</b></li>
                   <li className="locked"><span>{t("Гадагш илгээх", "Outbound execution")}</span><b>{t("ХААЛТТАЙ", "LOCKED")}</b></li>
                   <li className="ready"><span>{t("Хүний баталгаажуулалт", "Human approval")}</span><b>{t("ЗААВАЛ", "REQUIRED")}</b></li>
                 </ul>
@@ -582,7 +583,7 @@ export default function MarketingAiPage() {
                   {record.status === "draft" && canWorkspaceWrite ? <button type="button" onClick={() => changeWorkspaceRecord(record, "submit")} disabled={workspaceBusy}>{t("Review-д илгээх", "Submit for review")}</button> : null}
                   {record.status === "review" && canApprove ? <><button type="button" onClick={() => changeWorkspaceRecord(record, "approve")} disabled={workspaceBusy}>{t("Батлах", "Approve")}</button><button type="button" className="danger" onClick={() => changeWorkspaceRecord(record, "reject")} disabled={workspaceBusy}>{t("Татгалзах", "Reject")}</button></> : null}
                   {record.status === "approved" && workspaceDomain === "knowledge" && canApprove ? <button type="button" onClick={() => changeWorkspaceRecord(record, "publish")} disabled={workspaceBusy}>{t("Published болгох", "Publish internally")}</button> : null}
-                  {record.status === "approved" && workspaceDomain === "channels" && canConfigure ? <button type="button" onClick={() => changeWorkspaceRecord(record, "verify")} disabled={workspaceBusy}>{t("Холболтын бэлэн байдлыг шалгах", "Verify readiness")}</button> : null}
+                  {record.status === "approved" && workspaceDomain === "channels" && canConfigure ? <button type="button" onClick={() => changeWorkspaceRecord(record, "verify")} disabled={workspaceBusy}>{t("Холболтын бэлэн байдлыг шалгах", "Check configuration")}</button> : null}
                   {record.status === "approved" && workspaceDomain === "automation" && canConfigure ? <button type="button" onClick={() => changeWorkspaceRecord(record, "test")} disabled={workspaceBusy}>{t("Draft-only тест", "Draft-only test")}</button> : null}
                   {["approved", "rejected", "archived"].includes(record.status) && canApprove ? <button type="button" className="secondary" onClick={() => changeWorkspaceRecord(record, "return_to_draft")} disabled={workspaceBusy}>{t("Draft болгох", "Return to draft")}</button> : null}
                   {record.status !== "archived" && canApprove ? <button type="button" className="secondary" onClick={() => changeWorkspaceRecord(record, "archive")} disabled={workspaceBusy}>{t("Архивлах", "Archive")}</button> : null}

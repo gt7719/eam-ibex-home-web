@@ -93,3 +93,12 @@ export function homeAiOpenAiMessage(code: HomeAiOpenAiErrorCode, lang: "mn" | "e
   };
   return messages[code][lang];
 }
+
+export function homeAiCustomerMessage(lang: "mn" | "en", code = "UNAVAILABLE") {
+  if (code === "OPENAI_RATE_LIMIT") return lang === "en"
+    ? "Our assistant is busy right now. Please try again shortly."
+    : "Туслахын ачаалал их байна. Түр хүлээгээд дахин оролдоно уу.";
+  return lang === "en"
+    ? "Sorry, we couldn't prepare your answer right now. Please try again shortly."
+    : "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна. Түр хүлээгээд дахин оролдоно уу.";
+}

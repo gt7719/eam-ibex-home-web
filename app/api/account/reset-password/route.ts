@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { hasTrustedOrigin } from "../../../lib/admin-security";
 import { digest, newPasswordCredential, validateSitePassword } from "../../../lib/site-user-auth";
 import { readJsonObject } from "../../../lib/http-input";
+import { resetPasswordWithToken } from "../../../lib/account-token";
 
 export async function POST(request: Request) {
   if (!hasTrustedOrigin(request)) return NextResponse.json({ error: "Origin mismatch" }, { status: 403 });
@@ -24,11 +25,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Сэргээх холбоосын хугацаа дууссан байна." }, { status: 410 });
   }
   const credential = await newPasswordCredential(password);
-  await env.DB.batch([
-    env.DB.prepare("UPDATE site_users SET password_hash=?,password_salt=?,updated_at=? WHERE id=?").bind(credential.hash, credential.salt, now, row.user_id),
-    env.DB.prepare("UPDATE site_user_tokens SET status='used',used_at=? WHERE id=? AND status='pending'").bind(now, row.id),
-    env.DB.prepare("UPDATE site_user_tokens SET status='invalidated' WHERE user_id=? AND purpose='password_reset' AND id!=? AND status='pending'").bind(row.user_id, row.id),
-    env.DB.prepare("UPDATE site_user_sessions SET status='password_changed',revoked_at=? WHERE user_id=? AND status='active'").bind(now, row.user_id),
-  ]);
+  const reset = await resetPasswordWithToken(env.DB, { tokenId: row.id, userId: row.user_id, ...credential, now: new Date().toISOString() });
+  if (!reset) return NextResponse.json({ error: "Сэргээх холбоос хүчингүй болсон байна." }, { status: 409 });
   return NextResponse.json({ reset: true });
 }

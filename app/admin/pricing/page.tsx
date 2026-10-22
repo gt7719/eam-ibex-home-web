@@ -1,4 +1,5 @@
 "use client";
+import { apiMessage } from "../../lib/api-message";
 /* eslint-disable @next/next/no-img-element */
 
 import { FormEvent, useEffect, useState } from "react";
@@ -22,7 +23,7 @@ export default function PricingAdminPage() {
     fetch("/api/admin/payment-settings", { cache: "no-store" }).then(async response => {
       if (response.status === 401) { window.location.replace("/admin/login"); return; }
       if (response.status === 403) { window.location.replace("/admin"); return; }
-      const payload = await response.json(); if (!response.ok) throw new Error(payload.error || "Төлбөрийн тохиргоог уншиж чадсангүй.");
+      const payload = await response.json(); if (!response.ok) throw new Error(apiMessage(payload.error) || "Төлбөрийн тохиргоог уншиж чадсангүй.");
       const next = payload.methods || []; setMethods(next); setRevision(payload.revision || null); setSavedSnapshot(JSON.stringify(next)); setLoading(false);
     }).catch(reason => { setError(reason instanceof Error ? reason.message : "Төлбөрийн тохиргоог уншиж чадсангүй."); setLoading(false); });
     return () => window.clearTimeout(timer);
@@ -63,7 +64,7 @@ export default function PricingAdminPage() {
     try {
       const form = new FormData(); form.append("file", file);
       const response = await fetch("/api/admin/media", { method: "POST", body: form });
-      const payload = await response.json(); if (!response.ok) throw new Error(payload.error || t("Зургийг байршуулж чадсангүй.", "Could not upload image."));
+      const payload = await response.json(); if (!response.ok) throw new Error(apiMessage(payload.error) || t("Зургийг байршуулж чадсангүй.", "Could not upload image."));
       if (target === "qr") update("qr", "imageUrl", payload.url); else updateApp(target, "imageUrl", payload.url);
     } catch (reason) { setError(reason instanceof Error ? reason.message : t("Зургийг байршуулж чадсангүй.", "Could not upload image.")); }
     finally { setUploading(""); }
@@ -72,7 +73,7 @@ export default function PricingAdminPage() {
     event.preventDefault(); setSaving(true); setMessage(""); setError("");
     const response = await fetch("/api/admin/payment-settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ methods, revision }) }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
-    if (!response?.ok) setError(payload.error || t("Төлбөрийн тохиргоог хадгалж чадсангүй.", "Could not save payment settings."));
+    if (!response?.ok) setError(apiMessage(payload.error) || t("Төлбөрийн тохиргоог хадгалж чадсангүй.", "Could not save payment settings."));
     else { const next = payload.methods || methods; setMethods(next); setRevision(payload.revision || null); setSavedSnapshot(JSON.stringify(next)); setMessage(t("Төлбөрийн хэлбэрийн тохиргоог хадгаллаа.", "Payment method settings were saved.")); }
     setSaving(false);
   }

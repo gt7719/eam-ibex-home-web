@@ -2,7 +2,7 @@ import { env } from "@/app/runtime/env";
 import { NextResponse } from "next/server";
 import { hasTrustedOrigin } from "../../../lib/admin-security";
 import type { CustomerAiDatabase } from "../../../lib/customer-ai";
-import { isMarketingAiDomain, marketingAiRecordSnapshot, normalizeMarketingAiKind, validateMarketingAiRecord, type MarketingAiDomain } from "../../../lib/marketing-ai-workspace";
+import { marketingDecisionFields, isMarketingAiDomain, marketingAiRecordSnapshot, normalizeMarketingAiKind, validateMarketingAiRecord, type MarketingAiDomain } from "../../../lib/marketing-ai-workspace";
 import { getAdminSession, hasMarketingAdminPermission, type MarketingAdminPermission } from "../../../lib/site-admin";
 import { readJsonObject } from "../../../lib/http-input";
 
@@ -93,7 +93,7 @@ export async function PATCH(request: Request) {
     if (current.domain !== "channels" || current.status !== "approved") return reply({ error: "Зөвхөн батлагдсан сувгийн readiness-ийг шалгана." }, 409);
     const credentialReady = current.kind === "website" || current.kind === "email" && Boolean((runtime as Runtime).MARKETING_EMAIL_OAUTH_TOKEN?.trim()) || current.kind === "facebook" && Boolean((runtime as Runtime).MARKETING_SOCIAL_OAUTH_TOKEN?.trim());
     if (!credentialReady) return reply({ error: "Энэ сувгийн server-side OAuth secret одоогоор идэвхгүй байна. Нууц утгыг record-д бүү оруул." }, 409);
-    nextData = { ...nextData, readiness: "verified", lastVerifiedAt: new Date().toISOString(), testDeliveryExecuted: false };
+    nextData = { ...nextData, readiness: "configured", lastCheckedAt: new Date().toISOString(), connectionVerified: false, testDeliveryExecuted: false };
   } else if (action === "test") {
     if (current.domain !== "automation" || current.status !== "approved") return reply({ error: "Зөвхөн батлагдсан automation дүрмийг Draft-only тестээр шалгана." }, 409);
     nextData = { ...nextData, lastDraftTestAt: new Date().toISOString(), lastDraftTestStatus: "draft_created", outboundExecuted: false };
@@ -109,10 +109,8 @@ export async function PATCH(request: Request) {
     nextStatus = target;
   }
   const nextRevision = revision + 1, now = new Date().toISOString(), note = typeof body.note === "string" ? body.note.trim().slice(0, 1000) : "";
-  const approved = nextStatus === "approved" || nextStatus === "published", published = nextStatus === "published", archived = nextStatus === "archived";
   const snapshot = { id, domain: current.domain, kind: current.kind, title: nextTitle, status: nextStatus, data: nextData, revision: nextRevision,
-    ownerId: current.owner_id, approvedBy: approved ? auth.user.id : null, approvedAt: approved ? now : null, publishedAt: published ? now : null,
-    archivedAt: archived ? now : null, createdAt: current.created_at, updatedAt: now };
+    ownerId: current.owner_id, ...marketingDecisionFields(current, nextStatus, action, auth.user.id, now), createdAt: current.created_at, updatedAt: now };
   let testDraftId: string | null = null;
   const statements = [
     runtime.DB.prepare("UPDATE marketing_ai_records SET title=?,status=?,data_json=?,revision=revision+1,approved_by=?,approved_at=?,published_at=?,archived_at=?,updated_at=? WHERE id=? AND revision=?")

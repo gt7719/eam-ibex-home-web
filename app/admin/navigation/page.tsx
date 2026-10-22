@@ -1,4 +1,5 @@
 "use client";
+import { apiMessage } from "../../lib/api-message";
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useMemo, useState } from "react";
@@ -98,7 +99,7 @@ export default function NavigationAdminPage() {
           return;
         }
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error);
+        if (!response.ok) throw new Error(apiMessage(payload.error));
         setDraft(payload.draft);
         setPublished(payload.published);
         setRevision(payload.draftUpdatedAt || null);
@@ -213,7 +214,7 @@ export default function NavigationAdminPage() {
     }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) : {};
     if (!response?.ok) {
-      setError(payload.error || t("Өөрчлөлтийг хадгалж чадсангүй.", "Could not save the changes."));
+      setError(apiMessage(payload.error) || t("Өөрчлөлтийг хадгалж чадсангүй.", "Could not save the changes."));
       setWorking(false);
       return;
     }
@@ -231,7 +232,7 @@ export default function NavigationAdminPage() {
     const form = new FormData(); form.append("file", file);
     const response = await fetch("/api/admin/media", { method: "POST", body: form });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || t("Файлыг байршуулж чадсангүй.", "Could not upload the file."));
+    if (!response.ok) throw new Error(apiMessage(payload.error) || t("Файлыг байршуулж чадсангүй.", "Could not upload the file."));
     return payload as { id: string; url: string };
   }
 
