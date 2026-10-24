@@ -943,3 +943,7 @@ body.home-ai-modal-open{overflow:hidden}body.home-ai-modal-open .account-securit
 [data-ibex-theme="day"] .home-ai-boundary strong { color: #166534; }
 [data-ibex-theme="day"] .home-ai-empty { color: #655b6c; }
 .home-ai-source { display: inline-block; margin: 8px 12px 0 0; text-decoration: underline; }
+
+/* V88: hide vertical scrollbar chrome without changing native scrolling. */
+html, body, body * { scrollbar-width: none; -ms-overflow-style: none; }
+html::-webkit-scrollbar, body::-webkit-scrollbar, body *::-webkit-scrollbar { width: 0; }
